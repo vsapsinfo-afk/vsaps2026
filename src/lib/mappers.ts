@@ -319,6 +319,7 @@ export function mapUserToDb(u: UserAccount): Record<string, any> {
     role: u.role,
     status: u.status,
     last_active: u.lastActive || null,
+    permissions: u.permissions || [],
   };
 }
 

@@ -55,6 +55,7 @@ CREATE TABLE public.user_accounts (
     role TEXT NOT NULL CHECK (role IN ('admin', 'btc', 'ctv')),
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
     last_active TIMESTAMP WITH TIME ZONE,
+    permissions TEXT[] DEFAULT '{}'::text[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
