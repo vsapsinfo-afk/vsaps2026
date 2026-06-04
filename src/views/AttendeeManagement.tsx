@@ -32,6 +32,7 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [newGender, setNewGender] = useState('Nam');
   const [newYearOfBirth, setNewYearOfBirth] = useState('');
   const [newAddress, setNewAddress] = useState('');
+  const [newProvince, setNewProvince] = useState('Hồ Chí Minh');
   const [newNationality, setNewNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [newCmeRequired, setNewCmeRequired] = useState(false);
   const [newGalaRequired, setNewGalaRequired] = useState(false);
@@ -1028,6 +1029,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
       phone: newPhone,
       email: newEmail,
       address: newAddress.trim(),
+      province: newProvince,
       nationality: newNationality,
       packageId: selectedPkg.id,
       packageName: selectedPkg.name,
@@ -1055,6 +1057,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     setNewPhone('');
     setNewEmail('');
     setNewAddress('');
+    setNewProvince('Hồ Chí Minh');
     setNewYearOfBirth('');
     setNewGender('Nam');
     setNewNationality('vietname');
@@ -2136,18 +2139,29 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
               {/* Contact Address & Nationality */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div className="sm:col-span-8">
+                <div className="sm:col-span-5">
                   <label className="text-[10px] font-bold text-slate-500 block mb-1">Địa chỉ liên hệ *</label>
                   <input
                     type="text"
                     required
                     value={newAddress}
                     onChange={(e) => setNewAddress(e.target.value)}
-                    placeholder="ví dụ: Phường Thảo Điền, Thành phố Thủ Đức, Hồ Chí Minh"
+                    placeholder="ví dụ: Phường Thảo Điền, Thành phố Thủ Đức"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
                   />
                 </div>
                 <div className="sm:col-span-4">
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Tỉnh / Thành phố *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newProvince}
+                    onChange={(e) => setNewProvince(e.target.value)}
+                    placeholder="ví dụ: Hồ Chí Minh"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
+                  />
+                </div>
+                <div className="sm:col-span-3">
                   <label className="text-[10px] font-bold text-slate-500 block mb-1">Quốc tịch</label>
                   <select
                     value={newNationality}
@@ -2457,7 +2471,14 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           <span className="text-[10px] text-slate-450 block font-bold mb-0.5">Tỉnh / Thành phố đại diện:</span>
                           <div className="flex items-center gap-1.5 p-2 bg-slate-50/50 rounded-lg border border-slate-150 text-slate-800 font-semibold">
                             <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                            <span>{viewDetailAttendee.province || viewDetailAttendee.address || 'Chưa cập nhật'}</span>
+                            <span>{viewDetailAttendee.province || 'Chưa cập nhật'}</span>
+                          </div>
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <span className="text-[10px] text-slate-450 block font-bold mb-0.5">Địa chỉ liên hệ:</span>
+                          <div className="p-2 bg-slate-50/50 rounded-lg border border-slate-150 text-slate-800 font-semibold leading-relaxed">
+                            📍 {viewDetailAttendee.address || 'Chưa cập nhật'}
                           </div>
                         </div>
 
@@ -2581,9 +2602,20 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Tỉnh / Thành phố</label>
                           <input
                             type="text"
-                            value={detailEditForm.province || detailEditForm.address || ''}
-                            onChange={(e) => setDetailEditForm({ ...detailEditForm, province: e.target.value, address: e.target.value })}
+                            value={detailEditForm.province || ''}
+                            onChange={(e) => setDetailEditForm({ ...detailEditForm, province: e.target.value })}
                             placeholder="Ví dụ: Hồ Chí Minh"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Địa chỉ liên hệ</label>
+                          <input
+                            type="text"
+                            value={detailEditForm.address || ''}
+                            onChange={(e) => setDetailEditForm({ ...detailEditForm, address: e.target.value })}
+                            placeholder="Địa chỉ số nhà, đường, phường, quận..."
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
                           />
                         </div>

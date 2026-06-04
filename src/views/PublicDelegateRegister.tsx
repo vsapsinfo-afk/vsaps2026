@@ -204,7 +204,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       const newId = `VSAPS2026-${randomSeq}`;
       const qrCodeValue = `${newId}-${fullName.replace(/\s+/g, '').toUpperCase()}`;
 
-      const fullAddress = address.trim();
+      const fullAddress = `${address.trim()}${ward ? ', ' + ward : ''}${district ? ', ' + district : ''}`;
 
       const attendeeData: Attendee = {
         id: newId,
