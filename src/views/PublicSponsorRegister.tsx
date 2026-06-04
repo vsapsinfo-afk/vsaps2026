@@ -93,6 +93,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdSponsor, setCreatedSponsor] = useState<Sponsor | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-populate benefits when tier changes
   useEffect(() => {
@@ -136,12 +137,14 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
   const currentTierData = SPONSOR_TIERS.find(t => t.id === tier) || SPONSOR_TIERS[1];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !contactPerson || !contactEmail || !contactPhone) {
       setErrorMsg('Vui lòng điền đầy đủ tất cả các trường thông tin liên hệ bắt buộc (*).');
       return;
     }
+    setErrorMsg('');
+    setIsSubmitting(true);
 
     // Split custom benefits by newlines
     const finalBenefits = customBenefitsText
@@ -165,7 +168,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
     };
 
     try {
-      const saved = store.saveSponsor(sponsorData);
+      const saved = await store.saveSponsorAsync(sponsorData);
       
       // Broadcast realtime push notification to administrators
       sendRealtimeNotification(
@@ -178,7 +181,10 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       setIsSubmitted(true);
       window.scrollTo(0, 0);
     } catch (err: any) {
-      setErrorMsg('Đã xảy ra lỗi hệ thống: ' + err.message);
+      console.error(err);
+      setErrorMsg(`Không thể hoàn tất đăng ký nhà tài trợ: ${err.message || err.details || 'Lỗi cơ sở dữ liệu.'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -494,9 +500,10 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
             <button
               id="btn-submit-sponsor-register"
               type="submit"
-              className="w-full py-4 text-sm font-extrabold text-white bg-teal-600 hover:bg-teal-700 rounded-2xl cursor-pointer transition-all shadow-lg hover:shadow-teal-600/20 uppercase tracking-wider border-none text-center"
+              disabled={isSubmitting}
+              className="w-full py-4 text-sm font-extrabold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 rounded-2xl cursor-pointer transition-all shadow-lg hover:shadow-teal-600/20 uppercase tracking-wider border-none text-center"
             >
-              Gửi Đăng Ký Tài Trợ & Nhận Hợp Đồng
+              {isSubmitting ? 'Đang gửi hồ sơ tài trợ...' : 'Gửi Đăng Ký Tài Trợ & Nhận Hợp Đồng'}
             </button>
           </div>
         </div>

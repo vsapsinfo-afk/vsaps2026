@@ -51,6 +51,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdAttendee, setCreatedAttendee] = useState<Attendee | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,7 +162,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     setPackageId(pkgId);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!fullName) {
@@ -195,74 +196,73 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     }
 
     setErrorMsg('');
+    setIsSubmitting(true);
 
-    const existingAttendees = store.getAttendees();
-    const maxSeq = existingAttendees.reduce((max, att) => {
-      const match = att.id.match(/\d+$/);
-      if (match) {
-        const num = parseInt(match[0], 10);
-        return num > max ? num : max;
-      }
-      return max;
-    }, existingAttendees.length);
-    const nextSeq = maxSeq + 1;
-    const padSeq = String(nextSeq).padStart(3, '0');
-    const newId = `VSAPS2026-${padSeq}`;
-    const qrCodeValue = `${newId}-${fullName.replace(/\s+/g, '').toUpperCase()}`;
-
-    const fullAddress = address.trim();
-
-    const attendeeData: Attendee = {
-      id: newId,
-      title,
-      fullName: fullName.toUpperCase(),
-      organization,
-      department: department || 'Khoa Tạo hình Thẩm mỹ',
-      phone: cleanPhoneInput,
-      email,
-      address: fullAddress,
-      nationality,
-      packageId,
-      packageName: selectedPackage?.name || 'Gói Tiêu Chuẩn',
-      packageFee: calculatedTotalFee,
-      paymentStatus: 'pending_verification', // set pending to verify bank transfer receipt
-      paymentMethod: 'bank_transfer',
-      transactionProofUrl: proofImage || undefined,
-      registrationDate: new Date().toISOString().split('T')[0],
-      qrCodeValue,
-      isCheckedIn: false,
-      notes,
-      yearOfBirth,
-      gender,
-      cmeRequired,
-      cmeIdentityNo: undefined,
-      galaRequired,
-      masterclassRequired,
-      tourRequired,
-      registrationPeriod: period,
-      province,
-      avatarUrl: avatarImage || undefined,
-    };
-
-    const saved = store.saveAttendee(attendeeData);
-    
-    // Broadcast realtime push notification to administrators
-    sendRealtimeNotification(
-      'Đại biểu Đăng Ký Mới',
-      `Đại biểu ${saved.title} ${saved.fullName} (${saved.organization}) vừa đăng ký thành công gói ${saved.packageName}!`,
-      'success'
-    );
-    
-    // Tự động gửi tin nhắn Zalo ZNS và Email kèm vé điện tử & mã check-in QR
     try {
-      store.sendZaloZNS(saved);
-      store.sendEmail(saved);
-    } catch (err) {
-      console.error('Lỗi khi kích hoạt luồng bắn thông báo tự động:', err);
-    }
+      // Generate a random unique ID to avoid collisions on public registration
+      const randomSeq = Math.floor(Math.random() * 900000 + 100000);
+      const newId = `VSAPS2026-${randomSeq}`;
+      const qrCodeValue = `${newId}-${fullName.replace(/\s+/g, '').toUpperCase()}`;
 
-    setCreatedAttendee(saved);
-    setIsSubmitted(true);
+      const fullAddress = address.trim();
+
+      const attendeeData: Attendee = {
+        id: newId,
+        title,
+        fullName: fullName.toUpperCase(),
+        organization,
+        department: department || 'Khoa Tạo hình Thẩm mỹ',
+        phone: cleanPhoneInput,
+        email,
+        address: fullAddress,
+        nationality,
+        packageId,
+        packageName: selectedPackage?.name || 'Gói Tiêu Chuẩn',
+        packageFee: calculatedTotalFee,
+        paymentStatus: 'pending_verification', // set pending to verify bank transfer receipt
+        paymentMethod: 'bank_transfer',
+        transactionProofUrl: proofImage || undefined,
+        registrationDate: new Date().toISOString().split('T')[0],
+        qrCodeValue,
+        isCheckedIn: false,
+        notes,
+        yearOfBirth,
+        gender,
+        cmeRequired,
+        cmeIdentityNo: undefined,
+        galaRequired,
+        masterclassRequired,
+        tourRequired,
+        registrationPeriod: period,
+        province,
+        avatarUrl: avatarImage || undefined,
+      };
+
+      const saved = await store.saveAttendeeAsync(attendeeData);
+      
+      // Broadcast realtime push notification to administrators
+      sendRealtimeNotification(
+        'Đại biểu Đăng Ký Mới',
+        `Đại biểu ${saved.title} ${saved.fullName} (${saved.organization}) vừa đăng ký thành công gói ${saved.packageName}!`,
+        'success'
+      );
+      
+      // Tự động gửi tin nhắn Zalo ZNS và Email kèm vé điện tử & mã check-in QR
+      try {
+        store.sendZaloZNS(saved);
+        store.sendEmail(saved);
+      } catch (err) {
+        console.error('Lỗi khi kích hoạt luồng bắn thông báo tự động:', err);
+      }
+
+      setCreatedAttendee(saved);
+      setIsSubmitted(true);
+    } catch (err: any) {
+      console.error('Lỗi lưu đăng ký đại biểu:', err);
+      setErrorMsg(`Không thể hoàn tất đăng ký do lỗi cơ sở dữ liệu: ${err.message || err.details || 'Lỗi mạng hoặc phân quyền.'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Dynamic provinces list comes from administrative helper
@@ -1037,10 +1037,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
               <button
                 id="btn-submit-delegate"
                 type="submit"
-                className="w-full py-4 rounded-2xl bg-teal-900 hover:bg-teal-950 text-white font-extrabold text-[12.5px] uppercase tracking-widest cursor-pointer shadow-lg hover:shadow-xl transition-all border border-amber-400/40 relative group overflow-hidden"
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-2xl bg-teal-900 hover:bg-teal-950 disabled:opacity-50 text-white font-extrabold text-[12.5px] uppercase tracking-widest cursor-pointer shadow-lg hover:shadow-xl transition-all border border-amber-400/40 relative group overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-                Xác Nhận Đăng Ký Gửi Cho Ban Tổ Chức ⚡
+                {isSubmitting ? 'Đang gửi thông tin đăng ký...' : 'Xác Nhận Đăng Ký Gửi Cho Ban Tổ Chức ⚡'}
               </button>
               <span className="text-[10px] text-slate-400 italic mt-2.5 text-center block leading-relaxed font-sans">
                 Ấn nút đăng ký, thẻ đeo check-in và hóa đơn chuyển tiền sẽ được xuất bản lập tức. Ban thư ký VSAPS sẽ đồng thời đối soát tiền chuyển khoản real-time trên tài khoản.

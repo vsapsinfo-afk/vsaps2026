@@ -35,6 +35,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdSpeaker, setCreatedSpeaker] = useState<SpeakerRegistration | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -56,46 +57,54 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !email || !presentationTitle || !abstractText || !organization) {
       setErrorMsg('Vui lòng điền đầy đủ các thông tin bắt buộc (*).');
       return;
     }
     setErrorMsg('');
+    setIsSubmitting(true);
 
-    const newId = 'SPK-' + Math.floor(Math.random() * 90000 + 10000);
+    try {
+      const newId = 'SPK-' + Math.floor(Math.random() * 90000 + 10000);
 
-    const speakerData: SpeakerRegistration = {
-      id: newId,
-      title,
-      fullName,
-      organization,
-      department,
-      phone,
-      email,
-      bio,
-      presentationTitle,
-      presentationTrack,
-      abstractText,
-      documentName: fileName || 'Draft_Abstract_' + fullName.replace(/\s+/g, '') + '.pdf',
-      calendarSynced,
-      status: 'pending',
-      registrationDate: new Date().toISOString().split('T')[0],
-      avatarUrl: avatarImage || undefined,
-    };
+      const speakerData: SpeakerRegistration = {
+        id: newId,
+        title,
+        fullName,
+        organization,
+        department,
+        phone,
+        email,
+        bio,
+        presentationTitle,
+        presentationTrack,
+        abstractText,
+        documentName: fileName || 'Draft_Abstract_' + fullName.replace(/\s+/g, '') + '.pdf',
+        calendarSynced,
+        status: 'pending',
+        registrationDate: new Date().toISOString().split('T')[0],
+        avatarUrl: avatarImage || undefined,
+      };
 
-    const saved = store.saveSpeaker(speakerData);
+      const saved = await store.saveSpeakerAsync(speakerData);
 
-    // Broadcast realtime push notification to administrators
-    sendRealtimeNotification(
-      'Báo cáo viên Đăng ký bài',
-      `Báo cáo viên ${saved.title} ${saved.fullName} (${saved.organization}) vừa nộp bài báo cáo: "${saved.presentationTitle}"`,
-      'badge'
-    );
+      // Broadcast realtime push notification to administrators
+      sendRealtimeNotification(
+        'Báo cáo viên Đăng ký bài',
+        `Báo cáo viên ${saved.title} ${saved.fullName} (${saved.organization}) vừa nộp bài báo cáo: "${saved.presentationTitle}"`,
+        'badge'
+      );
 
-    setCreatedSpeaker(saved);
-    setIsSubmitted(true);
+      setCreatedSpeaker(saved);
+      setIsSubmitted(true);
+    } catch (err: any) {
+      console.error('Lỗi lưu đăng ký báo cáo viên:', err);
+      setErrorMsg(`Không thể hoàn tất gửi bài báo cáo: ${err.message || err.details || 'Lỗi cơ sở dữ liệu.'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSubmitted && createdSpeaker) {
@@ -453,9 +462,10 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <button
                 id="btn-submit-speaker"
                 type="submit"
-                className="w-full py-4.5 rounded-2xl bg-indigo-700 hover:bg-indigo-850 text-white font-bold text-sm tracking-widest transition-all shadow-lg shadow-indigo-700/10 uppercase cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-4.5 rounded-2xl bg-indigo-700 hover:bg-indigo-850 disabled:opacity-50 text-white font-bold text-sm tracking-widest transition-all shadow-lg shadow-indigo-700/10 uppercase cursor-pointer"
               >
-                Gửi Hồ Sơ & Đăng Báo Cáo Khoa Học
+                {isSubmitting ? 'Đang gửi hồ sơ báo cáo...' : 'Gửi Hồ Sơ & Đăng Báo Cáo Khoa Học'}
               </button>
             </div>
           </form>

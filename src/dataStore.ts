@@ -455,6 +455,86 @@ export class DataStore {
     return attendee;
   }
 
+  async saveAttendeeAsync(attendee: Attendee): Promise<Attendee> {
+    const idx = this.attendees.findIndex(a => a.id === attendee.id);
+    const isNew = idx < 0;
+    if (!isNew) {
+      this.attendees[idx] = attendee;
+    } else {
+      this.attendees.push(attendee);
+    }
+    this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
+
+    let updatedAttendee = { ...attendee };
+
+    if (isSupabaseConfigured()) {
+      try {
+        let changed = false;
+
+        // 1. Upload avatar if it's base64
+        if (attendee.avatarUrl && attendee.avatarUrl.startsWith('data:')) {
+          const ext = attendee.avatarUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `avatars/${attendee.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, attendee.avatarUrl);
+          if (publicUrl) {
+            updatedAttendee.avatarUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        // 2. Upload proof if it's base64
+        if (attendee.transactionProofUrl && attendee.transactionProofUrl.startsWith('data:')) {
+          const ext = attendee.transactionProofUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `proofs/${attendee.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, attendee.transactionProofUrl);
+          if (publicUrl) {
+            updatedAttendee.transactionProofUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          const idxMemory = this.attendees.findIndex(a => a.id === attendee.id);
+          if (idxMemory >= 0) {
+            this.attendees[idxMemory] = updatedAttendee;
+            this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
+          }
+        }
+
+        const dbRecord = mapAttendeeToDb(updatedAttendee);
+        const query = isNew 
+          ? supabase.from('attendees').insert(dbRecord)
+          : supabase.from('attendees').upsert(dbRecord);
+          
+        const { error } = await query;
+        if (error) {
+          console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
+          throw error;
+        }
+      } catch (err) {
+        console.error('Error during database sync of attendee:', err);
+        throw err;
+      }
+    }
+    
+    // Auto-create an income transaction if paid
+    if (updatedAttendee.paymentStatus === 'paid' && !this.finance.find(f => f.referenceId === updatedAttendee.id)) {
+      this.addFinancialRecord({
+        id: 'TXN-' + Math.floor(Math.random() * 90000 + 10000),
+        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        type: 'income',
+        category: 'Gói đại biểu',
+        amount: updatedAttendee.packageFee,
+        description: `Phí đăng ký Gói ${updatedAttendee.packageName} đại biểu ${updatedAttendee.fullName}`,
+        referenceId: updatedAttendee.id,
+        paymentMethod: updatedAttendee.paymentMethod === 'bank_transfer' ? 'Chuyển khoản Ngân hàng' : 'Thanh toán Thẻ',
+        verifiedBy: 'Hệ thống tự động',
+        isVerified: true,
+      });
+    }
+    return updatedAttendee;
+  }
+
   deleteAttendee(id: string) {
     this.attendees = this.attendees.filter(a => a.id !== id);
     this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
@@ -515,6 +595,58 @@ export class DataStore {
       })();
     }
     return speaker;
+  }
+
+  async saveSpeakerAsync(speaker: SpeakerRegistration): Promise<SpeakerRegistration> {
+    const idx = this.speakers.findIndex(s => s.id === speaker.id);
+    const isNew = idx < 0;
+    if (!isNew) {
+      this.speakers[idx] = speaker;
+    } else {
+      this.speakers.push(speaker);
+    }
+    this.saveToLocalStorage(DataStore.KEY_SPEAKERS, this.speakers);
+
+    let updatedSpeaker = { ...speaker };
+
+    if (isSupabaseConfigured()) {
+      try {
+        let changed = false;
+
+        if (speaker.avatarUrl && speaker.avatarUrl.startsWith('data:')) {
+          const ext = speaker.avatarUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `avatars/${speaker.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, speaker.avatarUrl);
+          if (publicUrl) {
+            updatedSpeaker.avatarUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          const idxMemory = this.speakers.findIndex(s => s.id === speaker.id);
+          if (idxMemory >= 0) {
+            this.speakers[idxMemory] = updatedSpeaker;
+            this.saveToLocalStorage(DataStore.KEY_SPEAKERS, this.speakers);
+          }
+        }
+
+        const dbRecord = mapSpeakerToDb(updatedSpeaker);
+        const query = isNew
+          ? supabase.from('speakers').insert(dbRecord)
+          : supabase.from('speakers').upsert(dbRecord);
+
+        const { error } = await query;
+        if (error) {
+          console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
+          throw error;
+        }
+      } catch (err) {
+        console.error('Error during database sync of speaker:', err);
+        throw err;
+      }
+    }
+    return updatedSpeaker;
   }
 
   deleteSpeaker(id: string) {
@@ -674,6 +806,82 @@ export class DataStore {
       }
     }
     return sponsor;
+  }
+
+  async saveSponsorAsync(sponsor: Sponsor): Promise<Sponsor> {
+    const idx = this.sponsors.findIndex(s => s.id === sponsor.id);
+    const isNew = idx < 0;
+    if (!isNew) {
+      this.sponsors[idx] = sponsor;
+    } else {
+      this.sponsors.push(sponsor);
+    }
+    this.saveToLocalStorage(DataStore.KEY_SPONSORS, this.sponsors);
+
+    let updatedSponsor = { ...sponsor };
+
+    if (isSupabaseConfigured()) {
+      try {
+        let changed = false;
+
+        if (sponsor.logoUrl && sponsor.logoUrl.startsWith('data:')) {
+          const ext = sponsor.logoUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `logos/${sponsor.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, sponsor.logoUrl);
+          if (publicUrl) {
+            updatedSponsor.logoUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          const idxMemory = this.sponsors.findIndex(s => s.id === sponsor.id);
+          if (idxMemory >= 0) {
+            this.sponsors[idxMemory] = updatedSponsor;
+            this.saveToLocalStorage(DataStore.KEY_SPONSORS, this.sponsors);
+          }
+        }
+
+        const dbRecord = mapSponsorToDb(updatedSponsor);
+        const query = isNew
+          ? supabase.from('sponsors').insert(dbRecord)
+          : supabase.from('sponsors').upsert(dbRecord);
+
+        const { error } = await query;
+        if (error) {
+          console.error(`Error ${isNew ? 'inserting' : 'upserting'} sponsor to Supabase:`, error);
+          throw error;
+        }
+      } catch (err) {
+        console.error('Error during database sync of sponsor:', err);
+        throw err;
+      }
+    }
+
+    // Auto-create or update sponsor income transaction
+    if (updatedSponsor.paidAmount > 0) {
+      const financeIdMatch = 'TXN-SPN-' + updatedSponsor.id;
+      const existingTx = this.finance.find(f => f.referenceId === financeIdMatch);
+      if (existingTx) {
+        existingTx.amount = updatedSponsor.paidAmount;
+        existingTx.description = `Nhà tài trợ ${updatedSponsor.name} đóng góp thực tế`;
+        this.saveFinancialRecord(existingTx);
+      } else {
+        this.addFinancialRecord({
+          id: 'TXN-' + Math.floor(Math.random() * 90000 + 10000),
+          date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          type: 'income',
+          category: 'Nhà tài trợ',
+          amount: updatedSponsor.paidAmount,
+          description: `Nhà tài trợ ${updatedSponsor.name} đóng góp thực tế`,
+          referenceId: financeIdMatch,
+          paymentMethod: 'Chuyển khoản Doanh nghiệp',
+          verifiedBy: 'Phòng Tài chính BTC',
+          isVerified: true,
+        });
+      }
+    }
+    return updatedSponsor;
   }
 
   deleteSponsor(id: string) {

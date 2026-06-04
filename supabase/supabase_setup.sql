@@ -276,6 +276,7 @@ CREATE POLICY "Allow public read specialty_tracks" ON public.specialty_tracks FO
 CREATE POLICY "Allow public read business_config" ON public.business_config FOR SELECT USING (true);
 CREATE POLICY "Allow public read sessions" ON public.sessions FOR SELECT USING (true);
 CREATE POLICY "Allow public read sponsors" ON public.sponsors FOR SELECT USING (true);
+CREATE POLICY "Allow public read speakers" ON public.speakers FOR SELECT USING (true);
 
 -- Allow anonymous registration insertions
 CREATE POLICY "Allow public insert attendees" ON public.attendees FOR INSERT WITH CHECK (true);
