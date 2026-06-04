@@ -20,7 +20,7 @@ import {
   BusinessConfig,
   EmbedScript,
 } from './types';
-import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
   mapAttendeeToDb, mapDbToAttendee,
   mapSpeakerToDb, mapDbToSpeaker,
@@ -388,14 +388,53 @@ export class DataStore {
 
     // Sync to Supabase in the background
     if (isSupabaseConfigured()) {
-      const dbRecord = mapAttendeeToDb(attendee);
-      const query = isNew 
-        ? supabase.from('attendees').insert(dbRecord)
-        : supabase.from('attendees').upsert(dbRecord);
-        
-      query.then(({ error }) => {
-        if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
-      });
+      (async () => {
+        try {
+          let updatedAttendee = { ...attendee };
+          let changed = false;
+
+          // 1. Upload avatar if it's base64
+          if (attendee.avatarUrl && attendee.avatarUrl.startsWith('data:')) {
+            const ext = attendee.avatarUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `avatars/${attendee.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, attendee.avatarUrl);
+            if (publicUrl) {
+              updatedAttendee.avatarUrl = publicUrl;
+              changed = true;
+            }
+          }
+
+          // 2. Upload proof if it's base64
+          if (attendee.transactionProofUrl && attendee.transactionProofUrl.startsWith('data:')) {
+            const ext = attendee.transactionProofUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `proofs/${attendee.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, attendee.transactionProofUrl);
+            if (publicUrl) {
+              updatedAttendee.transactionProofUrl = publicUrl;
+              changed = true;
+            }
+          }
+
+          // Update local memory and storage to reflect clean storage URLs
+          if (changed) {
+            const idxMemory = this.attendees.findIndex(a => a.id === attendee.id);
+            if (idxMemory >= 0) {
+              this.attendees[idxMemory] = updatedAttendee;
+              this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
+            }
+          }
+
+          const dbRecord = mapAttendeeToDb(updatedAttendee);
+          const query = isNew 
+            ? supabase.from('attendees').insert(dbRecord)
+            : supabase.from('attendees').upsert(dbRecord);
+            
+          const { error } = await query;
+          if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
+        } catch (err) {
+          console.error('Error during background upload/sync of attendee:', err);
+        }
+      })();
     }
     
     // Auto-create an income transaction if paid
@@ -440,14 +479,40 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_SPEAKERS, this.speakers);
 
     if (isSupabaseConfigured()) {
-      const dbRecord = mapSpeakerToDb(speaker);
-      const query = isNew
-        ? supabase.from('speakers').insert(dbRecord)
-        : supabase.from('speakers').upsert(dbRecord);
+      (async () => {
+        try {
+          let updatedSpeaker = { ...speaker };
+          let changed = false;
 
-      query.then(({ error }) => {
-        if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
-      });
+          if (speaker.avatarUrl && speaker.avatarUrl.startsWith('data:')) {
+            const ext = speaker.avatarUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `avatars/${speaker.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, speaker.avatarUrl);
+            if (publicUrl) {
+              updatedSpeaker.avatarUrl = publicUrl;
+              changed = true;
+            }
+          }
+
+          if (changed) {
+            const idxMemory = this.speakers.findIndex(s => s.id === speaker.id);
+            if (idxMemory >= 0) {
+              this.speakers[idxMemory] = updatedSpeaker;
+              this.saveToLocalStorage(DataStore.KEY_SPEAKERS, this.speakers);
+            }
+          }
+
+          const dbRecord = mapSpeakerToDb(updatedSpeaker);
+          const query = isNew
+            ? supabase.from('speakers').insert(dbRecord)
+            : supabase.from('speakers').upsert(dbRecord);
+
+          const { error } = await query;
+          if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
+        } catch (err) {
+          console.error('Error during background upload/sync of speaker:', err);
+        }
+      })();
     }
     return speaker;
   }
@@ -549,14 +614,40 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_SPONSORS, this.sponsors);
 
     if (isSupabaseConfigured()) {
-      const dbRecord = mapSponsorToDb(sponsor);
-      const query = isNew
-        ? supabase.from('sponsors').insert(dbRecord)
-        : supabase.from('sponsors').upsert(dbRecord);
+      (async () => {
+        try {
+          let updatedSponsor = { ...sponsor };
+          let changed = false;
 
-      query.then(({ error }) => {
-        if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} sponsor to Supabase:`, error);
-      });
+          if (sponsor.logoUrl && sponsor.logoUrl.startsWith('data:')) {
+            const ext = sponsor.logoUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `logos/${sponsor.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, sponsor.logoUrl);
+            if (publicUrl) {
+              updatedSponsor.logoUrl = publicUrl;
+              changed = true;
+            }
+          }
+
+          if (changed) {
+            const idxMemory = this.sponsors.findIndex(s => s.id === sponsor.id);
+            if (idxMemory >= 0) {
+              this.sponsors[idxMemory] = updatedSponsor;
+              this.saveToLocalStorage(DataStore.KEY_SPONSORS, this.sponsors);
+            }
+          }
+
+          const dbRecord = mapSponsorToDb(updatedSponsor);
+          const query = isNew
+            ? supabase.from('sponsors').insert(dbRecord)
+            : supabase.from('sponsors').upsert(dbRecord);
+
+          const { error } = await query;
+          if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} sponsor to Supabase:`, error);
+        } catch (err) {
+          console.error('Error during background upload/sync of sponsor:', err);
+        }
+      })();
     }
 
     // Auto-create or update sponsor income transaction
