@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Search, Bell, AlertTriangle, CheckCircle, Database, ShieldAlert, BadgeCheck, Menu, Wifi, WifiOff, Trash2, Check, Radio } from 'lucide-react';
 import { store } from '../dataStore';
 import { RealtimeNotification, sendRealtimeNotification } from '../lib/realtime';
+import { useAuth } from './AuthProvider';
 
 interface HeaderProps {
   currentView: string;
@@ -29,6 +30,7 @@ export default function Header({
   onClearNotifications,
   sseConnected = true
 }: HeaderProps) {
+  const { user } = useAuth();
   const [ticketIdInput, setTicketIdInput] = useState('');
   const [checkInResult, setCheckInResult] = useState<{ success: boolean; msg: string } | null>(null);
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
@@ -198,33 +200,45 @@ export default function Header({
         {/* User Account Info Display */}
         {(() => {
           const getUserProfile = () => {
-            switch (role) {
+            const roleVal = user?.role || role;
+            const nameVal = user?.name || (roleVal === 'admin' ? 'GS.TS. Phạm Minh Chi' : roleVal === 'btc' ? 'Đặng Thùy Dương' : 'Trần Thế Minh');
+            const emailVal = user?.email || (roleVal === 'admin' ? 'chi.pham@vsaps.org' : roleVal === 'btc' ? 'duong.dt@vsaps.org' : 'minh.tt@vsaps.org');
+            
+            const initials = nameVal
+              .split(' ')
+              .filter(Boolean)
+              .map(n => n[0])
+              .slice(-2)
+              .join('')
+              .toUpperCase() || 'US';
+
+            switch (roleVal) {
               case 'admin':
                 return {
-                  name: 'GS.TS. Phạm Minh Chi',
-                  email: 'chi.pham@vsaps.org',
+                  name: nameVal,
+                  email: emailVal,
                   roleLabel: 'Toàn Trị',
                   badgeClass: 'bg-rose-50 border-rose-200 text-rose-700',
-                  avatarInitials: 'MC',
+                  avatarInitials: initials,
                   avatarClass: 'bg-gradient-to-br from-rose-500 to-rose-600 text-white'
                 };
               case 'btc':
                 return {
-                  name: 'Đặng Thùy Dương',
-                  email: 'duong.dt@vsaps.org',
+                  name: nameVal,
+                  email: emailVal,
                   roleLabel: 'Ban Tổ Chức',
                   badgeClass: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-                  avatarInitials: 'TD',
+                  avatarInitials: initials,
                   avatarClass: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white'
                 };
               case 'ctv':
               default:
                 return {
-                  name: 'Trần Thế Minh',
-                  email: 'minh.tt@vsaps.org',
+                  name: nameVal,
+                  email: emailVal,
                   roleLabel: 'Cộng Tác Viên',
                   badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-                  avatarInitials: 'TM',
+                  avatarInitials: initials,
                   avatarClass: 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white'
                 };
             }

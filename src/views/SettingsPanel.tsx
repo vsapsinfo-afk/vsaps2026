@@ -52,10 +52,9 @@ import RichTextEditor from '../components/RichTextEditor';
 
 interface SettingsPanelProps {
   role: Role;
-  onChangeRole?: (role: Role) => void;
 }
 
-export default function SettingsPanel({ role, onChangeRole }: SettingsPanelProps) {
+export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
   const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers'>('business');
 
@@ -536,16 +535,29 @@ export default function SettingsPanel({ role, onChangeRole }: SettingsPanelProps
           permissions: formUserPermissions
         })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
+      .then(async res => {
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          return { ok: res.ok, status: res.status, data };
+        } catch (e) {
+          return { ok: false, status: res.status, errorText: text };
+        }
+      })
+      .then(result => {
+        if (result.ok && result.data?.success) {
           alert('Tạo nhân sự mới và đồng bộ Supabase Auth thành công!');
           // Add to local dataStore cache
-          store.addUserLocally(data.user);
+          store.addUserLocally(result.data.user);
           setShowUserModal(false);
           reloadData();
         } else {
-          alert(`Lỗi khi tạo nhân sự: ${data.error}`);
+          const errorMsg = result.data?.error || result.errorText || '';
+          if (errorMsg.trim().startsWith('<!DOCTYPE') || errorMsg.trim().startsWith('<html') || errorMsg.includes('Vite CSS') || errorMsg.includes('html')) {
+            alert(`Lỗi khi tạo nhân sự: Phản hồi từ máy chủ không phải dữ liệu JSON (Mã lỗi HTTP ${result.status}).\n\n👉 LƯU Ý: Nếu bạn đang chạy ứng dụng cục bộ bằng lệnh 'npm run dev', các API serverless Vercel sẽ không hoạt động trực tiếp. Hãy chạy lệnh 'vercel dev' và sử dụng cổng của Vercel (thường là http://localhost:3000) để API hoạt động.`);
+          } else {
+            alert(`Lỗi khi tạo nhân sự: ${errorMsg || 'Không xác định (Lỗi máy chủ)'}`);
+          }
         }
       })
       .catch(err => {

@@ -15,13 +15,12 @@ interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
   currentRole: Role;
-  onChangeRole: (role: Role) => void;
   onResetData: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function Sidebar({ currentView, onNavigate, currentRole, onChangeRole, onResetData, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ currentView, onNavigate, currentRole, onResetData, isOpen, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
   const menuItems = [
     { id: 'overview', name: 'Tổng Quan', icon: BarChart2, roles: ['admin', 'btc', 'ctv'] },
@@ -136,26 +135,6 @@ export default function Sidebar({ currentView, onNavigate, currentRole, onChange
  
       {/* Footer controls with subtle pink indicator */}
       <div className="p-4 border-t border-indigo-900/50 bg-indigo-950/40 text-[11px] space-y-3.5 shrink-0">
-        <div className="space-y-2">
-          <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase text-indigo-400 tracking-wider px-1">
-            <Shield className="w-3.5 h-3.5 text-pink-500" />
-            <span>Phân Quyền Hệ Thống</span>
-          </div>
-          <div className="relative">
-            <select
-              value={currentRole}
-              onChange={(e) => onChangeRole(e.target.value as Role)}
-              className="w-full bg-slate-900 border border-indigo-900 text-white p-2.5 px-3 rounded-xl text-[11px] font-medium focus:outline-none cursor-pointer appearance-none text-indigo-100 hover:bg-slate-850 transition-all shadow-inner"
-            >
-              <option value="admin">🔑 Quản Trị Viên (Admin)</option>
-              <option value="btc">📋 Ban Tổ Chức (BTC)</option>
-              <option value="ctv">🤝 Cộng Tác Viên (CTV)</option>
-            </select>
-            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-indigo-400 text-[8px]">
-              ▼
-            </div>
-          </div>
-        </div>
 
         <button
           onClick={() => {

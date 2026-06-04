@@ -210,16 +210,7 @@ function AppContent() {
         return <NotificationSystem />;
       case 'settings':
         return (
-          <SettingsPanel 
-            role={role} 
-            onChangeRole={(newRole) => {
-              setRole(newRole);
-              // If role changed and the current view is restricted, redirect to Overview
-              if (newRole === 'ctv') {
-                setCurrentView('overview');
-              }
-            }} 
-          />
+          <SettingsPanel role={role} />
         );
 
       // Public-side pages
@@ -269,13 +260,6 @@ function AppContent() {
         currentView={currentView}
         onNavigate={handleNavigate}
         currentRole={role}
-        onChangeRole={(newRole) => {
-          setRole(newRole);
-          // If role changed and the current view is restricted, redirect to Overview
-          if (newRole === 'ctv' && ['finances', 'sponsors', 'notifications', 'settings'].includes(currentView)) {
-            setCurrentView('overview');
-          }
-        }}
         onResetData={handleResetData}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
