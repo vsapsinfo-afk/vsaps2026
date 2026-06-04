@@ -27,19 +27,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Fetch from Supabase
     if (supabaseUrl && supabaseAnonKey) {
-      const { data, error } = await supabase
-        .from('business_config')
-        .select('*')
-        .eq('id', 'default')
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from('business_config')
+          .select('*')
+          .eq('id', 'default')
+          .maybeSingle();
 
-      if (data) {
-        name = data.pwa_name || data.event_name || name;
-        shortName = data.pwa_short_name || data.event_name?.substring(0, 15) || shortName;
-        description = data.pwa_description || data.event_name || description;
-        logoUrl = data.pwa_logo_url || logoUrl;
-        themeColor = data.pwa_theme_color || themeColor;
-        backgroundColor = data.pwa_background_color || backgroundColor;
+        if (data && !error) {
+          name = data.pwa_name || data.event_name || name;
+          shortName = data.pwa_short_name || data.event_name?.substring(0, 15) || shortName;
+          description = data.pwa_description || data.event_name || description;
+          logoUrl = data.pwa_logo_url || logoUrl;
+          themeColor = data.pwa_theme_color || themeColor;
+          backgroundColor = data.pwa_background_color || backgroundColor;
+        } else if (error) {
+          console.error('Lỗi truy vấn business_config từ Supabase:', error.message);
+        }
+      } catch (dbErr: any) {
+        console.error('Lỗi kết nối Supabase khi lấy cấu hình manifest:', dbErr.message || dbErr);
       }
     }
 
