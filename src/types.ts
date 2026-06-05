@@ -216,6 +216,30 @@ export interface SentNotificationLog {
   response?: any;
 }
 
+/** Cấu hình từng trang form public (delegate, speaker, sponsor) */
+export interface PublicFormConfig {
+  /** Bật/tắt form này — khi false hiển thị thông báo đóng */
+  isOpen: boolean;
+  /** Thông báo hiển thị khi form đóng */
+  closedMessage?: string;
+  /** Tiêu đề chính của form (H1) */
+  formTitle?: string;
+  /** Mô tả ngắn dưới tiêu đề */
+  formDescription?: string;
+  /** Tên ban tổ chức/đơn vị hiển thị trên header */
+  organizerLabel?: string;
+  /** Màu nền header (hex, default teal/slate) */
+  headerBgColor?: string;
+  /** Màu chữ accent (badge, icon) */
+  accentColor?: string;
+  /** Ảnh banner/logo hiển thị trên header */
+  bannerImageUrl?: string;
+  /** Ghi chú footer form */
+  footerNote?: string;
+  /** Giới hạn đăng ký riêng cho form này (0 = không giới hạn) */
+  maxEntries?: number;
+}
+
 export interface BusinessConfig {
   eventName: string;
   organizerName: string;
@@ -234,6 +258,12 @@ export interface BusinessConfig {
   pwaBackgroundColor?: string;
   /** URL domain production của app (dùng để tạo mã nhúng WordPress) */
   appUrl?: string;
+  /** Cấu hình trang đăng ký đại biểu */
+  delegateFormConfig?: PublicFormConfig;
+  /** Cấu hình trang đăng ký báo cáo viên */
+  speakerFormConfig?: PublicFormConfig;
+  /** Cấu hình trang đăng ký nhà tài trợ */
+  sponsorFormConfig?: PublicFormConfig;
 }
 
 export interface EmbedScript {

@@ -73,6 +73,8 @@ const SPONSOR_TIERS = [
 ];
 
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
+  const businessConfig = store.getBusinessConfig();
+  const formCfg = businessConfig.sponsorFormConfig;
   // Form States
   const [name, setName] = useState('');
   const [tier, setTier] = useState<'platinum' | 'gold' | 'silver' | 'bronze' | 'co_sponsor'>('gold');
@@ -314,20 +316,38 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
         Quay lại trang chủ sự kiện
       </button>
 
-      {/* Header section */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-3 opacity-15">
-          <HeartHandshake className="w-32 h-32 text-teal-600" />
+      {/* CLOSED FORM SCREEN */}
+      {formCfg?.isOpen === false && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center mb-8" style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}>
+          <div className="text-5xl mb-4">🔒</div>
+          <h2 className="text-white font-black text-xl mb-3">Cổng đăng ký tài trợ đã đóng</h2>
+          <p className="text-white/70 text-sm max-w-md mx-auto">{formCfg?.closedMessage || 'Cổng đăng ký tài trợ hiện đã đóng. Vui lòng liên hệ Ban tổ chức.'}</p>
+          <button onClick={() => onNavigate('event-details')} className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">← Về trang chủ</button>
         </div>
-        
-        <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-100 text-[10.5px] font-black uppercase tracking-wider inline-block">
-          VSAPS 2026 PARTNER REGISTRATION
+      )}
+
+      {formCfg?.isOpen !== false && (<>
+
+      {/* Header section */}
+      <div
+        className="p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden"
+        style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}
+      >
+        <div className="absolute top-0 right-0 p-3 opacity-15">
+          <HeartHandshake className="w-32 h-32 text-white" />
+        </div>
+
+        {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-12 object-contain mx-auto mb-2 rounded" />}
+
+        <span className="px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider inline-block"
+          style={{ backgroundColor: `${formCfg?.accentColor || '#f59e0b'}20`, color: formCfg?.accentColor || '#f59e0b', border: `1px solid ${formCfg?.accentColor || '#f59e0b'}40` }}>
+          {formCfg?.organizerLabel || 'VSAPS 2026 PARTNER REGISTRATION'}
         </span>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-950 uppercase tracking-tight">
-          Đăng Ký Đồng Hành & Tài Trợ Hội Nghị
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white uppercase tracking-tight">
+          {formCfg?.formTitle || 'Đăng Ký Đồng Hành & Tài Trợ Hội Nghị'}
         </h1>
-        <p className="text-xs md:text-sm text-slate-500 max-w-2xl mx-auto leading-relaxed">
-          Đưa thương hiệu thiết bị y tế, dược phẩm hoặc cơ sở y khoa của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành trong nước & quốc tế. Hãy chọn phân khúc bảo trợ tối ưu nhất.
+        <p className="text-xs md:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: `${formCfg?.accentColor || '#ffffff'}b0` }}>
+          {formCfg?.formDescription || 'Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.'}
         </p>
       </div>
 
@@ -508,6 +528,14 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
           </div>
         </div>
       </form>
+
+      {formCfg?.footerNote && (
+        <div className="mt-6">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10.5px] text-slate-600 text-center leading-relaxed">{formCfg.footerNote}</div>
+        </div>
+      )}
+
+      </> )}
     </div>
   );
 }

@@ -57,7 +57,8 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms'>('business');
+  const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
 
   // Printer config states (saved to localStorage for device-specific setup)
   const [printerAutoPrint, setPrinterAutoPrint] = useState(() => {
@@ -869,6 +870,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           >
             <span className="shrink-0 text-base">💳</span>
             <span>SePay - Xác nhận CK</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('forms')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'forms'
+                ? 'bg-violet-700 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-violet-50 hover:text-violet-800 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">📋</span>
+            <span>Cấu hình Form Public</span>
           </button>
 
           {/* Quick diagnostic tips */}
@@ -2360,6 +2373,327 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
               </div>
             </div>
           )}
+
+          {/* ================= SECTION 8: PUBLIC FORM CONFIGURATION ================= */}
+          {activeSubTab === 'forms' && (() => {
+            // Helper: get current form config by active section
+            const getFormCfg = () => {
+              if (formActiveSection === 'delegate') return businessConfig.delegateFormConfig || {};
+              if (formActiveSection === 'speaker') return businessConfig.speakerFormConfig || {};
+              return businessConfig.sponsorFormConfig || {};
+            };
+            const setFormCfg = (patch: Record<string, any>) => {
+              const key = formActiveSection === 'delegate' ? 'delegateFormConfig'
+                : formActiveSection === 'speaker' ? 'speakerFormConfig'
+                : 'sponsorFormConfig';
+              setBusinessConfig({
+                ...businessConfig,
+                [key]: { ...(businessConfig[key as keyof typeof businessConfig] as object || {}), ...patch },
+              });
+            };
+            const cfg = getFormCfg();
+            const formLabels = {
+              delegate: { icon: '🎫', label: 'Đại Biểu', color: 'teal' },
+              speaker: { icon: '🎤', label: 'Báo Cáo Viên', color: 'indigo' },
+              sponsor: { icon: '🏆', label: 'Nhà Tài Trợ', color: 'amber' },
+            };
+            return (
+              <div className="space-y-6 animate-fade-in">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                    📋 Cấu Hình Trang Form Public
+                  </h3>
+                  <p className="text-[11px] text-slate-450 mt-0.5">
+                    Tùy chỉnh nội dung, màu sắc và trạng thái mở/đóng của từng cổng đăng ký công khai.
+                  </p>
+                </div>
+
+                {/* Sub-tab selector */}
+                <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+                  {(['delegate', 'speaker', 'sponsor'] as const).map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setFormActiveSection(sec)}
+                      className={`flex-1 py-2 text-[11px] font-black rounded-lg border-none cursor-pointer transition-all flex items-center justify-center gap-1.5 ${
+                        formActiveSection === sec
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'bg-transparent text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      <span>{formLabels[sec].icon}</span>
+                      <span>{formLabels[sec].label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Form config editor */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    store.saveBusinessConfig(businessConfig);
+                    alert(`Đã lưu cấu hình form ${formLabels[formActiveSection].label} thành công!`);
+                  }}
+                  className="space-y-5"
+                >
+                  {/* Open/Closed toggle */}
+                  <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="text-xs font-black text-slate-800 block">
+                        {formLabels[formActiveSection].icon} Form {formLabels[formActiveSection].label}
+                      </span>
+                      <span className="text-[10px] text-slate-450 block mt-0.5">
+                        Bật = đại biểu có thể truy cập và gửi đăng ký. Tắt = hiển thị thông báo đóng.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                        (cfg as any).isOpen !== false
+                          ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
+                          : 'bg-rose-100 text-rose-700 border-rose-200'
+                      }`}>
+                        {(cfg as any).isOpen !== false ? '● Đang mở' : '○ Đã đóng'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormCfg({ isOpen: !(cfg as any).isOpen })}
+                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+                          (cfg as any).isOpen !== false ? 'bg-emerald-500' : 'bg-rose-400'
+                        }`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          (cfg as any).isOpen !== false ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Closed message */}
+                  {(cfg as any).isOpen === false && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">Thông báo khi form đóng</label>
+                      <textarea
+                        value={(cfg as any).closedMessage || ''}
+                        onChange={(e) => setFormCfg({ closedMessage: e.target.value })}
+                        rows={2}
+                        placeholder="Ví dụ: Cổng đăng ký đã đóng. Vui lòng liên hệ Ban tổ chức..."
+                        className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none text-slate-800 resize-none"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* Organizer label */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">Tên ban tổ chức (hiển thị trên header)</label>
+                      <input
+                        type="text"
+                        value={(cfg as any).organizerLabel || ''}
+                        onChange={(e) => setFormCfg({ organizerLabel: e.target.value })}
+                        placeholder="HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)"
+                        className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none font-bold text-slate-800 uppercase"
+                      />
+                    </div>
+
+                    {/* Form title */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">Tiêu đề chính của form (H1)</label>
+                      <input
+                        type="text"
+                        value={(cfg as any).formTitle || ''}
+                        onChange={(e) => setFormCfg({ formTitle: e.target.value })}
+                        placeholder="ĐĂNG KÝ ĐẠI BIỂU THAM DỰ HỘI NGHỊ..."
+                        className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none font-bold text-slate-800"
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">Mô tả ngắn bên dưới tiêu đề</label>
+                      <textarea
+                        value={(cfg as any).formDescription || ''}
+                        onChange={(e) => setFormCfg({ formDescription: e.target.value })}
+                        rows={2}
+                        placeholder="Cổng đăng ký điện tử dành cho..."
+                        className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none text-slate-800 resize-none"
+                      />
+                    </div>
+
+                    {/* Colors row */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-black text-slate-600 block">Màu nền header</label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="color"
+                            value={(cfg as any).headerBgColor || '#042f2e'}
+                            onChange={(e) => setFormCfg({ headerBgColor: e.target.value })}
+                            className="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={(cfg as any).headerBgColor || '#042f2e'}
+                            onChange={(e) => setFormCfg({ headerBgColor: e.target.value })}
+                            className="flex-1 px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none font-mono text-slate-700"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-black text-slate-600 block">Màu accent (badge, text)</label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="color"
+                            value={(cfg as any).accentColor || '#fbbf24'}
+                            onChange={(e) => setFormCfg({ accentColor: e.target.value })}
+                            className="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                          />
+                          <input
+                            type="text"
+                            value={(cfg as any).accentColor || '#fbbf24'}
+                            onChange={(e) => setFormCfg({ accentColor: e.target.value })}
+                            className="flex-1 px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none font-mono text-slate-700"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview header */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-500 block uppercase tracking-wider">Preview Header</label>
+                      <div
+                        className="rounded-xl p-4 relative overflow-hidden"
+                        style={{ backgroundColor: (cfg as any).headerBgColor || '#042f2e' }}
+                      >
+                        <span
+                          className="text-[9px] font-black tracking-widest uppercase block font-mono"
+                          style={{ color: (cfg as any).accentColor || '#fbbf24' }}
+                        >
+                          {(cfg as any).organizerLabel || 'TÊN BAN TỔ CHỨC'}
+                        </span>
+                        <p className="text-white font-black text-sm mt-1 leading-tight">
+                          {(cfg as any).formTitle || 'TIÊU ĐỀ FORM'}
+                        </p>
+                        <p className="text-white/60 text-[10px] mt-1">
+                          {(cfg as any).formDescription || 'Mô tả ngắn...'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Banner image */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">Ảnh Banner / Logo trên Header (URL)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={(cfg as any).bannerImageUrl || ''}
+                          onChange={(e) => setFormCfg({ bannerImageUrl: e.target.value })}
+                          placeholder="https://example.com/banner.png hoặc data:image/..."
+                          className="flex-1 px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none text-slate-800"
+                        />
+                        <label className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-[10px] font-bold rounded-xl cursor-pointer transition-all whitespace-nowrap">
+                          Tải lên
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => setFormCfg({ bannerImageUrl: reader.result as string });
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                        {(cfg as any).bannerImageUrl && (
+                          <button type="button" onClick={() => setFormCfg({ bannerImageUrl: '' })}
+                            className="px-2 py-2 bg-rose-50 text-rose-600 text-[10px] font-bold rounded-xl border-none cursor-pointer hover:bg-rose-100">
+                            Xóa
+                          </button>
+                        )}
+                      </div>
+                      {(cfg as any).bannerImageUrl && (
+                        <img src={(cfg as any).bannerImageUrl} alt="Banner preview"
+                          className="h-14 object-contain rounded-lg border border-slate-200 mt-1" />
+                      )}
+                    </div>
+
+                    {/* Footer note */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">Ghi chú footer (hiển thị cuối form)</label>
+                      <textarea
+                        value={(cfg as any).footerNote || ''}
+                        onChange={(e) => setFormCfg({ footerNote: e.target.value })}
+                        rows={2}
+                        placeholder="Ví dụ: Mọi thắc mắc vui lòng liên hệ email: btc@vsaps2026.com | Hotline: 0901 234 567"
+                        className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none text-slate-800 resize-none"
+                      />
+                    </div>
+
+                    {/* Max entries */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-black text-slate-600 block">
+                        Giới hạn số lượng đăng ký riêng
+                        <span className="font-normal text-slate-400 ml-2">(0 = không giới hạn)</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={(cfg as any).maxEntries ?? 0}
+                        onChange={(e) => setFormCfg({ maxEntries: parseInt(e.target.value) || 0 })}
+                        className="w-40 px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-500 outline-none font-bold text-slate-800"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-violet-700 hover:bg-violet-800 text-white text-xs font-black rounded-xl border-none cursor-pointer transition-all"
+                    >
+                      💾 Lưu cấu hình form {formLabels[formActiveSection].label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const appUrl = businessConfig.appUrl?.replace(/\/$/, '') || window.location.origin;
+                        const viewMap = { delegate: 'register-delegate', speaker: 'register-speaker', sponsor: 'register-sponsor' };
+                        window.open(`${appUrl}?view=${viewMap[formActiveSection]}`, '_blank');
+                      }}
+                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border-none cursor-pointer transition-all"
+                    >
+                      👁️ Xem thử form
+                    </button>
+                  </div>
+                </form>
+
+                {/* Quick links */}
+                <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-[10.5px] text-violet-900 space-y-2">
+                  <p className="font-black text-[11px]">📌 Link trực tiếp tới từng form public:</p>
+                  {[
+                    { key: 'register-delegate', label: '🎫 Đăng ký Đại biểu' },
+                    { key: 'register-speaker', label: '🎤 Đăng ký Báo cáo viên' },
+                    { key: 'register-sponsor', label: '🏆 Đăng ký Nhà tài trợ' },
+                  ].map(({ key, label }) => {
+                    const base = businessConfig.appUrl?.replace(/\/$/, '') || window.location.origin;
+                    const url = `${base}?view=${key}`;
+                    return (
+                      <div key={key} className="flex gap-2 items-center">
+                        <code className="flex-1 bg-white border border-violet-200 px-2 py-1 rounded-lg font-mono text-[10px] text-violet-700 overflow-x-auto">{url}</code>
+                        <button type="button" onClick={() => { navigator.clipboard.writeText(url); alert('Đã copy!'); }}
+                          className="px-2.5 py-1 bg-violet-600 text-white text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap">Copy</button>
+                        <a href={url} target="_blank" rel="noreferrer"
+                          className="px-2.5 py-1 bg-white border border-violet-300 text-violet-700 text-[10px] font-bold rounded-lg no-underline whitespace-nowrap">
+                          {label}
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
 

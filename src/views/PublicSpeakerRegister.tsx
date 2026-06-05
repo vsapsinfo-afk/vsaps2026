@@ -15,6 +15,8 @@ interface PublicSpeakerRegisterProps {
 }
 
 export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegisterProps) {
+  const businessConfig = store.getBusinessConfig();
+  const formCfg = businessConfig.speakerFormConfig;
   // Form State
   const [title, setTitle] = useState('PGS.TS.');
   const [fullName, setFullName] = useState('');
@@ -218,9 +220,34 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
         </button>
 
         <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-teal-800 to-indigo-900 text-white p-8">
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">ĐĂNG KÝ BÁO CÁO KHOA HỌC</h1>
-            <p className="text-teal-100 text-sm mt-1">Dành cho báo cáo viên quốc tế và nội địa đệ trình tóm tắt đề tài lâm sàng (Abstract Submission).</p>
+
+          {/* CLOSED FORM SCREEN */}
+          {formCfg?.isOpen === false && (
+            <div className="p-12 text-center" style={{ backgroundColor: formCfg?.headerBgColor || '#1e1b4b' }}>
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="text-white font-black text-xl mb-3">Cổng nộp bài đã đóng</h2>
+              <p className="text-white/70 text-sm max-w-md mx-auto">{formCfg?.closedMessage || 'Cổng nộp bài báo cáo hiện đã đóng. Vui lòng liên hệ Ban thư ký khoa học.'}</p>
+              <button onClick={() => onNavigate('event-details')} className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">← Về trang chủ</button>
+            </div>
+          )}
+
+          {formCfg?.isOpen !== false && (<>
+
+          <div
+            className="text-white p-8 border-b-4"
+            style={{ backgroundColor: formCfg?.headerBgColor || '#1e1b4b', borderBottomColor: formCfg?.accentColor || '#818cf8' }}
+          >
+            {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-10 object-contain mb-3 rounded" />}
+            <span className="text-[9px] font-black tracking-widest uppercase block font-mono mb-1"
+              style={{ color: formCfg?.accentColor || '#818cf8' }}>
+              {formCfg?.organizerLabel || 'HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)'}
+            </span>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              {formCfg?.formTitle || 'ĐĂNG KÝ BÁO CÁO KHOA HỌC'}
+            </h1>
+            <p className="text-white/70 text-sm mt-1">
+              {formCfg?.formDescription || 'Dành cho báo cáo viên quốc tế và nội địa đệ trình tóm tắt đề tài lâm sàng.'}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
@@ -469,6 +496,14 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               </button>
             </div>
           </form>
+
+          {formCfg?.footerNote && (
+            <div className="px-8 pb-6">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10.5px] text-slate-600 text-center leading-relaxed">{formCfg.footerNote}</div>
+            </div>
+          )}
+
+          </> )}
         </div>
       </div>
     </div>

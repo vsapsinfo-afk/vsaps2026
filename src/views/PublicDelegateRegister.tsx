@@ -19,6 +19,8 @@ interface PublicDelegateRegisterProps {
 export default function PublicDelegateRegister({ onNavigate }: PublicDelegateRegisterProps) {
   const packages = store.getPackages().filter(p => p.isActive);
   const containerRef = useRef<HTMLDivElement>(null);
+  const businessConfig = store.getBusinessConfig();
+  const formCfg = businessConfig.delegateFormConfig;
 
   // Auto-height postMessage for iframe embedding in WordPress
   useEffect(() => {
@@ -473,26 +475,60 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
           Quay lại sảnh hội nghị
         </button>
 
-        {/* Form Container with Premium aesthetic mimicking vsapsevent.org */}
+        {/* Form Container with Premium aesthetic */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden">
-          
-          {/* Header Section: Luxury Medical Theme */}
-          <div className="bg-teal-950 text-white p-6 md:p-8 border-b-4 border-amber-400 relative">
+
+          {/* CLOSED FORM SCREEN */}
+          {formCfg?.isOpen === false && (
+            <div
+              className="p-12 text-center"
+              style={{ backgroundColor: formCfg?.headerBgColor || '#042f2e' }}
+            >
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="text-white font-black text-xl mb-3">Cổng đăng ký đã đóng</h2>
+              <p className="text-white/70 text-sm max-w-md mx-auto">
+                {formCfg?.closedMessage || 'Cổng đăng ký hiện đã đóng. Vui lòng liên hệ Ban tổ chức để biết thêm thông tin.'}
+              </p>
+              <button onClick={() => onNavigate('event-details')}
+                className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">
+                ← Về trang chủ
+              </button>
+            </div>
+          )}
+
+          {/* OPEN FORM */}
+          {formCfg?.isOpen !== false && (
+          <>
+
+          {/* Header Section */}
+          <div
+            className="text-white p-6 md:p-8 border-b-4 relative"
+            style={{
+              backgroundColor: formCfg?.headerBgColor || '#042f2e',
+              borderBottomColor: formCfg?.accentColor || '#fbbf24',
+            }}
+          >
             <div className="absolute right-4 top-4 hidden md:block">
-              <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20 uppercase tracking-widest font-mono">
+              <span className="text-[9px] font-black px-3 py-1 rounded-full border uppercase tracking-widest font-mono"
+                style={{ color: formCfg?.accentColor || '#fbbf24', backgroundColor: `${formCfg?.accentColor || '#fbbf24'}18`, borderColor: `${formCfg?.accentColor || '#fbbf24'}40` }}>
                 REGISTRATION PORTAL
               </span>
             </div>
-            
+
+            {formCfg?.bannerImageUrl && (
+              <img src={formCfg.bannerImageUrl} alt="Banner" className="h-12 object-contain mb-3 rounded" />
+            )}
+
             <div className="max-w-xl">
-              <span className="text-[10px] font-extrabold text-amber-400 tracking-widest uppercase block font-mono">
-                HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)
+              <span className="text-[10px] font-extrabold tracking-widest uppercase block font-mono"
+                style={{ color: formCfg?.accentColor || '#fbbf24' }}>
+                {formCfg?.organizerLabel || 'HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)'}
               </span>
               <h1 className="text-xl md:text-2xl font-black mt-1.5 tracking-tight uppercase">
-                ĐĂNG KÝ ĐẠI BIỂU THAM DỰ HỘI NGHỊ THƯỜNG NIÊN VSAPS 2026
+                {formCfg?.formTitle || 'ĐĂNG KÝ ĐẠI BIỂU THAM DỰ HỘI NGHỊ THƯỜNG NIÊN VSAPS 2026'}
               </h1>
-              <p className="text-teal-200 text-xs mt-1.5 leading-relaxed font-medium">
-                Cổng đăng ký điện tử dành cho đại biểu, bác sĩ thẩm mỹ trong nước & quốc tế. Điền chính xác thông tin để phát hành CME và thẻ đại biểu QR tự động.
+              <p className="text-white/70 text-xs mt-1.5 leading-relaxed font-medium">
+                {formCfg?.formDescription || 'Cổng đăng ký điện tử dành cho đại biểu, bác sĩ thẩm mỹ trong nước & quốc tế.'}
               </p>
             </div>
           </div>
@@ -1078,6 +1114,20 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
             </div>
 
           </form>
+
+          {/* Footer Note from config */}
+          {formCfg?.footerNote && (
+            <div className="px-6 pb-6">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10.5px] text-slate-600 text-center leading-relaxed">
+                {formCfg.footerNote}
+              </div>
+            </div>
+          )}
+
+          </>
+          )}
+
+
         </div>
       </div>
     </div>
