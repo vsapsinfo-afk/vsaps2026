@@ -57,7 +57,7 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay'>('business');
 
   // Printer config states (saved to localStorage for device-specific setup)
   const [printerAutoPrint, setPrinterAutoPrint] = useState(() => {
@@ -123,6 +123,11 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   const [isEmbedEdit, setIsEmbedEdit] = useState(false);
   const [formEmbedId, setFormEmbedId] = useState('');
   const [formEmbedName, setFormEmbedName] = useState('');
+
+  // SePay config states
+  const [sepayConfig, setSepayConfig] = useState(store.getSepayConfig());
+  const [isSepayTesting, setIsSepayTesting] = useState(false);
+  const [sepayTestResult, setSepayTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [formEmbedTarget, setFormEmbedTarget] = useState<'delegate' | 'speaker' | 'sponsor' | 'analytics' | 'custom'>('delegate');
   const [formEmbedCode, setFormEmbedCode] = useState('');
   const [formEmbedNotes, setFormEmbedNotes] = useState('');
@@ -852,6 +857,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           >
             <Printer className="w-4 h-4 shrink-0" />
             <span>🖨️ Cấu hình Máy In Nhãn</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('sepay')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'sepay'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">💳</span>
+            <span>SePay - Xác nhận CK</span>
           </button>
 
           {/* Quick diagnostic tips */}
@@ -2113,6 +2130,234 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* ================= SECTION 7: SEPAY PAYMENT VERIFICATION ================= */}
+          {activeSubTab === 'sepay' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                    💳 SePay — Xác Nhận Chuyển Khoản Tự Động
+                  </h3>
+                  <p className="text-[11px] text-slate-450 mt-0.5">
+                    Kết nối SePay để tự động xác nhận thanh toán ngay khi đại biểu chuyển khoản thành công.
+                  </p>
+                </div>
+                <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  sepayConfig.isEnabled && sepayConfig.apiToken
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                    : 'bg-slate-100 text-slate-500 border border-slate-200'
+                }`}>
+                  {sepayConfig.isEnabled && sepayConfig.apiToken ? '● Đã kích hoạt' : '○ Chưa bật'}
+                </div>
+              </div>
+
+              {/* Info banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-[10.5px] text-blue-800 space-y-1.5">
+                <p className="font-black text-[11px]">🔗 Cách thức hoạt động:</p>
+                <p>1. Đại biểu chuyển khoản với <strong>nội dung CK</strong> đã được tạo sẵn (chứa họ tên + SĐT)</p>
+                <p>2. SePay nhận biến động số dư từ ngân hàng → gửi webhook về hệ thống</p>
+                <p>3. Hệ thống khớp nội dung CK + số tiền → tự động cập nhật trạng thái <strong>ĐÃ THANH TOÁN ✅</strong></p>
+                <p>4. Đại biểu cũng có thể nhấn nút <strong>"Kiểm tra thanh toán"</strong> trên trang xác nhận để xác minh ngay</p>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  store.saveSepayConfig(sepayConfig);
+                  alert('Đã lưu cấu hình SePay thành công!');
+                }}
+                className="space-y-5"
+              >
+                {/* Enable toggle */}
+                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">Bật tích hợp SePay</span>
+                    <span className="text-[10px] text-slate-450 block mt-0.5">
+                      Cho phép hệ thống gọi SePay API để kiểm tra giao dịch
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSepayConfig({ ...sepayConfig, isEnabled: !sepayConfig.isEnabled })}
+                    className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+                      sepayConfig.isEnabled ? 'bg-emerald-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                      sepayConfig.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* API Token */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[11px] font-black text-slate-600 block">
+                      API Token <span className="text-rose-500">*</span>
+                      <a href="https://my.sepay.vn" target="_blank" rel="noreferrer" className="ml-2 text-indigo-500 hover:underline font-normal">
+                        Lấy tại my.sepay.vn ↗
+                      </a>
+                    </label>
+                    <input
+                      type="password"
+                      value={sepayConfig.apiToken}
+                      onChange={(e) => setSepayConfig({ ...sepayConfig, apiToken: e.target.value })}
+                      placeholder="Ví dụ: eyJhbGciOiJIUzI1Ni..."
+                      className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-mono text-slate-800"
+                    />
+                    <p className="text-[9.5px] text-slate-400">Company Settings → API Access → Create Token</p>
+                  </div>
+
+                  {/* Bank Code */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-slate-600 block">Ngân hàng <span className="text-rose-500">*</span></label>
+                    <select
+                      value={sepayConfig.bankCode}
+                      onChange={(e) => setSepayConfig({ ...sepayConfig, bankCode: e.target.value })}
+                      className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800"
+                    >
+                      <option value="VCB">Vietcombank (VCB)</option>
+                      <option value="TCB">Techcombank (TCB)</option>
+                      <option value="MB">MB Bank</option>
+                      <option value="ACB">ACB Bank</option>
+                      <option value="VPB">VPBank</option>
+                      <option value="BIDV">BIDV</option>
+                      <option value="CTG">Vietinbank (CTG)</option>
+                      <option value="TPB">TPBank</option>
+                      <option value="MSB">MSB</option>
+                      <option value="VIB">VIB</option>
+                      <option value="HDB">HDBank</option>
+                    </select>
+                  </div>
+
+                  {/* Account Number */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-slate-600 block">Số tài khoản <span className="text-rose-500">*</span></label>
+                    <input
+                      type="text"
+                      value={sepayConfig.bankAccountNo}
+                      onChange={(e) => setSepayConfig({ ...sepayConfig, bankAccountNo: e.target.value, accountNumber: e.target.value })}
+                      placeholder="Ví dụ: 0331000516283"
+                      className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-mono font-bold text-slate-800"
+                    />
+                  </div>
+
+                  {/* Account Name */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[11px] font-black text-slate-600 block">Tên chủ tài khoản</label>
+                    <input
+                      type="text"
+                      value={sepayConfig.accountName}
+                      onChange={(e) => setSepayConfig({ ...sepayConfig, accountName: e.target.value })}
+                      placeholder="Ví dụ: HOI PHAU THUAT TAO HINH THAM MY VIET NAM"
+                      className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800"
+                    />
+                  </div>
+
+                  {/* Webhook Secret */}
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[11px] font-black text-slate-600 block">Webhook Secret (Apikey)</label>
+                    <input
+                      type="text"
+                      value={sepayConfig.webhookSecret || ''}
+                      onChange={(e) => setSepayConfig({ ...sepayConfig, webhookSecret: e.target.value })}
+                      placeholder="Apikey bạn đặt trong SePay → Tích hợp → Webhooks"
+                      className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-mono text-slate-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Webhook URL helper */}
+                {businessConfig.appUrl && (
+                  <div className="bg-slate-900 rounded-xl p-4 space-y-2">
+                    <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest">📡 Webhook URL — Dán vào SePay → Tích hợp → Webhooks</p>
+                    <div className="flex gap-2 items-center">
+                      <code className="flex-1 text-emerald-400 font-mono text-[10px] bg-slate-950 px-3 py-2 rounded-lg overflow-x-auto">
+                        {businessConfig.appUrl.replace(/\/$/, '')}/api/sepay-webhook
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${businessConfig.appUrl?.replace(/\/$/, '')}/api/sepay-webhook`);
+                          alert('Đã copy URL!');
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-3 py-2 rounded-lg border-none cursor-pointer whitespace-nowrap"
+                      >
+                        Copy URL
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-slate-500">Chọn loại Webhook: <strong className="text-slate-300">Biến động số dư</strong> | Tài khoản: <strong className="text-slate-300">{sepayConfig.bankCode} {sepayConfig.bankAccountNo}</strong></p>
+                  </div>
+                )}
+                {!businessConfig.appUrl && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">
+                    ⚠️ Cần cấu hình <strong>URL Domain Production</strong> trong tab <strong>Cấu hình Nghiệp vụ</strong> để hiển thị Webhook URL chính xác.
+                  </div>
+                )}
+
+                {/* Test connection */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={isSepayTesting || !sepayConfig.apiToken}
+                    onClick={async () => {
+                      setIsSepayTesting(true);
+                      setSepayTestResult(null);
+                      try {
+                        const res = await fetch('https://userapi.sepay.vn/v2/transactions?limit=1', {
+                          headers: { 'Authorization': `Bearer ${sepayConfig.apiToken}`, 'Content-Type': 'application/json' },
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setSepayTestResult({ success: true, message: `✅ Kết nối thành công! Tìm thấy ${data?.transactions?.length ?? 0} giao dịch gần nhất.` });
+                        } else {
+                          setSepayTestResult({ success: false, message: `❌ SePay trả về lỗi ${res.status}. Kiểm tra lại API Token.` });
+                        }
+                      } catch (err: any) {
+                        setSepayTestResult({ success: false, message: `❌ Lỗi kết nối: ${err.message} (CORS - cần gọi qua API backend)` });
+                      } finally {
+                        setIsSepayTesting(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isSepayTesting ? '⏳ Đang kiểm tra...' : '🔌 Test Kết Nối SePay'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border-none cursor-pointer transition-all"
+                  >
+                    💾 Lưu Cấu Hình SePay
+                  </button>
+                </div>
+
+                {sepayTestResult && (
+                  <div className={`p-3 rounded-xl border text-[11px] font-bold ${
+                    sepayTestResult.success
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}>
+                    {sepayTestResult.message}
+                  </div>
+                )}
+              </form>
+
+              {/* Integration guide */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 text-[10.5px] text-slate-700">
+                <p className="font-black text-[11px] text-slate-900">📋 Hướng dẫn cấu hình SePay đầy đủ:</p>
+                <ol className="list-decimal pl-4 space-y-1.5 leading-relaxed">
+                  <li>Đăng ký/đăng nhập tại <a href="https://my.sepay.vn" target="_blank" rel="noreferrer" className="text-indigo-600 underline">my.sepay.vn</a></li>
+                  <li>Vào <strong>Tài khoản ngân hàng</strong> → Liên kết tài khoản {sepayConfig.bankCode} {sepayConfig.bankAccountNo || 'của bạn'}</li>
+                  <li>Vào <strong>Company Settings → API Access</strong> → Tạo API Token → Dán vào ô trên</li>
+                  <li>Vào <strong>Tích hợp → Webhooks</strong> → Thêm URL webhook → Chọn loại <em>Biến động số dư</em></li>
+                  <li>Đặt <strong>Apikey</strong> trong webhook config → Dán vào ô <em>Webhook Secret</em> trên</li>
+                  <li>Lưu cấu hình → Deploy ứng dụng → Test bằng tính năng <em>Gửi thử</em> trên SePay</li>
+                </ol>
+              </div>
             </div>
           )}
 

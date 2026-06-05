@@ -10,6 +10,7 @@ import { sendRealtimeNotification } from '../lib/realtime';
 import { Attendee, RegistrationPackage } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { getProvinceList, getDistrictsOf, getWardsOf } from '../data/vnProvinces';
+import SepayPaymentChecker from '../components/SepayPaymentChecker';
 
 interface PublicDelegateRegisterProps {
   onNavigate: (view: string) => void;
@@ -425,6 +426,19 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed">
               <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Sau khi hoàn thành chuyển tiền qua QR ngân hàng, đại biểu vui lòng lưu giữ ảnh chụp biên nhận giao dịch thành công. BTC sẽ duyệt hồ sơ của quý đại biểu ngay khi nhận được báo có, trạng thái thanh toán sẽ đổi sang màu xanh <strong>PAID (Đã đóng phí)</strong> trên ứng dụng.
             </div>
+
+            {/* SePay auto payment check */}
+            {(() => {
+              const sepay = store.getSepayConfig();
+              if (!sepay.isEnabled || !sepay.apiToken) return null;
+              return (
+                <SepayPaymentChecker
+                  transferContent={transferMessageSub}
+                  expectedAmount={createdAttendee.packageFee || 0}
+                  attendeeId={createdAttendee.id}
+                />
+              );
+            })()}
 
             <div className="pt-4 flex flex-col md:flex-row gap-3">
               <button

@@ -186,6 +186,23 @@ export interface SupabaseConfig {
   isConnected: boolean;
 }
 
+export interface SepayConfig {
+  /** API Token từ my.sepay.vn → Company Settings → API Access */
+  apiToken: string;
+  /** Số tài khoản ngân hàng liên kết trên SePay */
+  accountNumber: string;
+  /** Tên ngân hàng (VCB, TCB, MB, ACB, ...) */
+  bankCode: string;
+  /** Số tài khoản in đúng format (dùng cho VietQR) */
+  bankAccountNo: string;
+  /** Tên chủ tài khoản */
+  accountName: string;
+  /** Bật/tắt tích hợp SePay */
+  isEnabled: boolean;
+  /** Webhook secret key (Apikey header từ SePay webhook config) */
+  webhookSecret?: string;
+}
+
 export interface SentNotificationLog {
   id: string;
   recipient: string;

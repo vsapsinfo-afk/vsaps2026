@@ -19,6 +19,7 @@ import {
   SpecialtyTrack,
   BusinessConfig,
   EmbedScript,
+  SepayConfig,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -90,6 +91,16 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   pwaBackgroundColor: "#0f172a",
 };
 
+const DEFAULT_SEPAY_CONFIG: SepayConfig = {
+  apiToken: '',
+  accountNumber: '',
+  bankCode: 'VCB',
+  bankAccountNo: '',
+  accountName: '',
+  isEnabled: false,
+  webhookSecret: '',
+};
+
 export class DataStore {
   // Local storage keys
   private static KEY_ATTENDEES = 'vsaps_attendees';
@@ -108,6 +119,7 @@ export class DataStore {
   private static KEY_SPECIALTY_TRACKS = 'vsaps_specialty_tracks';
   private static KEY_BUSINESS_CONFIG = 'vsaps_business_config';
   private static KEY_EMBED_SCRIPTS = 'vsaps_embed_scripts';
+  private static KEY_SEPAY = 'vsaps_config_sepay';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -126,6 +138,7 @@ export class DataStore {
   private specialtyTracks: SpecialtyTrack[] = [];
   private businessConfig: BusinessConfig = DEFAULT_BUSINESS_CONFIG;
   private embedScripts: EmbedScript[] = [];
+  private sepayConfig: SepayConfig = DEFAULT_SEPAY_CONFIG;
 
   constructor() {
     this.loadLocalStorage();
@@ -154,6 +167,7 @@ export class DataStore {
     this.specialtyTracks = this.getLocalStorage(DataStore.KEY_SPECIALTY_TRACKS, INITIAL_TRACKS);
     this.businessConfig = this.getLocalStorage(DataStore.KEY_BUSINESS_CONFIG, DEFAULT_BUSINESS_CONFIG);
     this.embedScripts = this.getLocalStorage(DataStore.KEY_EMBED_SCRIPTS, INITIAL_EMBED_SCRIPTS);
+    this.sepayConfig = this.getLocalStorage(DataStore.KEY_SEPAY, DEFAULT_SEPAY_CONFIG);
   }
 
   /**
@@ -570,6 +584,31 @@ export class DataStore {
       supabase.from('attendees').delete().eq('id', id).then(({ error }) => {
         if (error) console.error('Error deleting attendee from Supabase:', error);
       });
+    }
+  }
+
+  /**
+   * Cập nhật một số trường cụ thể của attendee (patch update).
+   * Dùng cho SePay auto-confirm payment status.
+   */
+  async updateAttendeeField(id: string, fields: Partial<{
+    payment_status: string;
+    notes: string;
+    payment_method: string;
+  }>): Promise<void> {
+    // Update in local cache
+    const idx = this.attendees.findIndex(a => a.id === id);
+    if (idx >= 0) {
+      if (fields.payment_status) this.attendees[idx].paymentStatus = fields.payment_status as any;
+      if (fields.notes) this.attendees[idx].notes = fields.notes;
+      if (fields.payment_method) this.attendees[idx].paymentMethod = fields.payment_method as any;
+      this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
+    }
+
+    // Update in Supabase
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('attendees').update(fields).eq('id', id);
+      if (error) console.error('SePay: updateAttendeeField Supabase error:', error);
     }
   }
 
@@ -1554,6 +1593,88 @@ export class DataStore {
 
   getSupabaseSqlSchema(): string {
     return ``; // Unused as we have separate supabase/schema.sql
+  }
+
+  // ==================== SEPAY CONFIG ====================
+
+  getSepayConfig(): SepayConfig {
+    return { ...this.sepayConfig };
+  }
+
+  saveSepayConfig(config: SepayConfig): void {
+    this.sepayConfig = { ...config };
+    this.saveToLocalStorage(DataStore.KEY_SEPAY, this.sepayConfig);
+  }
+
+  /**
+   * Kiểm tra giao dịch SePay theo nội dung chuyển khoản.
+   * Gọi SePay API v2: GET /v2/transactions?q={content}
+   * @param transferContent  Nội dung CK đã dùng (ví dụ: "NGUYEN VAN A 0901234567 DONG PHI THAM DU VSAPS 2026")
+   * @param expectedAmount   Số tiền cần khớp (VNĐ)
+   * @returns { found: boolean; transaction?: any; error?: string }
+   */
+  async checkSepayPayment(transferContent: string, expectedAmount: number): Promise<{
+    found: boolean;
+    transaction?: {
+      id: number;
+      gateway: string;
+      transactionDate: string;
+      transferAmount: number;
+      content: string;
+      referenceCode: string;
+    };
+    error?: string;
+  }> {
+    const cfg = this.sepayConfig;
+    if (!cfg.isEnabled || !cfg.apiToken) {
+      return { found: false, error: 'SePay chưa được cấu hình hoặc chưa bật.' };
+    }
+
+    try {
+      const q = encodeURIComponent(transferContent.substring(0, 50)); // max 50 ký tự
+      const url = `https://userapi.sepay.vn/v2/transactions?q=${q}&limit=20`;
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${cfg.apiToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return { found: false, error: `SePay API lỗi ${res.status}: ${errText}` };
+      }
+
+      const data = await res.json();
+      // SePay v2 trả về { status: 'success', messages: {...}, transactions: [...] }
+      const transactions: any[] = data?.transactions || data?.data || [];
+
+      // Tìm giao dịch khớp số tiền (chênh lệch ≤ 1000đ để bù phí)
+      const matched = transactions.find((t: any) => {
+        const amt = Number(t.transferAmount ?? t.transfer_amount ?? 0);
+        return Math.abs(amt - expectedAmount) <= 1000;
+      });
+
+      if (matched) {
+        return {
+          found: true,
+          transaction: {
+            id: matched.id,
+            gateway: matched.gateway || matched.bankCode || '',
+            transactionDate: matched.transactionDate || matched.transaction_date || '',
+            transferAmount: Number(matched.transferAmount ?? matched.transfer_amount ?? 0),
+            content: matched.content || matched.transaction_content || '',
+            referenceCode: matched.referenceCode || matched.reference_number || '',
+          },
+        };
+      }
+
+      return { found: false };
+    } catch (err: any) {
+      return { found: false, error: err?.message || 'Lỗi kết nối SePay' };
+    }
   }
 }
 
