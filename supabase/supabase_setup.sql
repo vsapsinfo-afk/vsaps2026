@@ -64,6 +64,9 @@ CREATE TABLE public.business_config (
     pwa_logo_url TEXT DEFAULT '/icons/icon-512.png',
     pwa_theme_color TEXT DEFAULT '#4f46e5',
     pwa_background_color TEXT DEFAULT '#0f172a',
+    delegate_form_config JSONB DEFAULT '{}'::jsonb,
+    speaker_form_config JSONB DEFAULT '{}'::jsonb,
+    sponsor_form_config JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

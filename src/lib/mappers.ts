@@ -439,6 +439,9 @@ export function mapBusinessConfigToDb(c: BusinessConfig): Record<string, any> {
     pwa_logo_url: c.pwaLogoUrl || '',
     pwa_theme_color: c.pwaThemeColor || '',
     pwa_background_color: c.pwaBackgroundColor || '',
+    delegate_form_config: c.delegateFormConfig || null,
+    speaker_form_config: c.speakerFormConfig || null,
+    sponsor_form_config: c.sponsorFormConfig || null,
   };
 }
 
@@ -459,6 +462,9 @@ export function mapDbToBusinessConfig(row: any): BusinessConfig {
     pwaLogoUrl: row.pwa_logo_url || '',
     pwaThemeColor: row.pwa_theme_color || '',
     pwaBackgroundColor: row.pwa_background_color || '',
+    delegateFormConfig: row.delegate_form_config || undefined,
+    speakerFormConfig: row.speaker_form_config || undefined,
+    sponsorFormConfig: row.sponsor_form_config || undefined,
   };
 }
 

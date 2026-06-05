@@ -215,7 +215,14 @@ export class DataStore {
     this.supabaseConfig = this.getLocalStorage(DataStore.KEY_SUPABASE, { url: '', anonKey: '', isConnected: false });
     this.notificationLogs = this.getLocalStorage(DataStore.KEY_NOTIFICATION_LOGS, []);
     this.specialtyTracks = this.getLocalStorage(DataStore.KEY_SPECIALTY_TRACKS, INITIAL_TRACKS);
-    this.businessConfig = this.getLocalStorage(DataStore.KEY_BUSINESS_CONFIG, DEFAULT_BUSINESS_CONFIG);
+    const savedConfig = this.getLocalStorage(DataStore.KEY_BUSINESS_CONFIG, DEFAULT_BUSINESS_CONFIG);
+    this.businessConfig = {
+      ...DEFAULT_BUSINESS_CONFIG,
+      ...savedConfig,
+      delegateFormConfig: savedConfig.delegateFormConfig || DEFAULT_BUSINESS_CONFIG.delegateFormConfig,
+      speakerFormConfig: savedConfig.speakerFormConfig || DEFAULT_BUSINESS_CONFIG.speakerFormConfig,
+      sponsorFormConfig: savedConfig.sponsorFormConfig || DEFAULT_BUSINESS_CONFIG.sponsorFormConfig,
+    };
     this.embedScripts = this.getLocalStorage(DataStore.KEY_EMBED_SCRIPTS, INITIAL_EMBED_SCRIPTS);
     this.sepayConfig = this.getLocalStorage(DataStore.KEY_SEPAY, DEFAULT_SEPAY_CONFIG);
   }
@@ -280,7 +287,14 @@ export class DataStore {
         this.saveToLocalStorage(DataStore.KEY_SPECIALTY_TRACKS, this.specialtyTracks);
       }
       if (bConfig) {
-        this.businessConfig = mapDbToBusinessConfig(bConfig);
+        const dbConfig = mapDbToBusinessConfig(bConfig);
+        this.businessConfig = {
+          ...DEFAULT_BUSINESS_CONFIG,
+          ...dbConfig,
+          delegateFormConfig: dbConfig.delegateFormConfig || DEFAULT_BUSINESS_CONFIG.delegateFormConfig,
+          speakerFormConfig: dbConfig.speakerFormConfig || DEFAULT_BUSINESS_CONFIG.speakerFormConfig,
+          sponsorFormConfig: dbConfig.sponsorFormConfig || DEFAULT_BUSINESS_CONFIG.sponsorFormConfig,
+        };
         this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, this.businessConfig);
       }
       if (users) {

@@ -54,8 +54,73 @@ INSERT INTO public.packages (id, name, fee, benefits, is_active, includes_cme, i
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Seed Business Config (Cấu hình nghiệp vụ)
-INSERT INTO public.business_config (id, event_name, organizer_name, event_date, event_location, max_registrations, require_payment_proof, allow_self_cancellation, auto_send_zns, require_practice_code) VALUES
-('default', 'Hội nghị Khoa học Thường niên VSAPS 2026', 'Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS)', 'Ngày 14 - 15 tháng 11 năm 2026', 'Trung tâm Hội nghị Quốc gia, Hà Nội', 1500, true, false, true, true)
+INSERT INTO public.business_config (
+  id, event_name, organizer_name, event_date, event_location, 
+  max_registrations, require_payment_proof, allow_self_cancellation, 
+  auto_send_zns, require_practice_code,
+  delegate_form_config, speaker_form_config, sponsor_form_config
+) VALUES (
+  'default', 
+  'Hội nghị Khoa học Thường niên VSAPS 2026', 
+  'Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS)', 
+  'Ngày 14 - 15 tháng 11 năm 2026', 
+  'Trung tâm Hội nghị Quốc gia, Hà Nội', 
+  1500, 
+  true, 
+  false, 
+  true, 
+  true,
+  '{
+    "isOpen": true,
+    "language": "both",
+    "formTitle": "ĐĂNG KÝ ĐẠI BIỂU THAM DỰ HỘI NGHỊ THƯỜNG NIÊN VSAPS 2026",
+    "formDescription": "Cổng đăng ký điện tử dành cho đại biểu, bác sĩ thẩm mỹ trong nước & quốc tế. Điền chính xác thông tin để phát hành CME và thẻ đại biểu QR tự động.",
+    "organizerLabel": "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+    "headerBgColor": "#042f2e",
+    "accentColor": "#fbbf24",
+    "closedMessage": "Cổng đăng ký đại biểu hiện đã đóng. Vui lòng liên hệ Ban tổ chức để biết thêm thông tin.",
+    "footerNote": "",
+    "maxEntries": 0,
+    "sectionLabels": {
+      "personalInfo":  { "vi": "THÔNG TIN ĐẠI BIỂU ĐĂNG KÝ",      "en": "DELEGATE PERSONAL INFORMATION" },
+      "scheduleAddOns":{ "vi": "THỜI ĐIỂM & DỊCH VỤ PHỤ TRỢ TỰ CHỌN", "en": "SCHEDULE & OPTIONAL ADD-ON SERVICES" },
+      "package":       { "vi": "CHỌN GÓI ĐĂNG KÝ HỘI NGHỊ",         "en": "CONFERENCE REGISTRATION PACKAGE" },
+      "payment":       { "vi": "THÔNG TIN THANH TOÁN CHUYỂN KHOẢN",  "en": "BANK TRANSFER PAYMENT DETAILS" }
+    }
+  }'::jsonb,
+  '{
+    "isOpen": true,
+    "language": "both",
+    "formTitle": "ĐĂNG KÝ NỘP BÀI BÁO CÁO KHOA HỌC VSAPS 2026",
+    "formDescription": "Cổng nộp báo cáo khoa học dành cho báo cáo viên, chuyên gia trong và ngoài nước. Vui lòng đính kèm file tóm tắt abstract.",
+    "organizerLabel": "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+    "headerBgColor": "#1e1b4b",
+    "accentColor": "#818cf8",
+    "closedMessage": "Cổng nộp bài báo cáo hiện đã đóng. Vui lòng liên hệ Ban thư ký khoa học.",
+    "footerNote": "",
+    "maxEntries": 0,
+    "sectionLabels": {
+      "speakerInfo":   { "vi": "THÔNG TIN BÁO CÁO VIÊN",            "en": "SPEAKER INFORMATION" },
+      "abstractInfo":  { "vi": "NỘI DUNG ĐỀ TÀI ĐĂNG KÝ ĐỀ TRÌNH", "en": "ABSTRACT & PRESENTATION DETAILS" }
+    }
+  }'::jsonb,
+  '{
+    "isOpen": true,
+    "language": "both",
+    "formTitle": "ĐĂNG KÝ NHÀ TÀI TRỢ & ĐỐI TÁC VSAPS 2026",
+    "formDescription": "Đăng ký hợp tác tài trợ chính thức cho Hội nghị Khoa học Thẩm mỹ thường niên VSAPS 2026. Ban tổ chức sẽ liên hệ xác nhận trong 24h.",
+    "organizerLabel": "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+    "headerBgColor": "#1c1917",
+    "accentColor": "#f59e0b",
+    "closedMessage": "Cổng đăng ký tài trợ hiện đã đóng. Vui lòng liên hệ Ban tổ chức.",
+    "footerNote": "",
+    "maxEntries": 0,
+    "sectionLabels": {
+      "sponsorProfile": { "vi": "THÔNG TIN DOANH NGHIỆP TÀI TRỢ",  "en": "SPONSOR / COMPANY PROFILE" },
+      "tierSelect":     { "vi": "CHỌN GÓI TÀI TRỢ",                 "en": "SPONSORSHIP PACKAGE SELECTION" }
+    }
+  }'::jsonb
+)
 ON CONFLICT (id) DO NOTHING;
 
 -- 4. Seed User Accounts (Tài khoản người dùng)
