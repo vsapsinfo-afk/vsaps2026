@@ -466,14 +466,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     <div ref={containerRef} className="bg-slate-100 min-h-screen py-8 md:py-12 px-4 text-slate-800 font-sans">
       <div className="max-w-4xl mx-auto">
         
-        {/* Navigation block */}
-        <button
-          onClick={() => onNavigate('event-details')}
-          className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all font-bold text-xs uppercase tracking-wider mb-6 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Quay lại sảnh hội nghị
-        </button>
 
         {/* Form Container with Premium aesthetic */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden">

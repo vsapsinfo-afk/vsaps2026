@@ -307,14 +307,6 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 font-sans text-slate-800">
-      {/* Back button link */}
-      <button
-        onClick={() => onNavigate('event-details')}
-        className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-900 font-bold text-xs mb-6 cursor-pointer bg-transparent border-none"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Quay lại trang chủ sự kiện
-      </button>
 
       {/* CLOSED FORM SCREEN */}
       {formCfg?.isOpen === false && (

@@ -210,14 +210,6 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   return (
     <div className="bg-slate-50 min-h-screen py-12 px-4 text-slate-800">
       <div className="max-w-3xl mx-auto">
-        {/* Back navigation */}
-        <button
-          onClick={() => onNavigate('event-details')}
-          className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-all font-semibold text-sm mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Quay lại trang chi tiết sự kiện
-        </button>
 
         <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
 
