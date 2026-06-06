@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail } from 'lucide-react';
+import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck } from 'lucide-react';
 import { store } from '../dataStore';
 import { Attendee, Role } from '../types';
 
@@ -108,6 +108,7 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   // Modals for Certifications, Badges, and Bulk Uploads
   const [selectedCmeAttendee, setSelectedCmeAttendee] = useState<Attendee | null>(null);
   const [selectedBadgeAttendee, setSelectedBadgeAttendee] = useState<Attendee | null>(null);
+  const [kioskCheckInAttendee, setKioskCheckInAttendee] = useState<Attendee | null>(null);
   const badgePrintRef = useRef<HTMLDivElement>(null);
 
   // States for sending quick notifications
@@ -886,39 +887,62 @@ Ban Thư ký Hội nghị VSAPS 2026`
     const found = attendeesList.find(a => a.id === token || a.phone === token || a.qrCodeValue === token);
     
     if (found) {
-      if (found.isCheckedIn) {
-        playSoundSound('fail');
-        setKioskFeedback({
-          success: false,
-          msg: `Đại biểu ${found.title} ${found.fullName} đã điểm danh lúc ${found.checkInTime}!`
-        });
-      } else {
-        found.isCheckedIn = true;
-        found.checkInTime = new Date().toISOString().replace('T', ' ').substring(0, 16);
-        store.saveAttendee(found);
-        playSoundSound('success');
-        setKioskFeedback({
-          success: true,
-          msg: `THÀNH CÔNG: Chào mừng ${found.title} ${found.fullName} [${found.packageName}]`
-        });
-        loadAll();
-
-        // Auto print badge if enabled in settings
-        if (localStorage.getItem('vsaps_printer_autoprint') === 'true') {
-          setSelectedBadgeAttendee(found);
-        }
-      }
+      setKioskCheckInAttendee(found);
+      setKioskFeedback(null);
     } else {
       playSoundSound('fail');
       setKioskFeedback({
         success: false,
         msg: `Không tìm thấy thông tin đại biểu có ID/SĐT: "${token}"`
       });
+      setTimeout(() => {
+        setKioskFeedback(null);
+      }, 5000);
     }
     setKioskInput('');
-    setTimeout(() => {
-      setKioskFeedback(null);
-    }, 5000);
+  };
+
+  const handleConfirmKioskCheckIn = (attendee: Attendee) => {
+    const list = store.getAttendees();
+    const found = list.find(a => a.id === attendee.id);
+    if (!found) return;
+
+    if (!found.isCheckedIn) {
+      found.isCheckedIn = true;
+      found.checkInTime = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      store.saveAttendee(found);
+      playSoundSound('success');
+
+      // Auto show simulated heat label sticker rolling out
+      setAutoPrintedAttendee(found);
+      setIsPrintingBadge(true);
+      setTimeout(() => {
+        setIsPrintingBadge(false);
+      }, 3500);
+
+      // Store offline if offline network active
+      if (isOffline) {
+        try {
+          const queue = JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
+          if (!queue.includes(found.id)) {
+            queue.push(found.id);
+            localStorage.setItem('vsaps_offline_queue', JSON.stringify(queue));
+            setOfflineQueueList(queue);
+          }
+          setOfflineQueueCount(queue.length);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    } else {
+      playSoundSound('success');
+    }
+
+    // Open badge printer modal
+    setSelectedBadgeAttendee(found);
+    // Close Kiosk info modal
+    setKioskCheckInAttendee(null);
+    loadAll();
   };
 
   const handleSimulateScanBadge = () => {
@@ -4176,6 +4200,202 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
           </div>
         </div>
-      )}    </div>
+      )}
+
+      {/* KIOSK CHECK-IN DETAIL POPUP */}
+      {kioskCheckInAttendee && (
+        <div className="fixed inset-0 bg-slate-950/65 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full overflow-hidden border border-slate-200 shadow-2xl animate-fade-in text-slate-900 flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 p-5 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-400/20 flex items-center justify-center text-indigo-400">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm tracking-wider uppercase">Thông Tin Đại Biểu Tiếp Đón</h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Xác nhận thông tin hồ sơ và thực hiện check-in</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setKioskCheckInAttendee(null)}
+                className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer border-none bg-transparent"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 bg-slate-50 flex-1 overflow-y-auto space-y-6 text-left">
+              
+              {/* Profile Card */}
+              <div className="bg-white border border-slate-150 p-5 rounded-2xl shadow-sm flex items-start gap-4">
+                {/* Avatar */}
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-black text-xl shrink-0 overflow-hidden">
+                  {kioskCheckInAttendee.avatarUrl ? (
+                    <img src={kioskCheckInAttendee.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{kioskCheckInAttendee.fullName ? kioskCheckInAttendee.fullName.split(' ').pop()?.substring(0, 2) : 'DB'}</span>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] bg-indigo-105 text-indigo-800 px-2 py-0.5 rounded-md font-mono font-bold tracking-wider uppercase">
+                      {kioskCheckInAttendee.id}
+                    </span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${
+                      kioskCheckInAttendee.packageId === 'pkg-vip' ? 'bg-amber-100 text-amber-800' :
+                      kioskCheckInAttendee.id.includes('SPK') ? 'bg-indigo-150 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {kioskCheckInAttendee.packageId === 'pkg-vip' ? '★ VIP' : 
+                       kioskCheckInAttendee.id.includes('SPK') ? 'Báo cáo viên' : 'Đại biểu'}
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-base font-black text-slate-900 leading-tight uppercase truncate">
+                    {kioskCheckInAttendee.title} {kioskCheckInAttendee.fullName}
+                  </h3>
+                  
+                  <p className="text-xs text-slate-500 font-medium truncate">
+                    🏢 {kioskCheckInAttendee.organization} {kioskCheckInAttendee.department && `• ${kioskCheckInAttendee.department}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Informative list split into columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Left column: contact and details */}
+                <div className="bg-white border border-slate-150 p-4 rounded-2xl space-y-3 shadow-xs">
+                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1.5">
+                    Thông Tin Liên Hệ
+                  </h5>
+                  
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Số điện thoại:</span>
+                      <strong className="text-slate-800 font-mono">{kioskCheckInAttendee.phone}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Email:</span>
+                      <strong className="text-slate-800 break-all">{kioskCheckInAttendee.email}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Địa chỉ / Tỉnh thành:</span>
+                      <strong className="text-slate-800">{kioskCheckInAttendee.address}{kioskCheckInAttendee.province && `, ${kioskCheckInAttendee.province}`}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Năm sinh & Quốc tịch:</span>
+                      <strong className="text-slate-800">
+                        {kioskCheckInAttendee.yearOfBirth || 'Chưa rõ'} • {kioskCheckInAttendee.nationality === 'vietname' ? 'Việt Nam' : 'Nước ngoài'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right column: Ticket & Add-ons */}
+                <div className="bg-white border border-slate-150 p-4 rounded-2xl space-y-3 shadow-xs">
+                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-1.5">
+                    Gói Đăng Ký & Dịch Vụ
+                  </h5>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Gói hội nghị:</span>
+                      <strong className="text-indigo-850 font-bold">{kioskCheckInAttendee.packageName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Phí tham dự:</span>
+                      <strong className="text-slate-800 font-mono text-sm">
+                        {kioskCheckInAttendee.packageFee.toLocaleString('vi-VN')} VNĐ
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[9.5px]">Thanh toán:</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mt-0.5 ${
+                        kioskCheckInAttendee.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-150' :
+                        kioskCheckInAttendee.paymentStatus === 'pending_verification' ? 'bg-amber-50 text-amber-700 border border-amber-150' :
+                        'bg-rose-50 text-rose-700 border border-rose-150'
+                      }`}>
+                        {kioskCheckInAttendee.paymentStatus === 'paid' ? '✓ Đã Thanh Toán' :
+                         kioskCheckInAttendee.paymentStatus === 'pending_verification' ? '⏳ Chờ Đối Soát' : '✗ Chưa Thanh Toán'}
+                      </span>
+                    </div>
+                    <div className="pt-1.5 flex flex-wrap gap-1">
+                      {kioskCheckInAttendee.cmeRequired && (
+                        <span className="text-[9px] bg-red-50 text-red-700 border border-red-100 px-1.5 py-0.2 rounded font-bold">
+                          CME {kioskCheckInAttendee.cmeIdentityNo && `(${kioskCheckInAttendee.cmeIdentityNo})`}
+                        </span>
+                      )}
+                      {kioskCheckInAttendee.galaRequired && (
+                        <span className="text-[9px] bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.2 rounded font-bold">
+                          Gala Dinner
+                        </span>
+                      )}
+                      {kioskCheckInAttendee.masterclassRequired && (
+                        <span className="text-[9px] bg-purple-50 text-purple-700 border border-purple-100 px-1.5 py-0.2 rounded font-bold">
+                          Masterclass
+                        </span>
+                      )}
+                      {kioskCheckInAttendee.tourRequired && (
+                        <span className="text-[9px] bg-teal-50 text-teal-700 border border-teal-100 px-1.5 py-0.2 rounded font-bold">
+                          City Tour
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Status details for checkin */}
+              <div className="bg-slate-100/80 p-4 rounded-2xl flex flex-wrap justify-between items-center gap-3">
+                <div>
+                  <span className="text-[9.5px] uppercase font-black tracking-wider text-slate-400 block">Trạng thái điểm danh hiện tại:</span>
+                  <div className="flex items-center gap-1.5 mt-1 text-xs">
+                    <span className={`w-2.5 h-2.5 rounded-full ${kioskCheckInAttendee.isCheckedIn ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    <strong className={kioskCheckInAttendee.isCheckedIn ? 'text-emerald-700' : 'text-slate-600'}>
+                      {kioskCheckInAttendee.isCheckedIn 
+                        ? `ĐÃ CÓ MẶT (Lúc ${kioskCheckInAttendee.checkInTime || 'Không rõ'})` 
+                        : 'CHƯA ĐIỂM DANH'}
+                    </strong>
+                  </div>
+                </div>
+                {kioskCheckInAttendee.notes && (
+                  <div className="w-full border-t border-slate-200/50 pt-2 text-[10.5px] text-slate-500 italic">
+                    📌 Ghi chú: {kioskCheckInAttendee.notes}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setKioskCheckInAttendee(null)}
+                className="px-4.5 py-2.5 bg-white hover:bg-slate-100 text-slate-650 font-bold text-xs rounded-xl border border-slate-300 transition-all cursor-pointer"
+              >
+                Đóng lại
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => handleConfirmKioskCheckIn(kioskCheckInAttendee)}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 cursor-pointer shadow-md border-none transition-all active:scale-95"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                {kioskCheckInAttendee.isCheckedIn ? 'Đã Check-in - In lại thẻ' : 'Check-in & In thẻ đeo'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
