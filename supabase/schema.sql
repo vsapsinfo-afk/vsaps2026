@@ -142,7 +142,7 @@ CREATE TABLE public.sponsors (
     logo_url TEXT,
     pledged_amount NUMERIC DEFAULT 0,
     paid_amount NUMERIC DEFAULT 0,
-    payment_status TEXT DEFAULT 'unpaid' CHECK (payment_status IN ('paid', 'unpaid', 'partially_paid')),
+    payment_status TEXT DEFAULT 'unpaid' CHECK (payment_status IN ('fully_paid', 'unpaid', 'partially_paid')),
     contact_person TEXT,
     contact_email TEXT,
     contact_phone TEXT,

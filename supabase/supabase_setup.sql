@@ -1,3 +1,4 @@
+
 -- ============================================================
 -- VSAPS 2026 - UNIFIED DATABASE SETUP SCRIPT FOR SUPABASE
 -- COPY & PASTE THIS ENTIRE SCRIPT INTO SUPABASE SQL EDITOR
@@ -6,6 +7,9 @@
 -- ------------------------------------------------------------
 -- SECTION 1: CLEANUP (Drop tables if they exist to start fresh)
 -- ------------------------------------------------------------
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
 DROP TABLE IF EXISTS public.system_config CASCADE;
 DROP TABLE IF EXISTS public.embed_scripts CASCADE;
 DROP TABLE IF EXISTS public.notification_logs CASCADE;
@@ -21,9 +25,15 @@ DROP TABLE IF EXISTS public.business_config CASCADE;
 DROP TABLE IF EXISTS public.specialty_tracks CASCADE;
 DROP TABLE IF EXISTS public.packages CASCADE;
 
+
 -- ------------------------------------------------------------
--- SECTION 2: CREATE TABLES (DDL)
+
+-- SECTION 2: CREATE TABLES AND ENFORCE RLS
+
 -- ------------------------------------------------------------
+
+-- Enable pgcrypto extension for UUID generation if needed
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 1. Registration Packages (Gói đăng ký)
 CREATE TABLE public.packages (
@@ -38,7 +48,7 @@ CREATE TABLE public.packages (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Specialty Tracks (Chuyên khoa báo cáo)
+-- 2. Specialty Tracks (Chuyên khoa/Phân khoa báo cáo)
 CREATE TABLE public.specialty_tracks (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -72,7 +82,7 @@ CREATE TABLE public.business_config (
 
 -- 4. User Accounts (BTC / Admin / CTV Accounts)
 CREATE TABLE public.user_accounts (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY, -- Maps to auth.users.id if using Supabase Auth
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     role TEXT NOT NULL CHECK (role IN ('admin', 'btc', 'ctv')),
@@ -89,9 +99,9 @@ CREATE TABLE public.sessions (
     speaker_name TEXT,
     speaker_title TEXT,
     room_name TEXT,
-    date TEXT NOT NULL,
-    start_time TEXT NOT NULL,
-    end_time TEXT NOT NULL,
+    date TEXT NOT NULL, -- Format: YYYY-MM-DD
+    start_time TEXT NOT NULL, -- Format: HH:MM
+    end_time TEXT NOT NULL, -- Format: HH:MM
     track TEXT,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -99,7 +109,7 @@ CREATE TABLE public.sessions (
 
 -- 6. Attendees (Người tham dự / Đại biểu)
 CREATE TABLE public.attendees (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY, -- Format: ATT-XXX
     title TEXT NOT NULL,
     full_name TEXT NOT NULL,
     organization TEXT,
@@ -114,10 +124,10 @@ CREATE TABLE public.attendees (
     payment_status TEXT DEFAULT 'unpaid' CHECK (payment_status IN ('paid', 'unpaid', 'pending_verification')),
     payment_method TEXT CHECK (payment_method IN ('bank_transfer', 'credit_card', 'cash')),
     transaction_proof_url TEXT,
-    registration_date TEXT NOT NULL,
+    registration_date TEXT NOT NULL, -- Format: YYYY-MM-DD
     qr_code_value TEXT UNIQUE NOT NULL,
     is_checked_in BOOLEAN DEFAULT FALSE,
-    check_in_time TEXT,
+    check_in_time TEXT, -- Format: YYYY-MM-DD HH:MM
     notes TEXT,
     year_of_birth INTEGER,
     gender TEXT,
@@ -134,7 +144,7 @@ CREATE TABLE public.attendees (
 
 -- 7. Speakers (Báo cáo viên / Bài tóm tắt)
 CREATE TABLE public.speakers (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY, -- Format: SPK-XXX
     title TEXT,
     full_name TEXT NOT NULL,
     organization TEXT,
@@ -156,13 +166,13 @@ CREATE TABLE public.speakers (
 
 -- 8. Sponsors (Nhà tài trợ)
 CREATE TABLE public.sponsors (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY, -- Format: SPN-XXX
     name TEXT NOT NULL,
     tier TEXT NOT NULL CHECK (tier IN ('diamond', 'platinum', 'gold', 'silver', 'bronze', 'co_sponsor')),
     logo_url TEXT,
     pledged_amount NUMERIC DEFAULT 0,
     paid_amount NUMERIC DEFAULT 0,
-    payment_status TEXT DEFAULT 'unpaid' CHECK (payment_status IN ('paid', 'unpaid', 'partially_paid')),
+    payment_status TEXT DEFAULT 'unpaid' CHECK (payment_status IN ('fully_paid', 'unpaid', 'partially_paid')),
     contact_person TEXT,
     contact_email TEXT,
     contact_phone TEXT,
@@ -179,14 +189,14 @@ CREATE TABLE public.sponsors (
 
 -- 9. Internal Tasks (Công việc nội bộ BTC)
 CREATE TABLE public.internal_tasks (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY, -- Format: TSK-XXX
     title TEXT NOT NULL,
     description TEXT,
     assigned_to_name TEXT,
     assigned_to_id TEXT REFERENCES public.user_accounts(id) ON DELETE SET NULL,
     priority TEXT CHECK (priority IN ('high', 'medium', 'low')),
     status TEXT CHECK (status IN ('todo', 'in_progress', 'done')),
-    deadline TEXT,
+    deadline TEXT, -- Format: YYYY-MM-DD
     progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -194,13 +204,13 @@ CREATE TABLE public.internal_tasks (
 
 -- 10. Finance Transactions (Thu chi tài chính)
 CREATE TABLE public.finance_transactions (
-    id TEXT PRIMARY KEY,
-    date TEXT NOT NULL,
+    id TEXT PRIMARY KEY, -- Format: TXN-XXX
+    date TEXT NOT NULL, -- Format: YYYY-MM-DD HH:MM
     type TEXT CHECK (type IN ('income', 'expense')),
     category TEXT NOT NULL,
     amount NUMERIC NOT NULL DEFAULT 0,
     description TEXT,
-    reference_id TEXT,
+    reference_id TEXT, -- Attendee ID or Sponsor ID
     payment_method TEXT,
     verified_by TEXT,
     is_verified BOOLEAN DEFAULT FALSE,
@@ -211,7 +221,7 @@ CREATE TABLE public.finance_transactions (
 CREATE TABLE public.notification_templates (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    type TEXT NOT NULL,
+    type TEXT NOT NULL, -- e.g. registration_success, payment_confirmed, reminder_event, abstract_approved
     channel TEXT NOT NULL CHECK (channel IN ('email', 'zalo', 'sms', 'whatsapp')),
     subject TEXT,
     content TEXT NOT NULL,
@@ -223,13 +233,13 @@ CREATE TABLE public.notification_templates (
 
 -- 12. Sent Notification Logs (Lịch sử gửi thông báo)
 CREATE TABLE public.notification_logs (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY, -- Format: NTF-XXX
     recipient TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('email', 'zalo', 'sms', 'whatsapp')),
     template_id TEXT REFERENCES public.notification_templates(id) ON DELETE SET NULL,
     template_name TEXT,
     sender TEXT NOT NULL,
-    sent_at TEXT NOT NULL,
+    sent_at TEXT NOT NULL, -- Format: YYYY-MM-DD HH:MM
     status TEXT NOT NULL CHECK (status IN ('success', 'failed', 'pending')),
     payload JSONB DEFAULT '{}'::jsonb,
     response JSONB DEFAULT '{}'::jsonb,
@@ -244,7 +254,7 @@ CREATE TABLE public.embed_scripts (
     code TEXT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     notes TEXT,
-    created_at TEXT NOT NULL,
+    created_at TEXT NOT NULL, -- Format: YYYY-MM-DD HH:MM
     created_at_db TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -255,9 +265,9 @@ CREATE TABLE public.system_config (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ------------------------------------------------------------
--- SECTION 3: ROW LEVEL SECURITY (RLS) POLICIES
--- ------------------------------------------------------------
+
+
+-- Enable RLS on all tables
 ALTER TABLE public.packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.specialty_tracks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.business_config ENABLE ROW LEVEL SECURITY;
@@ -273,7 +283,7 @@ ALTER TABLE public.notification_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.embed_scripts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_config ENABLE ROW LEVEL SECURITY;
 
--- Public read policies for front-facing forms and schedules
+-- 1. Public Read Policies (for client UI, check-in, info screens)
 CREATE POLICY "Allow public read packages" ON public.packages FOR SELECT USING (true);
 CREATE POLICY "Allow public read specialty_tracks" ON public.specialty_tracks FOR SELECT USING (true);
 CREATE POLICY "Allow public read business_config" ON public.business_config FOR SELECT USING (true);
@@ -281,12 +291,14 @@ CREATE POLICY "Allow public read sessions" ON public.sessions FOR SELECT USING (
 CREATE POLICY "Allow public read sponsors" ON public.sponsors FOR SELECT USING (true);
 CREATE POLICY "Allow public read speakers" ON public.speakers FOR SELECT USING (true);
 
--- Allow anonymous registration insertions
+-- 2. Registration Policies (allow public insert for delegates, speakers & sponsors registration forms)
 CREATE POLICY "Allow public insert attendees" ON public.attendees FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert speakers" ON public.speakers FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert sponsors" ON public.sponsors FOR INSERT WITH CHECK (true);
 
--- Authenticated roles management policies (BTC, CTV, Admin)
+-- 3. Authenticated Users (BTC, Admin, CTV) Policies
+-- For simplicity in prototypes, we allow authenticated users (logged-in accounts) full access
+-- A more advanced policy would inspect the user_accounts role
 CREATE POLICY "Allow authenticated read user_accounts" ON public.user_accounts FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated manage packages" ON public.packages TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated manage specialty_tracks" ON public.specialty_tracks TO authenticated USING (true) WITH CHECK (true);
@@ -303,14 +315,9 @@ CREATE POLICY "Allow authenticated manage notification_logs" ON public.notificat
 CREATE POLICY "Allow authenticated manage embed_scripts" ON public.embed_scripts TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allow authenticated manage system_config" ON public.system_config TO authenticated USING (true) WITH CHECK (true);
 
--- ------------------------------------------------------------
--- SECTION 4: REALTIME ENABLEMENT
--- ------------------------------------------------------------
-BEGIN;
-  DROP PUBLICATION IF EXISTS supabase_realtime;
-  CREATE PUBLICATION supabase_realtime;
-COMMIT;
 
+
+-- Enable real-time updates for key collaborative tables
 ALTER PUBLICATION supabase_realtime ADD TABLE public.attendees;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.speakers;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.sessions;
@@ -320,11 +327,80 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notification_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.packages;
 
--- ------------------------------------------------------------
--- SECTION 5: SEED INITIAL MOCK DATA
+
+-- ============================================================
+-- AUTOMATIC AUTH USER PROFILE SYNC TRIGGER
+-- ============================================================
+
+-- Function to automatically handle new user signups from Supabase Auth
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.user_accounts (id, name, email, role, status, permissions)
+  VALUES (
+    new.id::text,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    new.email,
+    -- Default to 'admin' for admin@admin.com, others get 'ctv'
+    case when new.email = 'admin@admin.com' then 'admin' else 'ctv' end,
+    'active',
+    case when new.email = 'admin@admin.com' 
+      then ARRAY['all', 'manage_attendees', 'manage_speakers', 'manage_sponsors', 'manage_finances', 'manage_settings']
+      else ARRAY['manage_attendees']
+    end
+  )
+  ON CONFLICT (email) DO UPDATE
+  SET id = EXCLUDED.id,
+      name = coalesce(EXCLUDED.name, public.user_accounts.name),
+      role = coalesce(EXCLUDED.role, public.user_accounts.role),
+      status = coalesce(EXCLUDED.status, public.user_accounts.status),
+      permissions = coalesce(EXCLUDED.permissions, public.user_accounts.permissions);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger to execute after a new user is inserted into auth.users
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+
+-- ============================================================
+-- STORAGE BUCKETS INITIALIZATION AND RLS POLICIES
+-- ============================================================
+
+-- Ensure the 'assets' storage bucket exists
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('assets', 'assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Drop existing policies if they exist to avoid duplicates
+DROP POLICY IF EXISTS "Allow public read assets" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public upload assets" ON storage.objects;
+DROP POLICY IF EXISTS "Allow authenticated manage assets" ON storage.objects;
+
+-- RLS Policy: Allow anyone to view/read objects in the assets bucket (public bucket)
+CREATE POLICY "Allow public read assets" ON storage.objects 
+  FOR SELECT USING (bucket_id = 'assets');
+
+-- RLS Policy: Allow public registration forms to upload files (portraits, payment proofs)
+CREATE POLICY "Allow public upload assets" ON storage.objects 
+  FOR INSERT WITH CHECK (bucket_id = 'assets');
+
+-- RLS Policy: Allow authenticated users (staff, admins) full management access
+CREATE POLICY "Allow authenticated manage assets" ON storage.objects 
+  FOR ALL TO authenticated USING (bucket_id = 'assets');
+
+
+
 -- ------------------------------------------------------------
 
--- Specialty Tracks
+-- SECTION 3: INSERT SEED DATA
+
+-- ------------------------------------------------------------
+
+-- 1. Seed Specialty Tracks (Chuyên khoa báo cáo)
 INSERT INTO public.specialty_tracks (id, name, description) VALUES
 ('track-1', 'Ngoại Lồng Ngực & Tim Mạch', 'Chuyên khoa ngoại lồng ngực, mạch máu và tim mạch'),
 ('track-2', 'Thần Kinh Học', 'Nội thần kinh, ngoại thần kinh và đột quỵ'),
@@ -334,7 +410,7 @@ INSERT INTO public.specialty_tracks (id, name, description) VALUES
 ('track-6', 'Tạo hình Thẩm mỹ', 'Phẫu thuật tạo hình, tái tạo thẩm mỹ và da liễu thẩm mỹ')
 ON CONFLICT (id) DO NOTHING;
 
--- Packages
+-- 2. Seed Registration Packages (Gói đăng ký)
 INSERT INTO public.packages (id, name, fee, benefits, is_active, includes_cme, includes_gala) VALUES
 ('pkg-member', 'Thành viên HPASS/HSPAS/VSAPS', 2500000, ARRAY[
   'Quyền tham dự đầy đủ mọi phiên báo cáo khoa học ngày chính',
@@ -375,12 +451,77 @@ INSERT INTO public.packages (id, name, fee, benefits, is_active, includes_cme, i
 ], true, true, true)
 ON CONFLICT (id) DO NOTHING;
 
--- Business Config
-INSERT INTO public.business_config (id, event_name, organizer_name, event_date, event_location, max_registrations, require_payment_proof, allow_self_cancellation, auto_send_zns, require_practice_code) VALUES
-('default', 'Hội nghị Khoa học Thường niên VSAPS 2026', 'Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS)', 'Ngày 14 - 15 tháng 11 năm 2026', 'Trung tâm Hội nghị Quốc gia, Hà Nội', 1500, true, false, true, true)
+-- 3. Seed Business Config (Cấu hình nghiệp vụ)
+INSERT INTO public.business_config (
+  id, event_name, organizer_name, event_date, event_location, 
+  max_registrations, require_payment_proof, allow_self_cancellation, 
+  auto_send_zns, require_practice_code,
+  delegate_form_config, speaker_form_config, sponsor_form_config
+) VALUES (
+  'default', 
+  'Hội nghị Khoa học Thường niên VSAPS 2026', 
+  'Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS)', 
+  'Ngày 14 - 15 tháng 11 năm 2026', 
+  'Trung tâm Hội nghị Quốc gia, Hà Nội', 
+  1500, 
+  true, 
+  false, 
+  true, 
+  true,
+  '{
+    "isOpen": true,
+    "language": "both",
+    "formTitle": "ĐĂNG KÝ ĐẠI BIỂU THAM DỰ HỘI NGHỊ THƯỜNG NIÊN VSAPS 2026",
+    "formDescription": "Cổng đăng ký điện tử dành cho đại biểu, bác sĩ thẩm mỹ trong nước & quốc tế. Điền chính xác thông tin để phát hành CME và thẻ đại biểu QR tự động.",
+    "organizerLabel": "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+    "headerBgColor": "#042f2e",
+    "accentColor": "#fbbf24",
+    "closedMessage": "Cổng đăng ký đại biểu hiện đã đóng. Vui lòng liên hệ Ban tổ chức để biết thêm thông tin.",
+    "footerNote": "",
+    "maxEntries": 0,
+    "sectionLabels": {
+      "personalInfo":  { "vi": "THÔNG TIN ĐẠI BIỂU ĐĂNG KÝ",      "en": "DELEGATE PERSONAL INFORMATION" },
+      "scheduleAddOns":{ "vi": "THỜI ĐIỂM & DỊCH VỤ PHỤ TRỢ TỰ CHỌN", "en": "SCHEDULE & OPTIONAL ADD-ON SERVICES" },
+      "package":       { "vi": "CHỌN GÓI ĐĂNG KÝ HỘI NGHỊ",         "en": "CONFERENCE REGISTRATION PACKAGE" },
+      "payment":       { "vi": "THÔNG TIN THANH TOÁN CHUYỂN KHOẢN",  "en": "BANK TRANSFER PAYMENT DETAILS" }
+    }
+  }'::jsonb,
+  '{
+    "isOpen": true,
+    "language": "both",
+    "formTitle": "ĐĂNG KÝ NỘP BÀI BÁO CÁO KHOA HỌC VSAPS 2026",
+    "formDescription": "Cổng nộp báo cáo khoa học dành cho báo cáo viên, chuyên gia trong và ngoài nước. Vui lòng đính kèm file tóm tắt abstract.",
+    "organizerLabel": "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+    "headerBgColor": "#1e1b4b",
+    "accentColor": "#818cf8",
+    "closedMessage": "Cổng nộp bài báo cáo hiện đã đóng. Vui lòng liên hệ Ban thư ký khoa học.",
+    "footerNote": "",
+    "maxEntries": 0,
+    "sectionLabels": {
+      "speakerInfo":   { "vi": "THÔNG TIN BÁO CÁO VIÊN",            "en": "SPEAKER INFORMATION" },
+      "abstractInfo":  { "vi": "NỘI DUNG ĐỀ TÀI ĐĂNG KÝ ĐỀ TRÌNH", "en": "ABSTRACT & PRESENTATION DETAILS" }
+    }
+  }'::jsonb,
+  '{
+    "isOpen": true,
+    "language": "both",
+    "formTitle": "ĐĂNG KÝ NHÀ TÀI TRỢ & ĐỐI TÁC VSAPS 2026",
+    "formDescription": "Đăng ký hợp tác tài trợ chính thức cho Hội nghị Khoa học Thẩm mỹ thường niên VSAPS 2026. Ban tổ chức sẽ liên hệ xác nhận trong 24h.",
+    "organizerLabel": "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+    "headerBgColor": "#1c1917",
+    "accentColor": "#f59e0b",
+    "closedMessage": "Cổng đăng ký tài trợ hiện đã đóng. Vui lòng liên hệ Ban tổ chức.",
+    "footerNote": "",
+    "maxEntries": 0,
+    "sectionLabels": {
+      "sponsorProfile": { "vi": "THÔNG TIN DOANH NGHIỆP TÀI TRỢ",  "en": "SPONSOR / COMPANY PROFILE" },
+      "tierSelect":     { "vi": "CHỌN GÓI TÀI TRỢ",                 "en": "SPONSORSHIP PACKAGE SELECTION" }
+    }
+  }'::jsonb
+)
 ON CONFLICT (id) DO NOTHING;
 
--- User Accounts (includes the requested admin account)
+-- 4. Seed User Accounts (Tài khoản người dùng)
 INSERT INTO public.user_accounts (id, name, email, role, status, last_active) VALUES
 ('usr-admin-1', 'ADMIN SYSTEM', 'admin@admin.com', 'admin', 'active', NULL),
 ('usr-1', 'GS.TS. Phạm Minh Chi', 'chi.pham@vsaps.org', 'admin', 'active', '2026-05-28 08:30:00+00'),
@@ -389,23 +530,25 @@ INSERT INTO public.user_accounts (id, name, email, role, status, last_active) VA
 ('usr-4', 'Nguyễn Kiều Trang', 'trang.nk@vsaps.org', 'ctv', 'inactive', '2026-05-15 10:30:00+00')
 ON CONFLICT (id) DO NOTHING;
 
--- Sponsors
+-- 5. Seed Sponsors (Nhà tài trợ)
 INSERT INTO public.sponsors (id, name, tier, pledged_amount, paid_amount, payment_status, contact_person, contact_email, contact_phone, benefits_signed, notes, contract_no, contract_sign_date, contract_value, contract_status, contract_file_name, contract_file_url) VALUES
 ('SPN-001', 'Tập đoàn Y khoa Medtronic Việt Nam', 'platinum', 500000000, 350000000, 'partially_paid', 'Nguyễn Minh Thư', 'minhthu.nguyen@medtronic.com', '0977889900', ARRAY['Sở hữu 2 Gian hàng triển lãm Gold Zone', 'In logo nổi bật trên Backdrop chính và tài liệu', 'Phát video quảng nghị 3 phút tại phiên Khai mạc', '10 Thẻ đại biểu VIP'], 'Phần còn lại sẽ được thanh toán trước ngày 15/09/2026 sau khi bàn giao thiết kế gian hàng.', 'HD-001/VSAPS/MEDTRONIC', '2026-04-12', 500000000, 'signed', 'HopDongTaitro_Medtronic_Signed.pdf', '#'),
 ('SPN-002', 'Công ty Cổ phần Boston Pharma', 'gold', 250000000, 250000000, 'fully_paid', 'Trần Văn Tiến', 'tientv@bostonpharma.com.vn', '0901239876', ARRAY['Sở hữu 1 Gian hàng tiêu chuẩn', 'In Logo trên Website & Kỷ yếu', '5 Thẻ đại biểu Standard'], 'Đã hoàn tất đối soát tài chính ngày 20/05/2026.', 'HD-002/VSAPS/BOSTON', '2026-05-05', 250000000, 'signed', 'HopDong_BostonPharma_HoanTat.pdf', '#'),
 ('SPN-003', 'Hãng Dược phẩm AstraZeneca Việt Nam', 'silver', 120000000, 0, 'unpaid', 'Phạm Thị Lan', 'lan.pham@astrazeneca.com', '0914565656', ARRAY['Logo trên tài liệu hội nghị', '2 Thẻ đại biểu Standard'], 'Đang làm thủ tục hợp đồng, kế hoạch chuyển khoản tháng 6.', 'HD-003/VSAPS/AZ', '2026-05-20', 120000000, 'pending_signature', 'HopDong_AstraZeneca_Draft.pdf', '#')
 ON CONFLICT (id) DO NOTHING;
 
--- Notification Templates
+-- 6. Seed Notification Templates (Mẫu thông báo)
 INSERT INTO public.notification_templates (id, name, type, channel, subject, content, status, zns_template_id, zns_type) VALUES
 ('tmpl-reg-email', 'Đăng Ký Đại Biểu Thành Công (Email)', 'registration_success', 'email', '🎯 Xác nhận đăng ký tham dự thành công Đại biểu Hội nghị VSAPS 2026', 'Kính gửi Quý đại biểu {{title}} {{fullname}},\n\nThay mặt Ban Tổ Chức Hội nghị Khoa học VSAPS 2026, chúng tôi xin trân trọng xác nhận Quý đại biểu đã hoàn tất đăng ký thông tin tham dự.\n\nTHÔNG TIN CHI TIẾT ĐĂNG KÝ VÀ SỬ DỤNG MÃ QR CHECK-IN:\n• Mã đại biểu: {{code}}\n• Họ và tên: {{fullname}}\n• Đơn vị công tác: {{organization}}\n• Gói đăng ký: {{package}}\n• Trạng thái thanh toán: {{payment_status}}\n\nQuý đại biểu vui lòng xuất trình Mã QR đính kèm trong thư này tại Quầy tiếp đón của hội nghị để nhận thẻ đeo chính thức nhanh chóng.\n\nMỌI CHI TIẾT XIN LIÊN HỆ:\n• Email: contact@vsapsevent.org\n• Hotline: 091-234-5678\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026', 'approved', NULL, NULL),
 ('tmpl-reg-zalo', 'Đăng Ký Đại Biểu Thành Công (Zalo ZNS)', 'registration_success', 'zalo', NULL, '[VSAPS 2026] XÁC NHẬN ĐĂNG KÝ THÀNH CÔNG\nXin chào {{title}} {{fullname}}. Bạn đã đăng ký thành công tham dự Hội nghị Khoa học VSAPS 2026. \n- Gói: {{package}}\n- Mã Đại biểu: {{code}}\n- Trạng thái: {{payment_status}}\nVui lòng xuất trình QR đính kèm tại quầy check-in. Hotline hỗ trợ: 0912345678. Trân trọng cảm ơn!', 'approved', '298516', 'transaction'),
 ('tmpl-pay-zalo', 'Xác Nhận Đã Thanh Toán Lệ Phí (Zalo ZNS)', 'payment_confirmed', 'zalo', NULL, '[VSAPS 2026] XÁC NHẬN HOÀN TẤT THANH TOÁN\nKính gửi {{title}} {{fullname}}. Ban Tổ Chức đã tiếp nhận đóng góp lệ phí trị giá {{package_fee}} VNĐ cho Gói: {{package}}. Sắp xếp check-in của bạn đã được ưu tiên hoàn tất.', 'pending', '304521', 'transaction'),
 ('tmpl-remind-zalo', 'Nhắc Nhở Lịch Trình Hội Nghị (Zalo ZNS)', 'reminder_event', 'zalo', NULL, '[VSAPS 2026] NHẮC NHỞ LỊCH TRÌNH THAM GIA\nKính gửi {{title}} {{fullname}}. Hội nghị sẽ chính thức khai mạc vào lúc 08:00 sáng mai tại Trung tâm Hội nghị Quốc tế. Hãy quét QR vé {{code}} để vào khán phòng.', 'rejected', '312894', 'promotion'),
-('tmpl-speaker-email', 'Xác Nhận Đệ Trình Báo Cáo (Email)', 'abstract_approved', 'email', '📚 Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026', 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức xin chân thành cảm ơn Quý bác sĩ/nhà khoa học đã gửi đăng ký đề tài báo cáo tại VSAPS 2026.\n\n• Tên đề tài: {{presentation_title}}\n• Chuyên khoa/Chương trình: {{track}}\n• Trạng thái đệ trình: Đang thẩm định (Chờ phản biện phê duyệt chuyên môn)\n\nTài liệu đính kèm của Quý báo cáo viên đã được tải lên hệ thống an toàn. Lịch trình báo cáo thô sẽ được đồng bộ tự động sau khi Hội đồng Khoa học phê duyệt chính thức.\n\nXin trân trọng kính chúc sức khỏe và thành công!\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026', 'approved', NULL, NULL)
+('tmpl-speaker-email', 'Xác Nhận Đệ Trình Báo Cáo (Email)', 'abstract_approved', 'email', '📚 Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026', 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức xin chân thành cảm ơn Quý bác sĩ/nhà khoa học đã gửi đăng ký đề tài báo cáo tại VSAPS 2026.\n\n• Tên đề tài: {{presentation_title}}\n• Chuyên khoa/Chương trình: {{track}}\n• Trạng thái đệ trình: Đang thẩm định (Chờ phản biện phê duyệt chuyên môn)\n\nTài liệu đính kèm của Quý báo cáo viên đã được tải lên hệ thống an toàn. Lịch trình báo cáo thô sẽ được đồng bộ tự động sau khi Hội đồng Khoa học phê duyệt chính thức.\n\nXin trân trọng kính chúc sức khỏe và thành công!\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026', 'approved', NULL, NULL),
+('tmpl-reg-wa', 'Đăng Ký Đại Biểu Thành Công (WhatsApp)', 'registration_success', 'whatsapp', NULL, '[VSAPS 2026] ĐĂNG KÝ THÀNH CÔNG\nXin chào {{title}} {{fullname}}. Bạn đã đăng ký thành công tham dự Hội nghị Khoa học VSAPS 2026.\n- Gói: {{package}}\n- Mã Đại biểu: {{code}}\n- Trạng thái: {{payment_status}}\nVui lòng quét mã QR vé để check-in. Trân trọng!', 'approved', 'vsaps_registration_success', 'transaction'),
+('tmpl-speaker-wa', 'Nộp Bài Báo Cáo Thành Công (WhatsApp)', 'abstract_approved', 'whatsapp', NULL, '[VSAPS 2026] NỘP BÁO CÁO THÀNH CÔNG\nXin chào {{title}} {{fullname}}. Đề tài báo cáo "{{presentation_title}}" của bạn đã được ghi nhận trên hệ thống sự kiện. Trạng thái: Chờ phê duyệt.', 'approved', 'vsaps_speaker_success', 'transaction')
 ON CONFLICT (id) DO NOTHING;
 
--- System Config
+-- 7. Seed System Config (Cấu hình Zalo, Email mặc định)
 INSERT INTO public.system_config (key, value) VALUES
 ('zalo_config', '{
   "appId": "829472659103947",
@@ -426,17 +569,24 @@ INSERT INTO public.system_config (key, value) VALUES
   "senderEmail": "no-reply@vsapsevent.org",
   "isConfigured": true,
   "testEmail": "phandu8899@gmail.com"
+}'::jsonb),
+('whatsapp_config', '{
+  "accessToken": "eaab*********************************",
+  "phoneNumberId": "1092837491827",
+  "businessAccountId": "9827364519283",
+  "isConfigured": true,
+  "testPhone": "0912345678"
 }'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
--- Embed Scripts
+-- 8. Seed Embed Scripts (Mã nhúng)
 INSERT INTO public.embed_scripts (id, name, target_type, code, is_active, notes, created_at) VALUES
 ('emb-wp-delegate', 'Form Đăng ký Đại biểu WordPress Banner', 'delegate', '<iframe src="https://vsapsevent.org/embed?view=register-delegate" title="VSAPS Delegate Form" width="100%" height="950px" style="border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);" scrolling="yes" loading="lazy"></iframe>', true, 'Đặt khối Custom HTML bọc ngoài widget WP của trang chủ', '2026-06-03 09:12:00'),
 ('emb-wp-speaker', 'Form Nộp Báo Cáo Viên Sidebar', 'speaker', '<iframe src="https://vsapsevent.org/embed?view=register-speaker" title="VSAPS Speaker Submission" width="100%" height="1100px" style="border: none; border-radius: 12px;" scrolling="yes" loading="lazy"></iframe>', true, 'Nhúng vào trang Tin tức / Thư báo cho báo cáo viên', '2026-06-03 10:00:00'),
 ('emb-tracking-ga4', 'Google Analytics 4 Tracking Code', 'analytics', '<!-- Google tag (gtag.js) -->\n<script async src="https://www.googletagmanager.com/gtag/js?id=G-VSAPS2026"></script>\n<script>\n  window.dataLayer = window.dataLayer || [];\n  function gtag(){dataLayer.push(arguments);}\n  gtag(''js'', new Date());\n  gtag(''config'', ''G-VSAPS2026'');\n</script>', false, 'Chèn vào thẻ <head> của toàn bộ trang đăng ký', '2026-06-03 11:24:00')
 ON CONFLICT (id) DO NOTHING;
 
--- Tasks
+-- 9. Seed Internal Tasks (Công việc nội bộ)
 INSERT INTO public.internal_tasks (id, title, description, assigned_to_name, assigned_to_id, priority, status, deadline, progress) VALUES
 ('TSK-001', 'Gửi thư mời xác nhận báo cáo đến PGS.TS. Trần Quốc Bảo', 'Xác nhận thời gian trình bày, gửi hướng dẫn chuẩn bị slide thuyết trình theo mẫu VSAPS2026.', 'Đặng Thùy Dương', 'usr-2', 'high', 'done', '2026-05-20', 100),
 ('TSK-002', 'Đối soát các khoản chuyển khoản đăng ký đại biểu còn treo', 'Kiểm tra sao kê ngân hàng đối chiếu với các đại biểu trạng thái "pending_verification" như BS. Nguyễn Thành Nam và phê duyệt cho họ.', 'Trần Thế Minh', 'usr-3', 'high', 'in_progress', '2026-05-30', 40),
@@ -444,7 +594,7 @@ INSERT INTO public.internal_tasks (id, title, description, assigned_to_name, ass
 ('TSK-004', 'Thiết kế Backdrop & Thẻ đại biểu tích hợp mã QR', 'Thống nhất layout màu chủ đạo xanh ngọc và đen, kích thước thẻ 10x15cm, có dây treo màu xanh đồng bộ.', 'Đặng Thùy Dương', 'usr-2', 'medium', 'todo', '2026-06-20', 10)
 ON CONFLICT (id) DO NOTHING;
 
--- Sessions
+-- 10. Seed Sessions (Lịch trình sự kiện)
 INSERT INTO public.sessions (id, title, speaker_name, speaker_title, room_name, date, start_time, end_time, track, description) VALUES
 ('SES-101', 'Đăng ký & Check-in Đại biểu', 'Ban Thư Ký', 'Ban Tổ Chức', 'Bàn check in', '2026-12-11', '07:30', '09:00', 'Check-in', 'Đại biểu và báo cáo viên hoàn thiện thủ tục, quét QR nhận thẻ đeo chính thức, tài liệu đại học.'),
 ('SES-102', 'Live Surgery - Phiên phẫu thuật trực tiếp lâm sàng', 'Hội đồng chuyên gia phẫu thuật', 'Phẫu thuật viên danh tiếng', 'Hội trường 1', '2026-12-11', '09:00', '12:00', 'Live Surgery', 'Trình diễn kỹ thuật mổ trực tiếp từ phòng mổ tiêu chuẩn quốc tế truyền hình về hội trường.'),
@@ -470,13 +620,13 @@ INSERT INTO public.sessions (id, title, speaker_name, speaker_title, room_name, 
 ('SES-225', 'Gala Dinner - Đêm tiệc vinh danh tinh hoa gắn kết tình hữu hữu', 'Ban Trị Sự VSAPS 2026', 'Giao kết đại dã ngoại hữu nghị', 'BV quân y 175', '2026-12-12', '19:00', '21:00', 'Gala Dinner', 'Đêm hội tinh hoa tôn vinh, thưởng lãm nghệ thuật sang trọng thắt chặt tình kết nối hữu hảo.')
 ON CONFLICT (id) DO NOTHING;
 
--- Speakers
+-- 11. Seed Speakers (Báo cáo viên)
 INSERT INTO public.speakers (id, title, full_name, organization, department, phone, email, bio, presentation_title, presentation_track, abstract_text, document_name, document_url, calendar_synced, status, scheduled_session_id, registration_date) VALUES
 ('SPK-001', 'PGS.TS.', 'Trần Quốc Bảo', 'Bệnh viện Trung ương Quân đội 108', 'Ngoại lồng ngực', '0903334444', 'bao.tq@108hospital.vn', 'Trưởng khoa Ngoại Lồng ngực Bệnh viện 108. Có hơn 20 năm kinh nghiệm phẫu thuật tim mạch lồng ngực, viết hơn 30 bài báo quốc tế.', 'Phẫu thuật Robot điều trị u trung thất trước: Kinh nghiệm ban đầu tại Việt Nam', 'Ngoại Lồng Ngực & Tim Mạch', 'Bài báo cáo trình bày tóm tắt kết quả của 45 trường hợp phẫu thuật cắt bỏ u trung thất bằng robot tại bệnh viện Trung ương Quân đội 108 từ năm 2024 đến nay. Kết quả cho thấy tỷ lệ tai biến thấp, thời gian nằm viện trung bình là 3.2 ngày, phục hồi nhanh hơn đáng kể so với mổ nội soi thông thường hoặc mổ hở...', 'Abstract_PhauThuatRobot_TranQuocBao.pdf', '#', true, 'approved', NULL, '2026-05-12 00:00:00+00'),
 ('SPK-002', 'PGS.TS.BS.', 'Lê Hoàng Mỹ', 'Đại học Y Dược TP.HCM', 'Thần kinh học', '0912123567', 'my.lh@ump.edu.vn', 'Giảng viên cao cấp bộ môn Thần Kinh Đại học Y Dược TP.HCM, đồng thời là Giám đốc Trung tâm Sa sút trí tuệ.', 'Cập nhật liệu pháp kháng thể đơn dòng trong điều trị bệnh Alzheimer giai đoạn sớm', 'Thần Kinh Học', 'Alzheimer là một gánh nặng bệnh tật ngày càng gia tăng. Trong nghiên cứu này chúng tôi đánh giá tính hiệu quả và an toàn của các loại kháng thể đơn dòng mới được FDA phê duyệt trong năm 2025-2026. Tổng lược lâm sàng, tỷ lệ phản ứng phụ sưng não (ARIA) và hướng tiếp cận tối ưu cho bệnh nhân Việt Nam.', 'Alzheimer_Update_LeHoangMy.pdf', '#', false, 'pending', NULL, '2026-05-25 00:00:00+00')
 ON CONFLICT (id) DO NOTHING;
 
--- Attendees
+-- 12. Seed Attendees (Đại biểu)
 INSERT INTO public.attendees (id, title, full_name, organization, department, phone, email, address, nationality, package_id, package_name, package_fee, payment_status, payment_method, registration_date, qr_code_value, is_checked_in, check_in_time, notes) VALUES
 ('ATT-001', 'GS.TS.', 'Hoàng Văn Minh', 'Trường Đại học Y Hà Nội', 'Y tế Công cộng', '0912345678', 'minh.hv@hmu.edu.vn', '8 Tôn Thất Tùng, Đống Đa, Hà Nội', 'vietname', 'pkg-vip', 'Gói Đại Biểu VIP', 3000000, 'paid', 'bank_transfer', '2026-05-10', 'VSAPS2026-ATT-001-MINH', true, '2026-05-28 08:05', 'Khách mời danh dự'),
 ('ATT-002', 'ThS.BS.', 'Lê Thị Thu Hương', 'Bệnh viện Bạch Mai', 'Tim mạch', '0981122334', 'huong.le@bachmai.org', '78 Giải Phóng, Đống Đa, Hà Nội', 'vietname', 'pkg-standard', 'Gói Đại Biểu Tiêu Chuẩn', 1500000, 'paid', 'credit_card', '2026-05-14', 'VSAPS2026-ATT-002-HUONG', false, NULL, 'Cần cấp chứng nhận CME'),
@@ -484,7 +634,7 @@ INSERT INTO public.attendees (id, title, full_name, organization, department, ph
 ('ATT-004', 'Dr.', 'Alena Smirnova', 'National University Hospital', 'Neurology', '+6582310492', 'alena.sm@nuh.edu.sg', '5 Lower Kent Ridge Rd, Singapore', 'foreign', 'pkg-vip', 'Gói Đại Biểu VIP', 3000000, 'unpaid', 'credit_card', '2026-05-26', 'VSAPS2026-ATT-004-ALENA', false, NULL, 'Yêu cầu phòng đơn tại khách sạn liên kết')
 ON CONFLICT (id) DO NOTHING;
 
--- Finance Transactions
+-- 13. Seed Finance Transactions (Thu chi tài chính)
 INSERT INTO public.finance_transactions (id, date, type, category, amount, description, reference_id, payment_method, verified_by, is_verified) VALUES
 ('TXN-001', '2026-05-10 10:15', 'income', 'Gói đại biểu', 3000000, 'Phí đăng ký Gói VIP đại biểu Hoàng Văn Minh', 'ATT-001', 'Chuyển khoản Vietcombank', 'GS.TS. Phạm Minh Chi', true),
 ('TXN-002', '2026-05-14 14:30', 'income', 'Gói đại biểu', 1500000, 'Phí đăng ký Gói Tiêu chuẩn đại biểu Lê Thị Thu Hương', 'ATT-002', 'Cổng thanh toán thẻ', 'Độc lập (Tự động)', true),

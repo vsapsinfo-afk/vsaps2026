@@ -1513,36 +1513,41 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     </button>
                   </form>
 
-                  <div className="border-t border-slate-250 pt-3 space-y-2 mt-4">
+                  <div className="border-t border-slate-250 pt-3 space-y-2.5 mt-4">
                     <span className="text-[9px] font-black text-indigo-700 block">⚡ CHẠY TEST TRUYỀN PHÁT ZALO CO-GATEWAY:</span>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={handleVerifyZaloTokenObj}
-                        disabled={zaloTesting}
-                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-750 rounded-lg cursor-pointer text-[10px] font-bold"
-                      >
-                        {zaloTesting ? 'Đang xác thực...' : '1. Kiểm tra Token'}
-                      </button>
-                      <button
-                        onClick={handleRefreshZaloToken}
-                        disabled={zaloTesting}
-                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-750 rounded-lg cursor-pointer text-[10px] font-bold"
-                        title="Yêu cầu cổng OAuth cấp Access Token mới ngay lập tức"
-                      >
-                        {zaloTesting ? 'Đang làm mới...' : '🔄 Làm mới Token'}
-                      </button>
-                      <div className="flex-1 flex gap-1.5">
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={handleVerifyZaloTokenObj}
+                          disabled={zaloTesting}
+                          className="w-full px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-750 rounded-lg cursor-pointer text-[10px] font-bold text-center"
+                        >
+                          {zaloTesting ? 'Đang xác thực...' : '1. Kiểm tra Token'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRefreshZaloToken}
+                          disabled={zaloTesting}
+                          className="w-full px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-750 rounded-lg cursor-pointer text-[10px] font-bold text-center"
+                          title="Yêu cầu cổng OAuth cấp Access Token mới ngay lập tức"
+                        >
+                          {zaloTesting ? 'Đang làm mới...' : '🔄 Làm mới Token'}
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
                         <input
                           type="text"
                           placeholder="Số ĐT nhận test (09...)"
                           value={zaloConfig.testPhone}
                           onChange={(e) => setZaloConfig({ ...zaloConfig, testPhone: e.target.value })}
-                          className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[100px]"
+                          className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[120px]"
                         />
                         <button
+                          type="button"
                           onClick={handleSendTestZaloMessage}
                           disabled={zaloTesting}
-                          className="px-2.5 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                          className="px-3 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
                         >
                           2. Gửi test ZNS
                         </button>
@@ -1632,28 +1637,30 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     </button>
                   </form>
 
-                  <div className="border-t border-slate-250 pt-3 space-y-2 mt-4">
+                  <div className="border-t border-slate-250 pt-3 space-y-2.5 mt-4">
                     <span className="text-[9px] font-black text-indigo-700 block">⚡ KIỂM TRA LUỒNG BẮN THƯ SMTP:</span>
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
                       <button
+                        type="button"
                         onClick={handleTestSmtpConnectionObj}
                         disabled={smtpTesting}
-                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-750 rounded-lg cursor-pointer text-[10px] font-bold"
+                        className="w-full px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-750 rounded-lg cursor-pointer text-[10px] font-bold text-center"
                       >
-                        {smtpTesting ? 'Đang kiểm tra...' : '1. Check SMTP'}
+                        {smtpTesting ? 'Đang kiểm tra...' : '1. Check SMTP Connection'}
                       </button>
-                      <div className="flex-1 flex gap-1.5">
+                      <div className="flex gap-2">
                         <input
                           type="email"
                           placeholder="Email nhận test..."
                           value={emailConfig.testEmail}
                           onChange={(e) => setEmailConfig({ ...emailConfig, testEmail: e.target.value })}
-                          className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[100px]"
+                          className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[120px]"
                         />
                         <button
+                          type="button"
                           onClick={handleSendTestMailObj}
                           disabled={emailSendingTest}
-                          className="px-2.5 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                          className="px-3 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
                         >
                           2. Gửi mail test
                         </button>
@@ -1717,28 +1724,30 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     </button>
                   </form>
 
-                  <div className="border-t border-slate-250 pt-3 space-y-2 mt-4">
+                  <div className="border-t border-slate-250 pt-3 space-y-2.5 mt-4">
                     <span className="text-[9px] font-black text-indigo-700 block">⚡ CHẠY TEST TRUYỀN PHÁT WHATSAPP CO-GATEWAY:</span>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
                       <button
+                        type="button"
                         onClick={handleVerifyWhatsappToken}
                         disabled={waTesting}
-                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-750 rounded-lg cursor-pointer text-[10px] font-bold"
+                        className="w-full px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-750 rounded-lg cursor-pointer text-[10px] font-bold text-center"
                       >
                         {waTesting ? 'Đang xác thực...' : '1. Kiểm tra Token'}
                       </button>
-                      <div className="flex-1 flex gap-1.5">
+                      <div className="flex gap-2">
                         <input
                           type="text"
                           placeholder="Số ĐT nhận test (84...)"
                           value={whatsappConfig.testPhone}
                           onChange={(e) => setWhatsappConfig({ ...whatsappConfig, testPhone: e.target.value })}
-                          className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[100px]"
+                          className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[120px]"
                         />
                         <button
+                          type="button"
                           onClick={handleSendTestWhatsappMessage}
                           disabled={waTesting}
-                          className="px-2.5 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                          className="px-3 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
                         >
                           2. Gửi test Template
                         </button>
