@@ -57,7 +57,7 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.business_config (
   id, event_name, organizer_name, event_date, event_location, 
   max_registrations, require_payment_proof, allow_self_cancellation, 
-  auto_send_zns, require_practice_code,
+  auto_send_zns, require_practice_code, app_url,
   delegate_form_config, speaker_form_config, sponsor_form_config
 ) VALUES (
   'default', 
@@ -70,6 +70,7 @@ INSERT INTO public.business_config (
   false, 
   true, 
   true,
+  'https://vsaps2026.vercel.app',
   '{
     "isOpen": true,
     "language": "both",

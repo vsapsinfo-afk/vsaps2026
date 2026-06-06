@@ -20,6 +20,15 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending_verification'>('all');
   const [checkInFilter, setCheckInFilter] = useState<'all' | 'checked' | 'not_checked'>('all');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, checkInFilter]);
   
   // Custom manual delegate insert form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1140,6 +1149,48 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
   const filteredData = getFilteredAttendees();
 
+  // Calculate pagination values
+  const totalItems = filteredData.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  // Generate intelligent page numbers (1, 2, ..., last)
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (currentPage <= 2) {
+        end = 3;
+      } else if (currentPage >= totalPages - 1) {
+        start = totalPages - 2;
+      }
+      
+      if (start > 2) {
+        pages.push('...');
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (end < totalPages - 1) {
+        pages.push('...');
+      }
+      
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   return (
     <div className="space-y-6 font-sans">
       {/* TRẠM ĐIỀU KHIỂN SẢNH TIẾP ĐÓN - ONLINE/OFFLINE & MÁY QUÉT Honeywell/Zebra */}
@@ -1629,12 +1680,14 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 <th className="px-4 py-3.5 text-center w-12">
                   <input
                     type="checkbox"
-                    checked={filteredData.length > 0 && selectedAttendeeIds.length === filteredData.length}
+                    checked={paginatedData.length > 0 && paginatedData.every(a => selectedAttendeeIds.includes(a.id))}
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedAttendeeIds(filteredData.map(a => a.id));
+                        const pageIds = paginatedData.map(a => a.id);
+                        setSelectedAttendeeIds(prev => Array.from(new Set([...prev, ...pageIds])));
                       } else {
-                        setSelectedAttendeeIds([]);
+                        const pageIds = paginatedData.map(a => a.id);
+                        setSelectedAttendeeIds(prev => prev.filter(id => !pageIds.includes(id)));
                       }
                     }}
                     className="w-4 h-4 text-teal-600 border-slate-300 rounded cursor-pointer"
@@ -1657,7 +1710,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                   </td>
                 </tr>
               ) : (
-                filteredData.map((att) => (
+                paginatedData.map((att) => (
                   <tr key={att.id} className="hover:bg-slate-50/40">
                     <td className="px-4 py-4 text-center align-middle">
                       <input
@@ -1845,7 +1898,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {filteredData.map((att) => (
+            {paginatedData.map((att) => (
               <div key={att.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between gap-3 animate-fade-in">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3">
@@ -2021,6 +2074,79 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm animate-fade-in">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+          <span>Hiển thị</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none transition-all cursor-pointer text-slate-705"
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span>đại biểu / trang</span>
+          <span className="text-slate-300 font-mono hidden sm:inline">|</span>
+          <span>
+            Đang xem {totalItems === 0 ? 0 : startIndex + 1} - {Math.min(endIndex, totalItems)} trong tổng số {totalItems} đại biểu
+          </span>
+        </div>
+        
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                currentPage === 1
+                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed border-none'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 active:scale-95'
+              }`}
+            >
+              Trước
+            </button>
+            
+            {getPageNumbers().map((p, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => typeof p === 'number' && setCurrentPage(p)}
+                disabled={typeof p !== 'number'}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center ${
+                  p === currentPage
+                    ? 'bg-teal-600 text-white shadow-md shadow-teal-600/10 cursor-default border-none'
+                    : p === '...'
+                    ? 'text-slate-400 cursor-default border-none bg-transparent'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 active:scale-95 cursor-pointer'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                currentPage === totalPages
+                  ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed border-none'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 active:scale-95'
+              }`}
+            >
+              Sau
+            </button>
           </div>
         )}
       </div>

@@ -83,6 +83,7 @@ const DEFAULT_WHATSAPP_CONFIG: WhatsappConfig = {
 };
 
 const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
+  appUrl: 'https://vsaps2026.vercel.app',
   eventName: "Hội nghị Khoa học Thường niên VSAPS 2026",
   organizerName: "Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS)",
   eventDate: "Ngày 14 - 15 tháng 11 năm 2026",
@@ -234,6 +235,12 @@ export class DataStore {
       speakerFormConfig: savedConfig.speakerFormConfig || DEFAULT_BUSINESS_CONFIG.speakerFormConfig,
       sponsorFormConfig: savedConfig.sponsorFormConfig || DEFAULT_BUSINESS_CONFIG.sponsorFormConfig,
     };
+    
+    // Auto-migrate old/empty appUrl
+    if (!this.businessConfig.appUrl || this.businessConfig.appUrl.includes('vsaps2026-delta.vercel.app')) {
+      this.businessConfig.appUrl = 'https://vsaps2026.vercel.app';
+      this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, this.businessConfig);
+    }
     this.embedScripts = this.getLocalStorage(DataStore.KEY_EMBED_SCRIPTS, INITIAL_EMBED_SCRIPTS);
     this.sepayConfig = this.getLocalStorage(DataStore.KEY_SEPAY, DEFAULT_SEPAY_CONFIG);
     this.whatsappConfig = this.getLocalStorage(DataStore.KEY_WHATSAPP, DEFAULT_WHATSAPP_CONFIG);
@@ -307,7 +314,16 @@ export class DataStore {
           speakerFormConfig: dbConfig.speakerFormConfig || DEFAULT_BUSINESS_CONFIG.speakerFormConfig,
           sponsorFormConfig: dbConfig.sponsorFormConfig || DEFAULT_BUSINESS_CONFIG.sponsorFormConfig,
         };
-        this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, this.businessConfig);
+        
+        // Auto-migrate old/empty appUrl
+        if (!this.businessConfig.appUrl || this.businessConfig.appUrl.includes('vsaps2026-delta.vercel.app')) {
+          this.businessConfig.appUrl = 'https://vsaps2026.vercel.app';
+          this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, this.businessConfig);
+          // Sync it back to Supabase as well
+          this.saveBusinessConfig(this.businessConfig);
+        } else {
+          this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, this.businessConfig);
+        }
       }
       if (users) {
         this.users = users.map(mapDbToUser);
