@@ -50,6 +50,18 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   // Simulated Document Preview Pane
   const [previewSponsor, setPreviewSponsor] = useState<Sponsor | null>(null);
 
+  // States for editing sponsor details
+  const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editTier, setEditTier] = useState<'platinum' | 'gold' | 'silver' | 'bronze' | 'co_sponsor'>('gold');
+  const [editPledgedAmount, setEditPledgedAmount] = useState('');
+  const [editContactPerson, setEditContactPerson] = useState('');
+  const [editContactEmail, setEditContactEmail] = useState('');
+  const [editContactPhone, setEditContactPhone] = useState('');
+  const [editBenefitsListText, setEditBenefitsListText] = useState('');
+  const [editLogoImage, setEditLogoImage] = useState<string | null>(null);
+  const [isEditLogoUploading, setIsEditLogoUploading] = useState(false);
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -281,6 +293,66 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       loadAll();
       alert(`[MÔ PHỎNG THANH TOÁN] Cổng thanh toán báo có! Đã cập nhật khoản thu tài trợ trị giá ${nPay.toLocaleString()}đ và đồng bộ hạch toán Realtime.`);
     }, 1500);
+  };
+
+  const handleOpenEditSponsor = (sponsor: Sponsor) => {
+    setEditingSponsor(sponsor);
+    setEditName(sponsor.name);
+    setEditTier(sponsor.tier);
+    setEditPledgedAmount(sponsor.pledgedAmount.toString());
+    setEditContactPerson(sponsor.contactPerson);
+    setEditContactEmail(sponsor.contactEmail);
+    setEditContactPhone(sponsor.contactPhone);
+    setEditBenefitsListText(sponsor.benefitsSigned.join(', '));
+    setEditLogoImage(sponsor.logoUrl || null);
+  };
+
+  const handleEditLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsEditLogoUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditLogoImage(reader.result as string);
+        setIsEditLogoUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveSponsorDetails = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSponsor) return;
+    if (!editName || !editPledgedAmount) {
+      alert('Vui lòng điền tên tập đoàn và số tiền tài trợ.');
+      return;
+    }
+
+    const nPledged = Number(editPledgedAmount);
+    if (isNaN(nPledged) || nPledged <= 0) {
+      alert('Kinh phí tài trợ thỏa thuận phải hợp lệ.');
+      return;
+    }
+
+    const benefits = editBenefitsListText.split(',').map(b => b.trim()).filter(b => b !== '');
+
+    const originalList = store.getSponsors();
+    const found = originalList.find(s => s.id === editingSponsor.id);
+    if (found) {
+      found.name = editName;
+      found.tier = editTier;
+      found.pledgedAmount = nPledged;
+      found.contactPerson = editContactPerson;
+      found.contactEmail = editContactEmail;
+      found.contactPhone = editContactPhone;
+      found.benefitsSigned = benefits;
+      found.logoUrl = editLogoImage || undefined;
+      store.saveSponsor(found);
+    }
+
+    setEditingSponsor(null);
+    loadAll();
+    alert('Cập nhật thông tin Nhà tài trợ thành công!');
   };
 
   const handleDelete = (id: string) => {
@@ -539,12 +611,22 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                 </button>
 
                 {role !== 'ctv' && (
-                  <button
-                    onClick={() => handleDelete(sponsor.id)}
-                    className="p-1.5 hover:bg-rose-50 text-rose-500 hover:text-rose-700 rounded-lg transition-all cursor-pointer"
-                  >
-                    <Trash className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenEditSponsor(sponsor)}
+                      className="p-1.5 hover:bg-indigo-50 text-indigo-550 text-indigo-600 rounded-lg transition-all cursor-pointer"
+                      title="Chỉnh sửa hồ sơ"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(sponsor.id)}
+                      className="p-1.5 hover:bg-rose-50 text-rose-500 hover:text-rose-700 rounded-lg transition-all cursor-pointer"
+                      title="Xóa hồ sơ"
+                    >
+                      <Trash className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -890,6 +972,160 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                   className="px-4 py-2 text-xs text-white bg-teal-600 hover:bg-teal-700 font-bold rounded-lg animate-fade-in"
                 >
                   Thêm bảo trợ
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT/UPDATE SPONSOR DETAILS MODAL */}
+      {editingSponsor && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden border border-slate-100 shadow-2xl animate-fade-in text-slate-800">
+            <div className="bg-indigo-900 p-5 text-white flex justify-between items-center">
+              <div>
+                <h4 className="font-bold text-sm uppercase tracking-wide">CHỈNH SỬA THÔNG TIN NHÀ TÀI TRỢ</h4>
+                <p className="text-[11px] text-indigo-200 mt-1">Cập nhật thông tin chi tiết nhà đồng hành tài trợ.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingSponsor(null)}
+                className="text-white hover:text-pink-650 transition bg-transparent border-none cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSponsorDetails} className="p-6 space-y-4 text-left">
+              {/* Logo Select Section */}
+              <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-205">
+                <div className="relative shrink-0 w-12 h-12 rounded-lg bg-slate-200 border border-dashed border-indigo-650/30 flex items-center justify-center overflow-hidden">
+                  {editLogoImage ? (
+                    <img src={editLogoImage} className="w-full h-full object-contain" alt="Logo preview" />
+                  ) : (
+                    <span className="text-slate-400 text-[9px] font-bold text-center select-none">No Logo</span>
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-600 block uppercase tracking-wide">Logo Doanh Nghiệp (Logo)</span>
+                  <div className="flex items-center gap-2">
+                    <label className="px-2.5 py-0.5 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold rounded cursor-pointer transition-all select-none">
+                      Tải ảnh logo
+                      <input type="file" accept="image/*" onChange={handleEditLogoUpload} className="hidden" />
+                    </label>
+                    {editLogoImage && (
+                      <button
+                        type="button"
+                        onClick={() => setEditLogoImage(null)}
+                        className="px-1.5 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded border-none cursor-pointer"
+                      >
+                        Xóa
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên Tập đoàn / Doanh nghiệp *</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="ví dụ: Medtronic VN"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Gói Partner Đồng Hành *</label>
+                  <select
+                    value={editTier}
+                    onChange={(e: any) => setEditTier(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer"
+                  >
+                    <option value="platinum">Platinum Sponsor</option>
+                    <option value="gold">Gold Sponsor</option>
+                    <option value="silver">Silver Sponsor</option>
+                    <option value="bronze">Bronze Sponsor</option>
+                    <option value="co_sponsor">Co-Sponsor</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Tổng tiền Thỏa thuận (VNĐ) *</label>
+                  <input
+                    type="number"
+                    required
+                    value={editPledgedAmount}
+                    onChange={(e) => setEditPledgedAmount(e.target.value)}
+                    placeholder="ví dụ: 100000000"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-1">
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên liên hệ</label>
+                  <input
+                    type="text"
+                    value={editContactPerson}
+                    onChange={(e) => setEditContactPerson(e.target.value)}
+                    placeholder="ví dụ: Chị Linh"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">SĐT liên hệ</label>
+                  <input
+                    type="tel"
+                    value={editContactPhone}
+                    onChange={(e) => setEditContactPhone(e.target.value)}
+                    placeholder="09..."
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Mail liên hệ</label>
+                  <input
+                    type="email"
+                    value={editContactEmail}
+                    onChange={(e) => setEditContactEmail(e.target.value)}
+                    placeholder="mail@..."
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Quyền lợi ký cam kết (Phân tách bằng dấu phẩy)</label>
+                <textarea
+                  value={editBenefitsListText}
+                  onChange={(e) => setEditBenefitsListText(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                />
+              </div>
+
+              <div className="pt-4 flex justify-end gap-2 border-t border-slate-150">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingSponsor(null);
+                    setEditLogoImage(null);
+                  }}
+                  className="px-4 py-2 text-xs text-slate-500 bg-slate-100 hover:bg-slate-200 font-bold rounded-lg cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs text-white bg-indigo-900 hover:bg-indigo-950 font-bold rounded-lg cursor-pointer"
+                >
+                  Lưu Thay Đổi
                 </button>
               </div>
             </form>
