@@ -18,3 +18,5 @@ View your app in AI Studio: https://ai.studio/apps/9c0219d4-e964-4839-8f8d-e4ce7
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+# vsaps2026
