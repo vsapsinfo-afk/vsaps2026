@@ -2646,9 +2646,24 @@ Ban Thư ký Hội nghị VSAPS 2026`
                             <div>
                               <span className="text-[11px] font-black text-slate-900 uppercase block">Nhu cầu Chứng Chỉ Đào Tạo (CME)</span>
                               <p className="text-[10px] text-slate-500 mt-0.5">
-                                {viewDetailAttendee.cmeRequired 
-                                  ? `Yêu cầu cấp CME hoạt động. Số định danh / CCCD: ${viewDetailAttendee.cmeIdentityNo || 'Chưa nhập số CCCD!'}`
-                                  : 'Không đăng ký nhu cầu cấp tín chỉ đào tạo liên tục.'}
+                                {viewDetailAttendee.cmeRequired ? (
+                                  <>
+                                    Yêu cầu cấp CME hoạt động. Số định danh / CCCD hoặc Bằng cấp:{" "}
+                                    {viewDetailAttendee.cmeIdentityNo ? (
+                                      viewDetailAttendee.cmeIdentityNo.startsWith('http') ? (
+                                        <a href={viewDetailAttendee.cmeIdentityNo} target="_blank" rel="noreferrer" className="text-teal-600 font-bold underline hover:text-teal-800">
+                                          [Xem Bằng cấp / Chứng chỉ đính kèm]
+                                        </a>
+                                      ) : (
+                                        <strong className="text-slate-900">{viewDetailAttendee.cmeIdentityNo}</strong>
+                                      )
+                                    ) : (
+                                      <span className="text-rose-500 italic">Chưa nộp thông tin!</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  'Không đăng ký nhu cầu cấp tín chỉ đào tạo liên tục.'
+                                )}
                               </p>
                             </div>
                           </div>
