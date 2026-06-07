@@ -2,9 +2,9 @@
 // Strategy: Cache First for static assets, Network First for API/Supabase
 // Background Sync for offline check-in queue
 
-const CACHE_NAME = 'vsaps2026-v1';
-const STATIC_CACHE = 'vsaps2026-static-v1';
-const DYNAMIC_CACHE = 'vsaps2026-dynamic-v1';
+const CACHE_NAME = 'vsaps2026-v2';
+const STATIC_CACHE = 'vsaps2026-static-v2';
+const DYNAMIC_CACHE = 'vsaps2026-dynamic-v2';
 
 // App shell resources to pre-cache during install
 const APP_SHELL = [
@@ -100,6 +100,15 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http(s) requests
   if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Skip cross-origin API and database requests (Supabase, SePay, QR Server, etc.)
+  // Only handle same-origin requests and Google Fonts to avoid PWA sandbox/CORS sync issues on mobile
+  const isSameOrigin = url.origin === self.location.origin;
+  const isGoogleFont = url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com');
+
+  if (!isSameOrigin && !isGoogleFont) {
     return;
   }
 
