@@ -31,7 +31,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
           
         if (!error && data && data.value) {
-          config = { ...data.value, ...config };
+          const dbConfig = data.value;
+          config = {
+            ...dbConfig,
+            ...Object.fromEntries(
+              Object.entries(config || {}).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
+            )
+          };
         }
       } catch (dbErr: any) {
         console.error('Error fetching WhatsApp config from Supabase:', dbErr);
