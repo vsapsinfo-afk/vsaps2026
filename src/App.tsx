@@ -285,7 +285,7 @@ function AppContent() {
   if (isPublicView) {
     // Render public layout standing alone
     return (
-      <div className="bg-slate-50 min-h-screen">
+      <div className="bg-slate-50 min-h-screen pt-[env(safe-area-inset-top,0px)]">
         {renderActiveView()}
       </div>
     );
@@ -334,7 +334,7 @@ function AppContent() {
         </main>
 
         {/* Mobile Bottom Navigation Menu */}
-        <div className="md:hidden fixed bottom-4 left-4 right-4 z-40 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-xl flex items-center justify-around p-1.5 h-16 select-none">
+        <div className="md:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-xl flex items-center justify-around p-1.5 h-16 select-none">
           {[
             { id: 'overview', name: 'Tổng Quan', icon: BarChart2 },
             { id: 'attendees', name: 'Đại Biểu', icon: Users },

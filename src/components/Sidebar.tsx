@@ -62,7 +62,7 @@ export default function Sidebar({ currentView, onNavigate, currentRole, onResetD
         transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-      <div className="p-6">
+      <div className="p-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px))]">
         {/* Brand visual header with Pink accent gradient logo */}
         <div className="flex items-center gap-3.5 mb-6 border-b border-indigo-900/50 pb-5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-600 to-rose-500 flex items-center justify-center text-white font-extrabold text-sm tracking-widest shadow-md shadow-pink-500/10">

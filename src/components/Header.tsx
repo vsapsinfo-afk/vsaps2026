@@ -86,7 +86,7 @@ export default function Header({
   const dbConfig = store.getSupabaseConfig();
 
   return (
-    <header className="bg-white border-b border-slate-200 h-16 px-4 md:px-6 flex items-center justify-between gap-3 font-sans shrink-0 relative select-none">
+    <header className="bg-white border-b border-slate-200 pt-[env(safe-area-inset-top,0px)] h-[calc(4rem+env(safe-area-inset-top,0px))] px-4 md:px-6 flex items-center justify-between gap-3 font-sans shrink-0 relative select-none">
       <div className="flex items-center gap-2.5 min-w-0">
         {/* Hamburger Toggle Button for Mobile Navigation */}
         <button
