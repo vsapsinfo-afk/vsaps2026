@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
@@ -14,7 +15,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { config, payload } = req.body;
+  let { config, payload } = req.body;
+
+  if (!config || !config.accessToken) {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    
+    if (supabaseUrl && supabaseServiceKey) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const { data, error } = await supabase
+          .from('system_config')
+          .select('value')
+          .eq('key', 'zalo_config')
+          .single();
+          
+        if (!error && data && data.value) {
+          config = { ...data.value, ...config };
+        }
+      } catch (dbErr: any) {
+        console.error('Error fetching Zalo config from Supabase:', dbErr);
+      }
+    }
+  }
 
   if (!config || !config.accessToken) {
     return res.status(400).json({

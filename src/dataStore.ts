@@ -1512,7 +1512,7 @@ export class DataStore {
     let status: 'success' | 'failed' = 'success';
     let responseObj: any = { message: "Tin nhắn ZNS đã xếp hàng gửi thành công qua cổng Zalo OA Sandbox" };
 
-    const isRealZalo = this.zaloConfig.accessToken && this.zaloConfig.accessToken !== 'zalo-oa-token-active-2026-ready-vsaps';
+    const isRealZalo = (this.zaloConfig.accessToken && this.zaloConfig.accessToken !== 'zalo-oa-token-active-2026-ready-vsaps') || isSupabaseConfigured();
 
     if (isRealZalo) {
       try {
@@ -1601,7 +1601,9 @@ export class DataStore {
                        this.emailConfig.smtpPass !== '*************' &&
                        this.emailConfig.smtpPass !== '';
 
-    if (isRealSmtp) {
+    const canSend = isRealSmtp || isSupabaseConfigured();
+
+    if (canSend) {
       try {
         const formattedBody = content.replace(/\n/g, '<br/>');
         const emailHtml = `
@@ -1709,7 +1711,7 @@ export class DataStore {
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, attendee.organization || '');
 
-    const isRealWhatsapp = this.whatsappConfig.accessToken && this.whatsappConfig.phoneNumberId;
+    const isRealWhatsapp = (this.whatsappConfig.accessToken && this.whatsappConfig.phoneNumberId) || isSupabaseConfigured();
 
     const payload = {
       messaging_product: "whatsapp",
