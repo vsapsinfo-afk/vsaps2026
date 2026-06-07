@@ -89,25 +89,6 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   // Kiosk/Fast Check-in console states
   const [kioskInput, setKioskInput] = useState('');
   const [kioskFeedback, setKioskFeedback] = useState<{ success: boolean; msg: string } | null>(null);
-  const [simulatedScannerActive, setSimulatedScannerActive] = useState(false);
-  const [scannedAttendeeId, setScannedAttendeeId] = useState('');
-
-  // OFFLINE-First Sync & Zebra/Honeywell Scanner Emulator
-  const [isOffline, setIsOffline] = useState(false);
-  const [offlineQueueCount, setOfflineQueueCount] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]').length;
-    } catch {
-      return 0;
-    }
-  });
-  const [offlineQueueList, setOfflineQueueList] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
-    } catch {
-      return [];
-    }
-  });
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Interactive label paper thermal printer simulation
@@ -401,101 +382,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     setAttendees([...store.getAttendees()]);
   };
 
-  const updateQueueHelper = (newQueue: string[]) => {
-    try {
-      localStorage.setItem('vsaps_offline_queue', JSON.stringify(newQueue));
-      setOfflineQueueCount(newQueue.length);
-      setOfflineQueueList(newQueue);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
-  const handleSyncIndividual = (id: string) => {
-    const list = store.getAttendees();
-    const found = list.find(a => a.id === id);
-    if (found) {
-      found.isCheckedIn = true;
-      if (!found.checkInTime) {
-        found.checkInTime = new Date().toISOString().replace('T', ' ').substring(0, 16);
-      }
-      store.saveAttendee(found);
-      
-      const newQueue = offlineQueueList.filter(qId => qId !== id);
-      updateQueueHelper(newQueue);
-      
-      playSoundSound('success');
-      setSyncFeedback(`⚡ ĐÃ ĐỒNG BỘ: Đã đồng bộ thành công đại biểu ${found.title} ${found.fullName} lên Cloud!`);
-      setTimeout(() => setSyncFeedback(null), 4000);
-      loadAll();
-    }
-  };
-
-  const handleRemoveFromQueue = (id: string) => {
-    const list = store.getAttendees();
-    const found = list.find(a => a.id === id);
-    if (found) {
-      found.isCheckedIn = false;
-      found.checkInTime = undefined;
-      store.saveAttendee(found);
-    }
-    
-    const newQueue = offlineQueueList.filter(qId => qId !== id);
-    updateQueueHelper(newQueue);
-    
-    playSoundSound('success');
-    setSyncFeedback(`🗑️ HỦY BỎ: Đã xóa mã ${id} khỏi hàng đợi đồng bộ & thu hồi check-in.`);
-    setTimeout(() => setSyncFeedback(null), 4000);
-    loadAll();
-  };
-
-  const handleForceSyncAll = () => {
-    if (offlineQueueList.length === 0) {
-      alert('Không có đại biểu nào trong hàng đợi cần đồng bộ!');
-      return;
-    }
-    
-    const list = store.getAttendees();
-    let count = 0;
-    offlineQueueList.forEach(qId => {
-      const found = list.find(a => a.id === qId);
-      if (found) {
-        found.isCheckedIn = true;
-        if (!found.checkInTime) {
-          found.checkInTime = new Date().toISOString().replace('T', ' ').substring(0, 16);
-        }
-        store.saveAttendee(found);
-        count++;
-      }
-    });
-    
-    updateQueueHelper([]);
-    playSoundSound('success');
-    setSyncFeedback(`⚡ ĐỒNG BỘ TOÀN BỘ: Đã cưỡng chế cập nhật ${count} lượt ghi nhận ngoại tuyến lên Cloud thành công!`);
-    setTimeout(() => setSyncFeedback(null), 5050);
-    loadAll();
-  };
-
-  const handleClearQueueEntirely = () => {
-    if (offlineQueueList.length === 0) return;
-    if (window.confirm('Bạn có chắc muốn PURGE/XÓA SẠCH toàn bộ hàng đợi đồng bộ ngoại tuyến này? Thao tác này sẽ dọn dẹp hàng chờ và thu hồi điểm danh các đối tượng này.')) {
-      const list = store.getAttendees();
-      offlineQueueList.forEach(qId => {
-        const found = list.find(a => a.id === qId);
-        if (found) {
-          found.isCheckedIn = false;
-          found.checkInTime = undefined;
-          store.saveAttendee(found);
-        }
-      });
-      
-      updateQueueHelper([]);
-      playSoundSound('success');
-      setSyncFeedback('🧹 PURGE CACHE: Đã dọn dẹp sạch sẽ hàng đợi đồng bộ ngoại tuyến.');
-      setTimeout(() => setSyncFeedback(null), 4000);
-      loadAll();
-    }
-  };
 
   const playSoundEffect = (type: 'success' | 'fail' = 'success') => {
     try {
@@ -555,33 +442,6 @@ Ban Thư ký Hội nghị VSAPS 2026`
         if (localStorage.getItem('vsaps_printer_autoprint') === 'true') {
           setSelectedBadgeAttendee(found);
         }
-
-        // Store offline if offline network active
-        if (isOffline) {
-          try {
-            const queue = JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
-            if (!queue.includes(found.id)) {
-              queue.push(found.id);
-              localStorage.setItem('vsaps_offline_queue', JSON.stringify(queue));
-              setOfflineQueueList(queue);
-            }
-            setOfflineQueueCount(queue.length);
-          } catch (err) {
-            console.error(err);
-          }
-        }
-      } else {
-        if (isOffline) {
-          try {
-            let queue = JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
-            queue = queue.filter((x: string) => x !== found.id);
-            localStorage.setItem('vsaps_offline_queue', JSON.stringify(queue));
-            setOfflineQueueList(queue);
-            setOfflineQueueCount(queue.length);
-          } catch (err) {
-            console.error(err);
-          }
-        }
       }
       loadAll();
     }
@@ -625,20 +485,6 @@ Ban Thư ký Hội nghị VSAPS 2026`
         // Auto print badge if enabled in settings
         if (localStorage.getItem('vsaps_printer_autoprint') === 'true') {
           setSelectedBadgeAttendee(found);
-        }
-
-        if (isOffline) {
-          try {
-            const queue = JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
-            if (!queue.includes(found.id)) {
-              queue.push(found.id);
-              localStorage.setItem('vsaps_offline_queue', JSON.stringify(queue));
-              setOfflineQueueList(queue);
-            }
-            setOfflineQueueCount(queue.length);
-          } catch (err) {
-            console.error(err);
-          }
         }
 
         setKioskFeedback({
@@ -691,51 +537,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
-  }, [isOffline, attendees]);
-
-  // Network Offline Toggle with synchronized states
-  const handleToggleNetwork = () => {
-    const nextOfflineState = !isOffline;
-    setIsOffline(nextOfflineState);
-
-    if (!nextOfflineState) {
-      // Connecting back to cloud: synchronize values
-      try {
-        const queue: string[] = JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
-        if (queue.length > 0) {
-          const list = store.getAttendees();
-          let count = 0;
-          queue.forEach(qId => {
-            const foundAttendee = list.find(a => a.id === qId);
-            if (foundAttendee) {
-              foundAttendee.isCheckedIn = true;
-              if (!foundAttendee.checkInTime) {
-                foundAttendee.checkInTime = new Date().toISOString().replace('T', ' ').substring(0, 16);
-              }
-              store.saveAttendee(foundAttendee);
-              count++;
-            }
-          });
-          localStorage.removeItem('vsaps_offline_queue');
-          setOfflineQueueCount(0);
-          setOfflineQueueList([]);
-          playSoundSound('success');
-          setSyncFeedback(`⚡ ĐÃ ĐỒNG BỘ: Đã tự động kết nối & cập nhật điện toán sảnh ${count} lượt ghi nhận ngoại tuyến lên Cloud!`);
-          setTimeout(() => setSyncFeedback(null), 5000);
-          loadAll();
-        } else {
-          setOfflineQueueList([]);
-          setSyncFeedback('🟢 ĐỒNG BỘ: Mạng Internet khôi phục. Không có hàng đợi tồn đọng.');
-          setTimeout(() => setSyncFeedback(null), 3000);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    } else {
-      setSyncFeedback('🔴 MẠNG NGOẠI TUYẾN: Trạm cục bộ đã khóa sảnh. Mọi lịch sử check-in sẽ tạm đệm vào LocalStorage.');
-      setTimeout(() => setSyncFeedback(null), 4000);
-    }
-  };
+  }, [attendees]);
 
   // Bulk past lists of attendees
   const handleBulkImportTextSubmit = (e: React.FormEvent) => {
@@ -813,61 +615,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     }
   };
 
-  // Fast Inject 5 Elite Key Speakers & Doctors
-  const handleInjectedDoctors = () => {
-    const doctors = [
-      { t: 'PGS.TS.', n: 'NGUYỄN THẾ VỸ', p: '0913928173', e: 'thevy.nguyen@ump.edu.vn', o: 'Đại học Y Dược TP.HCM', y: '1974', c: '012974009212' },
-      { t: 'BSCKII.', n: 'TRẦN NGỌC SĨ', p: '0989123456', e: 'ngocsi.tran@hospital.vn', o: 'Bệnh viện Da liễu TP.HCM', y: '1979', c: '023979001223' },
-      { t: 'GS.TS.', n: 'LÊ GIA VINH', p: '0903338877', e: 'giavinh.le@vsaps.org', o: 'Bệnh viện Trung ương Quân đội 108', y: '1961', c: '001161008899' },
-      { t: 'BSCKI.', n: 'LÊ VĂN SƠN', p: '0938765432', e: 'vanson.le@fv.com.vn', o: 'Bệnh viện FV', y: '1984', c: '079184004312' },
-      { t: 'TS.BS.', n: 'NGUYỄN PHÚC CƯỜNG', p: '0912445566', e: 'phuccuong@hmu.edu.vn', o: 'Trường Đại học Y Hà Nội', y: '1977', c: '001177005432' }
-    ];
 
-    const existingAttendees = store.getAttendees();
-    let maxSeq = existingAttendees.reduce((max, att) => {
-      const match = att.id.match(/\d+$/);
-      if (match) {
-        const num = parseInt(match[0], 10);
-        return num > max ? num : max;
-      }
-      return max;
-    }, existingAttendees.length);
-
-    doctors.forEach(doc => {
-      maxSeq++;
-      const padSeq = String(maxSeq).padStart(3, '0');
-      const newId = `VSAPS2026-${padSeq}`;
-      const autoAttendee: Attendee = {
-        id: newId,
-        title: doc.t,
-        fullName: doc.n,
-        organization: doc.o,
-        department: 'Phẫu thuật Thẩm mỹ',
-        phone: doc.p,
-        email: doc.e,
-        address: doc.o,
-        nationality: 'vietname',
-        packageId: 'pkg-vip',
-        packageName: 'Gói Đại Biểu VIP',
-        packageFee: 3000000,
-        paymentStatus: 'paid',
-        paymentMethod: 'bank_transfer',
-        registrationDate: '2026-05-28',
-        qrCodeValue: `VSAPS2026-${newId}-${doc.n.replace(/\s+/g, '')}`,
-        isCheckedIn: false,
-        yearOfBirth: doc.y,
-        gender: 'Nam',
-        cmeRequired: true,
-        cmeIdentityNo: doc.c,
-        province: 'Hồ Chí Minh'
-      };
-      store.saveAttendee(autoAttendee);
-    });
-
-    playSoundSound('success');
-    alert('Đã bổ sung thần tốc 5 đại biểu danh dự danh giá ưu tiên cấp CME!');
-    loadAll();
-  };
 
   const handleKioskCheckIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -911,20 +659,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
         setIsPrintingBadge(false);
       }, 3500);
 
-      // Store offline if offline network active
-      if (isOffline) {
-        try {
-          const queue = JSON.parse(localStorage.getItem('vsaps_offline_queue') || '[]');
-          if (!queue.includes(found.id)) {
-            queue.push(found.id);
-            localStorage.setItem('vsaps_offline_queue', JSON.stringify(queue));
-            setOfflineQueueList(queue);
-          }
-          setOfflineQueueCount(queue.length);
-        } catch (err) {
-          console.error(err);
-        }
-      }
+
     } else {
       playSoundSound('success');
     }
@@ -936,46 +671,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     loadAll();
   };
 
-  const handleSimulateScanBadge = () => {
-    if (!scannedAttendeeId) {
-      alert('Vui lòng chọn 1 đại biểu để thực hiện quét mã điểm danh!');
-      return;
-    }
-    setSimulatedScannerActive(true);
-    
-    // Simulate camera green scanning line
-    setTimeout(() => {
-      const attendeesList = store.getAttendees();
-      const found = attendeesList.find(a => a.id === scannedAttendeeId);
-      if (found) {
-        if (found.isCheckedIn) {
-          playSoundSound('fail');
-          setKioskFeedback({
-            success: false,
-            msg: `[QUÉT CODE] Đại biểu ${found.title} ${found.fullName} đã điểm danh trước đó!`
-          });
-        } else {
-          found.isCheckedIn = true;
-          found.checkInTime = new Date().toISOString().replace('T', ' ').substring(0, 16);
-          store.saveAttendee(found);
-          playSoundSound('success');
-          setKioskFeedback({
-            success: true,
-            msg: `[QUÉT CODE THÀNH CÔNG] Đã điểm danh ${found.title} ${found.fullName}!`
-          });
-          loadAll();
 
-          // Auto print badge if enabled in settings
-          if (localStorage.getItem('vsaps_printer_autoprint') === 'true') {
-            setSelectedBadgeAttendee(found);
-          }
-        }
-      }
-      setSimulatedScannerActive(false);
-      setScannedAttendeeId('');
-      setTimeout(() => setKioskFeedback(null), 5000);
-    }, 1200);
-  };
 
   const handleUpdatePayment = (id: string, newStatus: 'paid' | 'unpaid' | 'pending_verification') => {
     // CTV is banned from altering finances
@@ -1197,54 +893,15 @@ Ban Thư ký Hội nghị VSAPS 2026`
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* Injectors of sample elites */}
-          <button
-            type="button"
-            onClick={handleInjectedDoctors}
-            className="px-3 py-1.5 text-[10px] bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 font-bold rounded-lg border border-amber-500/25 transition-all cursor-pointer flex items-center gap-1"
-            title="Thêm nhanh 5 Đại biểu đầu ngành có CCCD & Năm sinh đầy đủ để test in CME"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            +5 Hồ Sơ Danh Dự
-          </button>
-
-          {/* Network offline toggler */}
-          <button
-            type="button"
-            onClick={handleToggleNetwork}
-            className={`px-3.5 py-1.5 text-[10px] rounded-lg font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
-              isOffline
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/30 hover:bg-rose-500/30'
-                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20 hover:bg-emerald-500/25'
-            }`}
-          >
-            {isOffline ? (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-                OFFLINE MODE ({offlineQueueCount} Đệm)
-              </>
-            ) : (
-              <>
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                ONLINE (Cloud Sync)
-              </>
-            )}
-          </button>
-        </div>
       </div>
-
-      {/* Sync Flash Message Alert */}
-      {syncFeedback && (
-        <div className={`p-3 rounded-lg border text-xs font-bold flex items-center gap-2 animate-bounce ${
-          isOffline 
-            ? 'bg-amber-50 border-amber-200 text-amber-800' 
-            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-        }`}>
-          <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{syncFeedback}</span>
-        </div>
-      )}
+ 
+       {/* Sync Flash Message Alert */}
+       {syncFeedback && (
+         <div className="p-3 rounded-lg border text-xs font-bold flex items-center gap-2 animate-bounce bg-emerald-50 border-emerald-200 text-emerald-800">
+           <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+           <span>{syncFeedback}</span>
+         </div>
+       )}
 
       {/* INSTANT AUTOMATED BADGE PRINTING VISUALIZER STRIP */}
       {isPrintingBadge && autoPrintedAttendee && (
@@ -1352,7 +1009,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
               <div className={`w-full p-2.5 rounded-lg border text-xs font-bold flex items-center gap-2 animate-fade-in ${
                 kioskFeedback.success 
                   ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
-                  : 'bg-rose-50 border-rose-100 text-rose-805'
+                  : 'bg-rose-50 border-rose-100 text-rose-800'
               }`}>
                 <span className="text-sm">{kioskFeedback.success ? '✓' : '✗'}</span>
                 <span className="flex-1">{kioskFeedback.msg}</span>
@@ -1362,164 +1019,6 @@ Ban Thư ký Hội nghị VSAPS 2026`
             )}
           </div>
         </div>
-      </div>
-
-      {/* OFFLINE SYNC QUEUE VISUALIZER CONTROLS (TRẠM GIÁM SÁT HÀNG ĐỢI ĐỒNG BỘ) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              offlineQueueList.length > 0 
-                ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20' 
-                : 'bg-slate-100 text-slate-500'
-            }`}>
-              <RefreshCcw className={`w-4 h-4 ${offlineQueueList.length > 0 ? 'animate-spin' : ''}`} />
-            </div>
-            <div>
-              <h4 className="text-xs font-black uppercase text-slate-900 tracking-wider">Trạm Giám Sát Đồng Bộ Ngoại Tuyến (Offline Sync Monitor)</h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Cung cấp danh sách lịch sử điểm danh đang lưu trữ cục bộ khi mất kết nối. Chủ động xử lý lỗi rớt mạng cục bộ.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {offlineQueueList.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleForceSyncAll}
-                  className="px-3 py-1.5 bg-teal-50 border border-teal-200 hover:border-teal-300 text-teal-800 hover:bg-teal-100 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <RefreshCcw className="w-3 h-3 text-teal-600 animate-spin" />
-                  Đồng bộ tất cả ({offlineQueueList.length}) ⚡
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearQueueEntirely}
-                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 text-[10px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  <Trash className="w-3 h-3 text-rose-600" />
-                  Xóa hàng đợi 🧹
-                </button>
-              </>
-            )}
-            <span className={`text-[9px] font-mono px-2 py-0.5 rounded uppercase font-bold tracking-wider ${
-              offlineQueueList.length > 0 
-                ? 'bg-amber-100 text-amber-800 animate-pulse' 
-                : 'bg-emerald-50 text-emerald-800 border border-emerald-100'
-            }`}>
-              {offlineQueueList.length > 0 ? `${offlineQueueList.length} Bản ghi chờ` : '0 Tồn đọng'}
-            </span>
-          </div>
-        </div>
-
-        {offlineQueueList.length === 0 ? (
-          <div className="bg-slate-50/50 border border-slate-150 rounded-lg p-6 text-center space-y-2">
-            <div className="text-emerald-500 font-extrabold text-xs flex items-center justify-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="uppercase tracking-wider">Trạng thái đệm: An toàn & Đã đồng bộ</span>
-            </div>
-            <p className="text-[11px] text-slate-500 max-w-xl mx-auto leading-relaxed">
-              Không có dữ liệu check-in bị kẹt trong bộ nhớ đệm ngoại tuyến. Tất cả lượt điểm danh hội học đã hoàn tất đồng bộ hóa thời gian thực lên máy chủ trung tâm hội VSAPS 2026.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="p-3 bg-amber-50/40 border border-amber-200/50 rounded-lg text-[10.5px] text-amber-800 leading-relaxed flex items-start gap-2">
-              <span className="text-sm">⚠️</span>
-              <div>
-                <strong>Lọc chủ động cho Điều Hành Viên:</strong> Đang phát hiện điểm nhận diện check-in ngoại tuyến của <strong>{offlineQueueList.length} đại biểu</strong> chưa đẩy lên cloud server. Hãy kiểm tra kết nối mạng cục bộ của thiết bị. Thao túng trực tiếp để sửa lỗi hoặc đồng bộ ép buộc.
-              </div>
-            </div>
-
-            <div className="border border-slate-150 rounded-lg overflow-hidden overflow-x-auto">
-              <table className="w-full text-xs text-left text-slate-500 border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-150 text-[9.5px] uppercase font-mono tracking-wider font-bold text-slate-500">
-                  <tr>
-                    <th className="p-2.5 pl-4">Mã ID</th>
-                    <th className="p-2.5">Đại Biểu</th>
-                    <th className="p-2.5">Đơn Vị Công Tác</th>
-                    <th className="p-2.5">Gói Thẻ Vé</th>
-                    <th className="p-2.5">Trạng thái đồng bộ</th>
-                    <th className="p-2.5 text-center pr-4">Thao tác proactively</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-150 bg-white">
-                  {offlineQueueList.map(qId => {
-                    const found = attendees.find(a => a.id === qId);
-                    if (!found) {
-                      return (
-                        <tr key={qId} className="hover:bg-slate-50">
-                          <td className="p-2.5 pl-4 font-mono text-slate-450">{qId}</td>
-                          <td colSpan={4} className="p-2.5 text-slate-400 italic">Đại biểu mới hoặc hồ sơ không khớp cục bộ...</td>
-                          <td className="p-2.5 text-center pr-4">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFromQueue(qId)}
-                              className="px-2 py-1 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-all cursor-pointer border-none"
-                            >
-                              Xóa hàng chờ
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    }
-                    return (
-                      <tr key={found.id} className="hover:bg-slate-50/40 transition-colors">
-                        <td className="p-2.5 pl-4 font-mono font-bold text-slate-900">{found.id}</td>
-                        <td className="p-2.5">
-                          <div className="font-extrabold text-slate-800">{found.title} {found.fullName}</div>
-                          <div className="text-[9.5px] text-slate-400 mt-0.5">{found.phone}</div>
-                        </td>
-                        <td className="p-2.5 text-slate-600 font-medium truncate max-w-[180px]" title={found.organization}>
-                          {found.organization}
-                        </td>
-                        <td className="p-2.5">
-                          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[9.5px] font-bold">
-                            {found.packageName}
-                          </span>
-                        </td>
-                        <td className="p-2.5">
-                          <div className="text-[10px] text-amber-700 font-extrabold bg-amber-50 border border-amber-200/50 px-2 py-0.5 rounded w-max inline-flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
-                            Chờ Sync (Offline)
-                          </div>
-                        </td>
-                        <td className="p-2.5 pr-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleSyncIndividual(found.id)}
-                              className="px-2.5 py-1 text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none shadow-sm"
-                              title="Tải ngay bản ghi điểm danh này lên trực tiếp Cloud"
-                            >
-                              <Check className="w-3 h-3" />
-                              Đồng bộ ngay
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFromQueue(found.id)}
-                              className="px-2.5 py-1 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded transition-all flex items-center gap-1 cursor-pointer border-none"
-                              title="Xóa ra khỏi hàng đợi và đánh dấu Chưa Điểm Danh"
-                            >
-                              <Trash className="w-3 h-3 text-slate-400" />
-                              Hủy check-in
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="text-[10px] text-slate-400 font-mono text-right">
-              Console Network: <span className="text-slate-500 underline decoration-dashed">WLAN Sảnh // Cache Storage Sync Interface v2.6.2</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Top dashboard actions */}
@@ -3827,33 +3326,24 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 <p>• Trạng thái thanh toán của khối import được kích hoạt thành <strong>Đã thanh toán (Paid)</strong> theo danh sách biểu mời sảnh.</p>
               </div>
 
-              <div className="pt-4 flex justify-between items-center border-t border-slate-150">
+              <div className="pt-4 flex justify-end gap-2 border-t border-slate-150">
                 <button
                   type="button"
-                  onClick={handleInjectedDoctors}
-                  className="text-[10.5px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 font-bold px-3 py-2 rounded-lg transition-all cursor-pointer border border-amber-500/10"
+                  onClick={() => {
+                    setShowBulkForm(false);
+                    setBulkInputText('');
+                    setUploadFeedback(null);
+                  }}
+                  className="px-4 py-2 text-xs text-slate-500 bg-slate-100 hover:bg-slate-200 font-bold rounded-lg cursor-pointer"
                 >
-                  ⚡ Test nhanh 5 Báo Cáo Viên Mẫu
+                  Hủy
                 </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowBulkForm(false);
-                      setBulkInputText('');
-                      setUploadFeedback(null);
-                    }}
-                    className="px-4 py-2 text-xs text-slate-500 bg-slate-100 hover:bg-slate-200 font-bold rounded-lg cursor-pointer"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-bold rounded-lg cursor-pointer border-none shadow-sm"
-                  >
-                    Nạp Vào Cơ Sở Dữ Liệu
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-bold rounded-lg cursor-pointer border-none shadow-sm"
+                >
+                  Nạp Vào Cơ Sở Dữ Liệu
+                </button>
               </div>
             </form>
           </div>
