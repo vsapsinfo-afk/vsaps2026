@@ -24,6 +24,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
+  if (!payload || !payload.to) {
+    return res.status(400).json({
+      success: false,
+      error: "Recipient email (to) is missing in payload.",
+    });
+  }
+
   try {
     const isSecure = Number(config.smtpPort) === 465;
     const transporter = nodemailer.createTransport({
@@ -39,9 +46,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
-    // Assemble content
+    // Assemble content using object format for from field to prevent quote/syntax issues
     const mailOptions = {
-      from: `"${config.senderName || "VSAPS 2026 BTC"}" <${config.senderEmail || config.smtpUser}>`,
+      from: {
+        name: config.senderName || "VSAPS 2026 BTC",
+        address: config.senderEmail || config.smtpUser,
+      },
       to: payload.to,
       subject: payload.subject || "Thư xác nhận VSAPS 2026",
       html: payload.body, // We pass email body as HTML content
@@ -55,9 +65,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       server: config.smtpHost,
     });
   } catch (err: any) {
+    let errorMessage = err.message || "Lỗi khi gửi mail SMTP";
+    
+    // Add helpful tips for SMTP sender mismatch errors (common in Gmail/Zoho/Outlook)
+    const lowerError = errorMessage.toLowerCase();
+    if (
+      errorMessage.includes("5.7.1") || 
+      lowerError.includes("sender address rejected") || 
+      lowerError.includes("allowed sender address mismatch") ||
+      lowerError.includes("not owned by user")
+    ) {
+      errorMessage += " (Gợi ý: Một số nhà cung cấp SMTP như Gmail/Zoho/Outlook yêu cầu 'MÃ SENDER EMAIL' phải khớp chính xác với tài khoản 'SMTP USER' đăng nhập).";
+    }
+
     return res.status(500).json({
       success: false,
-      error: err.message || "Lỗi khi gửi mail SMTP",
+      error: errorMessage,
     });
   }
 }
