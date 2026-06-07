@@ -1659,9 +1659,10 @@ export class DataStore {
         responseObj = { error: -1, message: err.message || "Lỗi SMTP Relay" };
       }
     } else {
+      status = 'failed';
       responseObj = {
-        status: "250 OK (Simulated)",
-        message_id: "smtpid-" + Math.floor(Math.random() * 1000000)
+        error: -1,
+        message: "Cổng SMTP Outgoing Server chưa được cấu hình hoặc thông tin không đầy đủ. Vui lòng truy cập 'Cài Đặt Hệ Thống' để thiết lập máy chủ gửi mail thực tế."
       };
     }
 
