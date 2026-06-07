@@ -391,6 +391,11 @@ export class DataStore {
           this.whatsappConfig = whatsapp.value;
           this.saveToLocalStorage(DataStore.KEY_WHATSAPP, this.whatsappConfig);
         }
+        const sepay = configs.find(c => c.key === 'sepay_config');
+        if (sepay) {
+          this.sepayConfig = sepay.value;
+          this.saveToLocalStorage(DataStore.KEY_SEPAY, this.sepayConfig);
+        }
       }
 
       console.log('✅ Supabase cache synchronization complete!');
@@ -1931,6 +1936,12 @@ export class DataStore {
   saveSepayConfig(config: SepayConfig): void {
     this.sepayConfig = { ...config };
     this.saveToLocalStorage(DataStore.KEY_SEPAY, this.sepayConfig);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('system_config').upsert({ key: 'sepay_config', value: config }).then(({ error }) => {
+        if (error) console.error('Error saving SePay config to Supabase:', error);
+      });
+    }
   }
 
   /**
