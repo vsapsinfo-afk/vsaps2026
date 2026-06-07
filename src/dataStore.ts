@@ -206,6 +206,16 @@ export class DataStore {
     this.loadLocalStorage();
     this.initializeSupabase();
     this.setupRealtimeSubscriptions();
+
+    // Re-initialize Supabase data cache when the authentication session changes (e.g. user logs in)
+    if (isSupabaseConfigured()) {
+      supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          console.log(`🔑 Auth event: ${event}. Re-initializing Supabase data cache...`);
+          this.initializeSupabase();
+        }
+      });
+    }
   }
 
   /**
