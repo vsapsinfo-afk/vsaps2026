@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck } from 'lucide-react';
+import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck, Cloud } from 'lucide-react';
 import { store } from '../dataStore';
 import { Attendee, Role } from '../types';
 
@@ -29,6 +29,29 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, checkInFilter]);
+
+  // Monitor network status to allow online/offline actions dynamically
+  React.useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Update list reactively when background sync completes
+  React.useEffect(() => {
+    const handlePendingSyncUpdate = () => {
+      loadAll();
+    };
+    window.addEventListener('pending-sync-updated', handlePendingSyncUpdate);
+    return () => {
+      window.removeEventListener('pending-sync-updated', handlePendingSyncUpdate);
+    };
+  }, []);
   
   // Custom manual delegate insert form
   const [showAddForm, setShowAddForm] = useState(false);
@@ -92,6 +115,8 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [showOfflineListModal, setShowOfflineListModal] = useState(false);
   const [offlineSearchQuery, setOfflineSearchQuery] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
 
   // Interactive label paper thermal printer simulation
   const [autoPrintedAttendee, setAutoPrintedAttendee] = useState<Attendee | null>(null);
@@ -451,6 +476,23 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
   const playSoundSound = (type: 'success' | 'fail') => {
     playSoundEffect(type);
+  };
+
+  const handleSyncOfflineData = async () => {
+    setIsSyncingOffline(true);
+    try {
+      const result = await store.syncPendingAttendees();
+      if (result.success) {
+        alert("Đồng bộ dữ liệu ngoại tuyến lên hệ thống thành công!");
+      } else {
+        alert(`Đồng bộ hoàn tất với ${result.errorCount} lỗi. Vui lòng kiểm tra lại kết nối mạng.`);
+      }
+      loadAll();
+    } catch (err: any) {
+      alert("Có lỗi xảy ra khi đồng bộ: " + (err?.message || err));
+    } finally {
+      setIsSyncingOffline(false);
+    }
   };
 
   // Direct USB / Hardware Scanner Checkin Handler
@@ -4016,7 +4058,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 <WifiOff className="w-5 h-5 text-amber-400" />
                 <div>
                   <h4 className="font-extrabold text-xs tracking-wider uppercase">Cơ sở dữ liệu đại biểu cục bộ (Chế độ Ngoại tuyến)</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Dữ liệu lưu an toàn trên trình duyệt của máy này. Điểm danh cực nhanh không phụ thuộc mạng internet.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Hiển thị các thao tác điểm danh ngoại tuyến chưa được đồng bộ lên máy chủ đám mây.</p>
                 </div>
               </div>
               <button 
@@ -4028,138 +4070,192 @@ Ban Thư ký Hội nghị VSAPS 2026`
             </div>
 
             {/* Sub-Header / Search / Stats */}
-            <div className="p-4 bg-slate-50 border-b border-slate-150 flex flex-wrap justify-between items-center gap-3 shrink-0">
-              <div className="flex items-center gap-4 text-xs font-bold text-slate-650">
-                <span>Tổng bộ đệm: <span className="text-slate-900 font-black">{attendees.length}</span></span>
-                <span className="text-slate-300">|</span>
-                <span>Có mặt cục bộ: <span className="text-emerald-700 font-black">{attendees.filter(a => a.isCheckedIn).length}</span></span>
-                <span className="text-slate-300">|</span>
-                <span>Vắng: <span className="text-slate-500 font-black">{attendees.filter(a => !a.isCheckedIn).length}</span></span>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    let csvContent = 'ID,Danh xưng,Họ và tên,Cơ quan,Số ĐT,Email,Gói Đăng Ký,Phí (VNĐ),Thanh Toán,Check In,Thời gian Check In\n';
-                    attendees.forEach(a => {
-                      csvContent += `"${a.id}","${a.title}","${a.fullName}","${a.organization}","${a.phone}","${a.email}","${a.packageName}",${a.packageFee},"${a.paymentStatus}","${a.isCheckedIn ? 'Đã có mặt' : 'Chưa'}","${a.checkInTime || ''}"\n`;
-                    });
-                    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.setAttribute('href', url);
-                    link.setAttribute('download', `DS_Dai_Bieu_Cuc_Bo_Offline_${new Date().toISOString().split('T')[0]}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="px-3.5 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-indigo-600" />
-                  Xuất Excel (Offline Backup)
-                </button>
-              </div>
-            </div>
-
-            {/* Local search bar */}
-            <div className="p-4 border-b border-slate-100 shrink-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={offlineSearchQuery}
-                  onChange={(e) => setOfflineSearchQuery(e.target.value)}
-                  placeholder="Tìm nhanh theo Họ tên, SĐT, hoặc Mã ID..."
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-teal-500 rounded-xl text-xs font-semibold focus:outline-none placeholder-slate-400 transition-all uppercase"
-                />
-              </div>
-            </div>
-
-            {/* List Table Area */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {(() => {
-                const filtered = attendees.filter(a => 
+            {(() => {
+              const pendingIds = store.getPendingSyncAttendeeIds();
+              const filtered = attendees.filter(a => 
+                pendingIds.includes(a.id) && (
                   a.fullName.toLowerCase().includes(offlineSearchQuery.toLowerCase()) ||
                   a.phone.includes(offlineSearchQuery) ||
                   a.id.toLowerCase().includes(offlineSearchQuery.toLowerCase()) ||
                   a.organization.toLowerCase().includes(offlineSearchQuery.toLowerCase())
-                );
+                )
+              );
+              
+              const unsyncedCount = pendingIds.length;
+              const offlineCheckedCount = attendees.filter(a => pendingIds.includes(a.id) && a.isCheckedIn).length;
+              const offlineAbsentCount = attendees.filter(a => pendingIds.includes(a.id) && !a.isCheckedIn).length;
 
-                if (filtered.length === 0) {
-                  return (
-                    <div className="text-center p-8 text-slate-400 italic text-xs">
-                      Không tìm thấy đại biểu nào khớp với từ khóa tìm kiếm cục bộ...
+              return (
+                <>
+                  <div className="p-4 bg-slate-50 border-b border-slate-150 flex flex-wrap justify-between items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-4 text-xs font-bold text-slate-650">
+                      <span>Chờ đồng bộ: <span className="text-slate-900 font-black">{unsyncedCount}</span></span>
+                      <span className="text-slate-300">|</span>
+                      <span>Có mặt ngoại tuyến: <span className="text-emerald-700 font-black">{offlineCheckedCount}</span></span>
+                      <span className="text-slate-300">|</span>
+                      <span>Chưa điểm danh ngoại tuyến: <span className="text-slate-500 font-black">{offlineAbsentCount}</span></span>
                     </div>
-                  );
-                }
-
-                return (
-                  <div className="border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
-                    <table className="w-full text-xs text-left text-slate-500 border-collapse">
-                      <thead className="bg-slate-50 border-b border-slate-150 text-[9px] uppercase font-mono tracking-wider font-bold text-slate-500">
-                        <tr>
-                          <th className="p-3 pl-4">Mã Số</th>
-                          <th className="p-3">Họ Và Tên</th>
-                          <th className="p-3">Số ĐT / Đơn vị</th>
-                          <th className="p-3">Gói Vé</th>
-                          <th className="p-3 text-center">Check-In Offline</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-150 bg-white">
-                        {filtered.map(att => (
-                          <tr key={att.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-3 pl-4 font-mono font-bold text-slate-900 select-all">{att.id}</td>
-                            <td className="p-3">
-                              <div className="font-extrabold text-slate-800 uppercase">{att.title} {att.fullName}</div>
-                              {att.cmeRequired && (
-                                <span className="text-[8px] bg-red-50 text-red-600 border border-red-100 px-1 py-0.2 rounded font-black mt-1 inline-block uppercase">Cấp CME</span>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <div className="font-mono text-slate-700">{att.phone}</div>
-                              <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={att.organization}>{att.organization}</div>
-                            </td>
-                            <td className="p-3 font-semibold text-slate-650">{att.packageName}</td>
-                            <td className="p-3">
-                              <div className="flex items-center justify-center">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleToggleCheckIn(att.id);
-                                  }}
-                                  className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border cursor-pointer ${
-                                    att.isCheckedIn
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                                  }`}
-                                >
-                                  {att.isCheckedIn ? '✓ ĐÃ CÓ MẶT' : '✗ CHƯA CHECK-IN'}
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    
+                    <div className="flex gap-2">
+                      {filtered.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let csvContent = 'ID,Danh xưng,Họ và tên,Cơ quan,Số ĐT,Email,Gói Đăng Ký,Phí (VNĐ),Thanh Toán,Check In,Thời gian Check In\n';
+                            filtered.forEach(a => {
+                              csvContent += `"${a.id}","${a.title}","${a.fullName}","${a.organization}","${a.phone}","${a.email}","${a.packageName}",${a.packageFee},"${a.paymentStatus}","${a.isCheckedIn ? 'Đã có mặt' : 'Chưa'}","${a.checkInTime || ''}"\n`;
+                            });
+                            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', `DS_Chua_Dong_Bo_Offline_${new Date().toISOString().split('T')[0]}.csv`);
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          className="px-3.5 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-xs transition-all"
+                        >
+                          <FileDown className="w-3.5 h-3.5 text-indigo-600" />
+                          Xuất Excel chưa đồng bộ
+                        </button>
+                      )}
+                    </div>
                   </div>
-                );
-              })()}
-            </div>
 
-            {/* Footer */}
-            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3 shrink-0">
-              <span className="text-[9.5px] font-mono text-slate-400 uppercase tracking-widest">
-                Trình duyệt ngoại tuyến sảnh // Local Storage active
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowOfflineListModal(false)}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer border-none shadow"
-              >
-                Đóng lại
-              </button>
-            </div>
+                  {/* Local search bar */}
+                  <div className="p-4 border-b border-slate-100 shrink-0">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={offlineSearchQuery}
+                        onChange={(e) => setOfflineSearchQuery(e.target.value)}
+                        placeholder="Tìm nhanh đại biểu chưa đồng bộ theo Họ tên, SĐT, hoặc Mã ID..."
+                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-teal-500 rounded-xl text-xs font-semibold focus:outline-none placeholder-slate-400 transition-all uppercase"
+                      />
+                    </div>
+                  </div>
+
+                  {/* List Table Area */}
+                  <div className="flex-1 overflow-y-auto p-4">
+                    {(() => {
+                      if (filtered.length === 0) {
+                        if (unsyncedCount === 0) {
+                          return (
+                            <div className="text-center p-12 text-slate-500 flex flex-col items-center justify-center gap-3">
+                              <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100">
+                                <Check className="w-6 h-6 animate-pulse" />
+                              </div>
+                              <div className="font-extrabold text-sm text-slate-800">Tất cả dữ liệu đã được đồng bộ!</div>
+                              <p className="text-xs text-slate-400 max-w-sm text-center">
+                                Không có thao tác check-in ngoại tuyến nào chưa đồng bộ. Hệ thống của bạn đang khớp hoàn toàn với máy chủ Cloud.
+                              </p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="text-center p-8 text-slate-400 italic text-xs">
+                            Không tìm thấy đại biểu chưa đồng bộ nào khớp với từ khóa tìm kiếm...
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="border border-slate-150 rounded-2xl overflow-hidden shadow-xs">
+                          <table className="w-full text-xs text-left text-slate-500 border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-150 text-[9px] uppercase font-mono tracking-wider font-bold text-slate-500">
+                              <tr>
+                                <th className="p-3 pl-4">Mã Số</th>
+                                <th className="p-3">Họ Và Tên</th>
+                                <th className="p-3">Số ĐT / Đơn vị</th>
+                                <th className="p-3">Gói Vé</th>
+                                <th className="p-3 text-center">Check-In Offline</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-150 bg-white">
+                              {filtered.map(att => (
+                                <tr key={att.id} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="p-3 pl-4 font-mono font-bold text-slate-900 select-all">{att.id}</td>
+                                  <td className="p-3">
+                                    <div className="font-extrabold text-slate-800 uppercase">{att.title} {att.fullName}</div>
+                                    {att.cmeRequired && (
+                                      <span className="text-[8px] bg-red-50 text-red-600 border border-red-100 px-1 py-0.2 rounded font-black mt-1 inline-block uppercase">Cấp CME</span>
+                                    )}
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="font-mono text-slate-700">{att.phone}</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={att.organization}>{att.organization}</div>
+                                  </td>
+                                  <td className="p-3 font-semibold text-slate-650">{att.packageName}</td>
+                                  <td className="p-3">
+                                    <div className="flex items-center justify-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleToggleCheckIn(att.id);
+                                        }}
+                                        className={`px-3 py-1.5 text-[10px] font-black rounded-lg transition-all border cursor-pointer ${
+                                          att.isCheckedIn
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                            : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                        }`}
+                                      >
+                                        {att.isCheckedIn ? '✓ ĐÃ CÓ MẶT' : '✗ CHƯA CHECK-IN'}
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9.5px] font-mono text-slate-400 uppercase tracking-widest">
+                        Trình duyệt ngoại tuyến sảnh // Local Storage active
+                      </span>
+                      {isOnline ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-200">
+                          <Wifi className="w-2.5 h-2.5 text-emerald-600" /> Có Internet
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-bold border border-amber-200">
+                          <WifiOff className="w-2.5 h-2.5 text-amber-600 animate-pulse" /> Không Internet
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {isOnline && unsyncedCount > 0 && (
+                        <button
+                          type="button"
+                          disabled={isSyncingOffline}
+                          onClick={handleSyncOfflineData}
+                          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer border-none shadow flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                        >
+                          <RefreshCcw className={`w-3.5 h-3.5 ${isSyncingOffline ? 'animate-spin' : ''}`} />
+                          {isSyncingOffline ? 'Đang đồng bộ...' : 'Đồng bộ lên Cloud ⚡'}
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setShowOfflineListModal(false)}
+                        className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all cursor-pointer border-none shadow"
+                      >
+                        Đóng lại
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

@@ -201,6 +201,7 @@ export class DataStore {
   private businessConfig: BusinessConfig = DEFAULT_BUSINESS_CONFIG;
   private embedScripts: EmbedScript[] = [];
   private sepayConfig: SepayConfig = DEFAULT_SEPAY_CONFIG;
+  private pendingSyncAttendeeIds: string[] = [];
 
   constructor() {
     this.loadLocalStorage();
@@ -237,6 +238,7 @@ export class DataStore {
     this.supabaseConfig = this.getLocalStorage(DataStore.KEY_SUPABASE, { url: '', anonKey: '', isConnected: false });
     this.notificationLogs = this.getLocalStorage(DataStore.KEY_NOTIFICATION_LOGS, []);
     this.specialtyTracks = this.getLocalStorage(DataStore.KEY_SPECIALTY_TRACKS, INITIAL_TRACKS);
+    this.pendingSyncAttendeeIds = this.getLocalStorage('vsaps_pending_sync_attendees', []);
     const savedConfig = this.getLocalStorage(DataStore.KEY_BUSINESS_CONFIG, DEFAULT_BUSINESS_CONFIG);
     this.businessConfig = {
       ...DEFAULT_BUSINESS_CONFIG,
@@ -344,7 +346,25 @@ export class DataStore {
         this.saveToLocalStorage(DataStore.KEY_SESSIONS, this.sessions);
       }
       if (attendees) {
-        this.attendees = attendees.map(mapDbToAttendee);
+        const dbAttendees = attendees.map(mapDbToAttendee);
+        // Merge dbAttendees with local memory, but preserve local unsynced records
+        this.attendees = dbAttendees.map(dbAtt => {
+          if (this.pendingSyncAttendeeIds.includes(dbAtt.id)) {
+            // Keep local version for unsynced attendees
+            return this.attendees.find(a => a.id === dbAtt.id) || dbAtt;
+          }
+          return dbAtt;
+        });
+        
+        // Also keep any local new attendees that are not in dbAttendees yet
+        this.attendees.forEach(localAtt => {
+          if (this.pendingSyncAttendeeIds.includes(localAtt.id) && !dbAttendees.some(dbAtt => dbAtt.id === localAtt.id)) {
+            if (!this.attendees.some(a => a.id === localAtt.id)) {
+              this.attendees.push(localAtt);
+            }
+          }
+        });
+        
         this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
       }
       if (speakers) {
@@ -528,6 +548,7 @@ export class DataStore {
       this.attendees.push(attendee);
     }
     this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
+    this.addPendingSyncAttendeeId(attendee.id);
 
     // Sync to Supabase in the background
     if (isSupabaseConfigured()) {
@@ -578,7 +599,12 @@ export class DataStore {
             : supabase.from('attendees').upsert(dbRecord);
             
           const { error } = await query;
-          if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
+          if (error) {
+            console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
+          } else {
+            this.removePendingSyncAttendeeId(attendee.id);
+            window.dispatchEvent(new CustomEvent('pending-sync-updated'));
+          }
         } catch (err) {
           console.error('Error during background upload/sync of attendee:', err);
         }
@@ -2018,6 +2044,59 @@ export class DataStore {
     } catch (err: any) {
       return { found: false, error: err?.message || 'Lỗi kết nối SePay' };
     }
+  }
+
+  getPendingSyncAttendeeIds(): string[] {
+    return this.pendingSyncAttendeeIds;
+  }
+
+  addPendingSyncAttendeeId(id: string) {
+    if (!this.pendingSyncAttendeeIds.includes(id)) {
+      this.pendingSyncAttendeeIds.push(id);
+      this.saveToLocalStorage('vsaps_pending_sync_attendees', this.pendingSyncAttendeeIds);
+    }
+  }
+
+  removePendingSyncAttendeeId(id: string) {
+    this.pendingSyncAttendeeIds = this.pendingSyncAttendeeIds.filter(x => x !== id);
+    this.saveToLocalStorage('vsaps_pending_sync_attendees', this.pendingSyncAttendeeIds);
+  }
+
+  async syncPendingAttendees(): Promise<{ success: boolean; errorCount: number }> {
+    if (!isSupabaseConfigured()) return { success: false, errorCount: 0 };
+    
+    let errorCount = 0;
+    const idsToSync = [...this.pendingSyncAttendeeIds];
+    
+    for (const id of idsToSync) {
+      const attendee = this.attendees.find(a => a.id === id);
+      if (!attendee) {
+        this.removePendingSyncAttendeeId(id);
+        continue;
+      }
+      
+      try {
+        const dbRecord = mapAttendeeToDb(attendee);
+        const packageExists = this.packages.some(p => p.id === attendee.packageId);
+        if (!packageExists) {
+          dbRecord.package_id = null;
+        }
+        
+        const { error } = await supabase.from('attendees').upsert(dbRecord);
+        if (!error) {
+          this.removePendingSyncAttendeeId(id);
+        } else {
+          console.error(`Error syncing attendee ${id} during manual sync:`, error);
+          errorCount++;
+        }
+      } catch (err) {
+        console.error(`Error during sync of attendee ${id}:`, err);
+        errorCount++;
+      }
+    }
+    
+    window.dispatchEvent(new CustomEvent('pending-sync-updated'));
+    return { success: errorCount === 0, errorCount };
   }
 }
 
