@@ -1568,12 +1568,12 @@ export class DataStore {
     return log;
   }
 
-  async sendEmail(attendee: Attendee): Promise<SentNotificationLog> {
+  async sendEmail(attendee: Attendee, customSubject?: string, customBody?: string): Promise<SentNotificationLog> {
     const template: NotificationTemplate = this.templates.find(t => t.channel === 'email' && t.type === 'registration_success')
       || { id: 'tmpl-reg-email', name: 'Đăng Ký Đại Biểu Thành Công (Email)', type: 'registration_success', channel: 'email', subject: '🎯 Xác nhận bảo mẫu đăng ký thành công VSAPS 2026', content: 'Xin chào {{title}} {{fullname}}...' };
 
     const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chở Đối Soát' : 'Chưa Thanh Toán';
-    const content = template.content
+    const content = customBody || template.content
       .replace(/\{\{title\}\}/g, attendee.title || '')
       .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
       .replace(/\{\{package\}\}/g, attendee.packageName || '')
@@ -1581,12 +1581,14 @@ export class DataStore {
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, attendee.organization || '');
 
+    const finalSubject = customSubject || (template.subject || "Xác nhận đăng ký VSAPS 2026")
+      .replace(/\{\{title\}\}/g, attendee.title || '')
+      .replace(/\{\{fullname\}\}/g, attendee.fullName || '');
+
     const payload = {
       to: attendee.email,
       from: `${this.emailConfig.senderName} <${this.emailConfig.senderEmail}>`,
-      subject: (template.subject || "Xác nhận đăng ký VSAPS 2026")
-        .replace(/\{\{title\}\}/g, attendee.title || '')
-        .replace(/\{\{fullname\}\}/g, attendee.fullName || ''),
+      subject: finalSubject,
       body: content,
       attachment_qr: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(attendee.qrCodeValue)}`
     };
@@ -1601,16 +1603,16 @@ export class DataStore {
 
     if (isRealSmtp) {
       try {
+        const formattedBody = content.replace(/\n/g, '<br/>');
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
-              <h2 style="color: #1e1b4b; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;">Xác Nhận Đăng Ký Hội Nghị VSAPS 2026</h2>
+              <h2 style="color: #1e1b4b; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;">Hội Nghị VSAPS 2026</h2>
               <p style="color: #4f46e5; font-size: 11px; margin: 5px 0 0 0; font-weight: bold;">Hội Nghị Khoa Học Thẩm Mỹ Quốc Tế Thường Niên</p>
             </div>
             
-            <p style="font-size: 14px; color: #334155;">Kính gửi: <strong>${attendee.title || 'Quý Đại biểu'} ${attendee.fullName}</strong>,</p>
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
-              Ban Tổ kết xác nhận đăng ký thông tin tham dự của bạn. Thông tin chi tiết vé:
+              ${formattedBody}
             </p>
             
             <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
@@ -1636,7 +1638,7 @@ export class DataStore {
             config: this.emailConfig,
             payload: {
               to: attendee.email,
-              subject: `[VSAPS 2026] Xác nhận đăng ký tham gia - Mã: ${attendee.id}`,
+              subject: finalSubject,
               body: emailHtml
             }
           })

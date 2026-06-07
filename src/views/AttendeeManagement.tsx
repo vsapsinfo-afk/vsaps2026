@@ -243,42 +243,24 @@ Ban Thư ký Hội nghị VSAPS 2026`
     setIsSendingNotification(true);
     setNotificationFeedback(null);
 
-    // Simulate server side delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
     try {
-      const logEntry = {
-        id: 'NTF-' + Math.floor(Math.random() * 90000 + 10000),
-        recipient: notifyAttendee.email,
-        type: 'email' as const,
-        templateId: notifyTemplateId,
-        templateName: notifyTemplateId === 'tmpl-confirmation' ? 'Xác Nhận Tham Gia & Lưu Trữ Thẻ Đeo' : 'Thông Báo Hoàn Tất Phí Đăng Ký',
-        sender: 'contact@vsapsevent.org',
-        sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-        status: 'success' as const,
-        payload: {
-          to: notifyAttendee.email,
-          subject: notifySubject,
-          body: notifyBody,
-          attachment_qr: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(notifyAttendee.qrCodeValue)}`
-        },
-        response: {
-          status: "250 OK (Smart-Relay)",
-          message_id: "smtpid-" + Math.floor(Math.random() * 1000000),
-          server: "smtp.company-relay.com"
-        }
-      };
-
-      store.addNotificationLog(logEntry);
+      const log = await store.sendEmail(notifyAttendee, notifySubject, notifyBody);
       
-      setNotificationFeedback({
-        success: true,
-        msg: `Đã gửi thành công email thông báo tới ${notifyAttendee.fullName} (${notifyAttendee.email})!`
-      });
+      if (log.status === 'success') {
+        setNotificationFeedback({
+          success: true,
+          msg: `Đã gửi thành công email thông báo tới ${notifyAttendee.fullName} (${notifyAttendee.email})!`
+        });
+      } else {
+        setNotificationFeedback({
+          success: false,
+          msg: `Máy chủ báo lỗi: ${log.response?.message || log.response?.error || 'Không thể truyền phát qua SMTP.'}`
+        });
+      }
     } catch (err: any) {
       setNotificationFeedback({
         success: false,
-        msg: `Có lỗi xảy ra: ${err?.message || 'Không thể gửi email'}`
+        msg: `Có lỗi xảy ra khi kết nối: ${err?.message || 'Không thể gửi email'}`
       });
     } finally {
       setIsSendingNotification(false);
