@@ -543,17 +543,6 @@ export class DataStore {
             }
           }
 
-          // 3. Upload CME certificate if it's base64 (stored in cmeIdentityNo)
-          if (attendee.cmeIdentityNo && attendee.cmeIdentityNo.startsWith('data:')) {
-            const ext = attendee.cmeIdentityNo.split(';')[0].split('/')[1] || 'png';
-            const path = `certificates/${attendee.id}-${Date.now()}.${ext}`;
-            const publicUrl = await uploadToSupabaseStorage(path, attendee.cmeIdentityNo);
-            if (publicUrl) {
-              updatedAttendee.cmeIdentityNo = publicUrl;
-              changed = true;
-            }
-          }
-
           // Update local memory and storage to reflect clean storage URLs
           if (changed) {
             const idxMemory = this.attendees.findIndex(a => a.id === attendee.id);
@@ -633,17 +622,6 @@ export class DataStore {
           const publicUrl = await uploadToSupabaseStorage(path, attendee.transactionProofUrl);
           if (publicUrl) {
             updatedAttendee.transactionProofUrl = publicUrl;
-            changed = true;
-          }
-        }
-
-        // 3. Upload CME certificate if it's base64 (stored in cmeIdentityNo)
-        if (attendee.cmeIdentityNo && attendee.cmeIdentityNo.startsWith('data:')) {
-          const ext = attendee.cmeIdentityNo.split(';')[0].split('/')[1] || 'png';
-          const path = `certificates/${attendee.id}-${Date.now()}.${ext}`;
-          const publicUrl = await uploadToSupabaseStorage(path, attendee.cmeIdentityNo);
-          if (publicUrl) {
-            updatedAttendee.cmeIdentityNo = publicUrl;
             changed = true;
           }
         }
