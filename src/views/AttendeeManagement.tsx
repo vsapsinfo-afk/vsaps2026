@@ -82,6 +82,9 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   // Custom QR Bank Transfer scanner component for unpaid attendees
   const [unpaidAttendeeForQR, setUnpaidAttendeeForQR] = useState<Attendee | null>(null);
 
+  // State for delete confirmation
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   // States for destination bank configurations
   const [bankId, setBankId] = useState<string>('MB');
   const [accountNo, setAccountNo] = useState<string>('10112026');
@@ -737,10 +740,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
       alert('Tài khoản Cộng tác viên không có quyền xóa hồ sơ đại biểu!');
       return;
     }
-    if (window.confirm('Bạn có chắc muốn xóa đại biểu này khỏi hệ thống?')) {
-      store.deleteAttendee(id);
-      loadAll();
-    }
+    setDeleteConfirmId(id);
   };
 
   const handleNewAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2779,6 +2779,45 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     Xác nhận Đã nộp phí 🟢
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirmId && (() => {
+        const attendeeToDelete = attendees.find(a => a.id === deleteConfirmId);
+        if (!attendeeToDelete) return null;
+        return (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden border border-slate-100 shadow-2xl p-6 flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-slate-900">Xác nhận xóa đại biểu</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Bạn có chắc chắn muốn xóa đại biểu <span className="font-extrabold text-slate-800">{attendeeToDelete.fullName}</span> ({attendeeToDelete.id}) khỏi hệ thống? Hành động này không thể hoàn tác.
+                </p>
+              </div>
+              <div className="flex w-full gap-3 pt-2">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-650 hover:bg-slate-50 transition-colors cursor-pointer bg-white"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={() => {
+                    store.deleteAttendee(deleteConfirmId);
+                    loadAll();
+                    setDeleteConfirmId(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm hover:shadow transition-all cursor-pointer border-none"
+                >
+                  Xác nhận xóa
+                </button>
               </div>
             </div>
           </div>

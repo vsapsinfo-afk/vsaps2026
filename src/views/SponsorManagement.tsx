@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Award, Plus, Coins, Play, FileDown, CheckCircle, Trash, ShoppingBag, ShieldCheck, Mail, Phone, Users, Landmark, FileText, Calendar, Upload, Link, AlertCircle, Edit3, FileCheck, Check, Eye, Download, X } from 'lucide-react';
+import { Award, Plus, Coins, Play, FileDown, CheckCircle, Trash, ShoppingBag, ShieldCheck, Mail, Phone, Users, Landmark, FileText, Calendar, Upload, Link, AlertCircle, AlertTriangle, Edit3, FileCheck, Check, Eye, Download, X } from 'lucide-react';
 import { store } from '../dataStore';
 import { Sponsor, Role } from '../types';
 
@@ -43,6 +43,9 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const [contractSignDate, setContractSignDate] = useState('');
   const [contractValue, setContractValue] = useState('');
   const [contractStatus, setContractStatus] = useState<Sponsor['contractStatus']>('draft');
+  
+  // State for delete confirmation
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [contractFileName, setContractFileName] = useState('');
   const [contractFileUrl, setContractFileUrl] = useState('');
   const [isDraggingContract, setIsDraggingContract] = useState(false);
@@ -360,10 +363,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       alert('Tài khoản Cộng tác viên không có quyền xóa nhà tài trợ!');
       return;
     }
-    if (window.confirm('Bạn có chắc muốn xóa hồ sơ nhà tài trợ này khỏi danh danh?')) {
-      store.deleteSponsor(id);
-      loadAll();
-    }
+    setDeleteConfirmId(id);
   };
 
   // Detailed report file download simulator
@@ -1404,6 +1404,45 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
           </div>
         </div>
       )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirmId && (() => {
+        const sponsorToDelete = sponsors.find(s => s.id === deleteConfirmId);
+        if (!sponsorToDelete) return null;
+        return (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in text-slate-800">
+            <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden border border-slate-100 shadow-2xl p-6 flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-slate-900">Xác nhận xóa nhà tài trợ</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Bạn có chắc chắn muốn xóa nhà tài trợ <span className="font-extrabold text-slate-800">{sponsorToDelete.name}</span> ({sponsorToDelete.id}) khỏi danh sách? Hành động này không thể hoàn tác.
+                </p>
+              </div>
+              <div className="flex w-full gap-3 pt-2">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-655 hover:bg-slate-50 transition-colors cursor-pointer bg-white"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={() => {
+                    store.deleteSponsor(deleteConfirmId);
+                    loadAll();
+                    setDeleteConfirmId(null);
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm hover:shadow transition-all cursor-pointer border-none"
+                >
+                  Xác nhận xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

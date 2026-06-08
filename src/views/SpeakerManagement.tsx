@@ -35,6 +35,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedSpeaker, setSelectedSpeaker] = useState<SpeakerRegistration | null>(null);
   
+  // State for delete confirmation
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  
   // Custom states for tabular layout report
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [sortField, setSortField] = useState<keyof SpeakerRegistration>('fullName');
@@ -239,11 +242,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       alert('Tài khoản Cộng tác viên không có quyền xóa báo cáo viên!');
       return;
     }
-    if (window.confirm('Bạn có chắc chắn muốn xóa hồ sơ báo cáo viên này không?')) {
-      store.deleteSpeaker(id);
-      loadAll();
-      alert('Đã xóa hồ sơ báo cáo viên thành công!');
-    }
+    setDeleteConfirmId(id);
   };
 
   // Save handler (Add/Update)
@@ -1451,6 +1450,46 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           </div>
         </div>
       )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirmId && (() => {
+        const speakerToDelete = speakers.find(s => s.id === deleteConfirmId);
+        if (!speakerToDelete) return null;
+        return (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden border border-slate-100 shadow-2xl p-6 flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-slate-900">Xác nhận xóa báo cáo viên</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Bạn có chắc chắn muốn xóa báo cáo viên <span className="font-extrabold text-slate-800">{speakerToDelete.fullName}</span> ({speakerToDelete.id}) khỏi hệ thống? Đề tài báo cáo khoa học của họ cũng sẽ bị gỡ bỏ. Hành động này không thể hoàn tác.
+                </p>
+              </div>
+              <div className="flex w-full gap-3 pt-2">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-655 hover:bg-slate-50 transition-colors cursor-pointer bg-white"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={() => {
+                    store.deleteSpeaker(deleteConfirmId);
+                    loadAll();
+                    setDeleteConfirmId(null);
+                    alert('Đã xóa hồ sơ báo cáo viên thành công!');
+                  }}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white shadow-sm hover:shadow transition-all cursor-pointer border-none"
+                >
+                  Xác nhận xóa
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
