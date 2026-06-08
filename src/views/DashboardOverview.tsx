@@ -41,6 +41,26 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
   const totalTasksCount = tasks.length;
   const taskProgressPct = totalTasksCount > 0 ? Math.round((tasksDone / totalTasksCount) * 100) : 0;
 
+  // Users role counts
+  const users = store.getUsers();
+  const btcCount = users.filter(u => u.role === 'btc').length;
+  const ctvCount = users.filter(u => u.role === 'ctv').length;
+  const adminCount = users.filter(u => u.role === 'admin').length;
+
+  // Dynamic income breakdown
+  const incomes = finance.filter(f => f.type === 'income');
+  const delegateIncome = incomes.filter(f => f.category === 'Gói đại biểu').reduce((acc, curr) => acc + curr.amount, 0);
+  const sponsorIncome = incomes.filter(f => f.category === 'Nhà tài trợ').reduce((acc, curr) => acc + curr.amount, 0);
+  const delegateIncomePct = totalIncome > 0 ? Math.min(100, Math.max(0, Math.round((delegateIncome / totalIncome) * 100))) : 50;
+  const sponsorIncomePct = 100 - delegateIncomePct;
+
+  // Dynamic expense breakdown
+  const expenses = finance.filter(f => f.type === 'expense');
+  const setupExpense = expenses.filter(f => f.category === 'Khách sạn' || f.category === 'Tiệc').reduce((acc, curr) => acc + curr.amount, 0);
+  const adminExpense = expenses.filter(f => f.category === 'In ấn' || f.category === 'Marketing').reduce((acc, curr) => acc + curr.amount, 0);
+  const setupExpensePct = totalExpense > 0 ? Math.min(100, Math.max(0, Math.round((setupExpense / totalExpense) * 100))) : 50;
+  const adminExpensePct = 100 - setupExpensePct;
+
   // Alerts needing verification
   const pendingDelegatesToVerify = attendees.filter(a => a.paymentStatus === 'pending_verification');
 
@@ -49,6 +69,40 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
   const vipCount = attendees.filter(a => a.packageId === 'pkg-vip').length;
   const onlineCount = attendees.filter(a => a.packageId === 'pkg-online').length;
   const maxVal = Math.max(standardCount, vipCount, onlineCount, 1);
+
+  // Dynamic delegate package share relative to totalAttendees
+  const standardPct = totalAttendees > 0 ? Math.round((standardCount / totalAttendees) * 100) : 0;
+  const vipPct = totalAttendees > 0 ? Math.round((vipCount / totalAttendees) * 100) : 0;
+  const onlinePct = totalAttendees > 0 ? Math.round((onlineCount / totalAttendees) * 100) : 0;
+
+  // Combined and sorted recent registrations
+  const recentRegistrations = [
+    ...attendees.map(a => ({
+      id: a.id,
+      date: a.registrationDate || '',
+      name: `${a.title || 'BS.'} ${a.fullName || ''}`,
+      org: a.organization || '',
+      type: 'Đại Biểu',
+      badgeText: a.paymentStatus === 'paid' ? 'Email & Zalo OK' : 'Chờ Thanh Toán',
+      badgeClass: a.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700',
+    })),
+    ...speakers.map(s => ({
+      id: s.id,
+      date: s.registrationDate || '',
+      name: `${s.title || 'BS.'} ${s.fullName || ''}`,
+      org: s.organization || '',
+      type: 'Báo Cáo Viên',
+      badgeText: s.status === 'approved' ? 'Đã duyệt đề tài' : 'Chờ phê duyệt',
+      badgeClass: s.status === 'approved' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600',
+    }))
+  ]
+  .filter(r => r.date)
+  .sort((a, b) => b.date.localeCompare(a.date))
+  .slice(0, 5);
+
+  const sortedNotificationLogs = [...logs]
+    .sort((a, b) => (b.sentAt || '').localeCompare(a.sentAt || ''))
+    .slice(0, 5);
 
   // Dynamic Period Registration Speeds for Charting
   const getRegByPeriod = (startDay: number, endDay: number, month: number = 5) => {
@@ -213,10 +267,12 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                 <span className="font-mono text-indigo-600">{(totalIncome).toLocaleString()}đ</span>
               </div>
               <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden flex">
-                <div className="bg-indigo-600 h-full hover:opacity-90 transition-all" style={{ width: '82%' }} title="Đại biểu VIP & Standard" />
-                <div className="bg-indigo-400 h-full hover:opacity-90 transition-all" style={{ width: '18%' }} title="Đại biểu Online & Khác" />
+                <div className="bg-indigo-600 h-full hover:opacity-90 transition-all" style={{ width: `${delegateIncomePct}%` }} title="Phí đăng ký đại biểu" />
+                <div className="bg-indigo-400 h-full hover:opacity-90 transition-all" style={{ width: `${sponsorIncomePct}%` }} title="Nhà tài trợ đồng hành" />
               </div>
-              <span className="text-[9px] text-slate-400 block mt-1 leading-snug">Gói VIP & Tài trợ Gold đóng góp chính (82%) | Phí đại biểu Tiêu chuẩn & Gói Online bổ trợ (18%)</span>
+              <span className="text-[9px] text-slate-400 block mt-1 leading-snug">
+                Phí đăng ký đại biểu ({delegateIncomePct}%) | Tài trợ đồng hành ({sponsorIncomePct}%)
+              </span>
             </div>
 
             {/* Visual breakdown for Expenses */}
@@ -226,10 +282,12 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                 <span className="font-mono text-slate-600">{(totalExpense).toLocaleString()}đ</span>
               </div>
               <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden flex">
-                <div className="bg-slate-500 h-full hover:opacity-90 transition-all" style={{ width: '70%' }} title="Chi phí hạ tầng thuê sảnh" />
-                <div className="bg-slate-350 h-full hover:opacity-90 transition-all" style={{ width: '30%' }} title="In hóa đơn, CME, Teabreak" />
+                <div className="bg-slate-500 h-full hover:opacity-90 transition-all" style={{ width: `${setupExpensePct}%` }} title="Hạ tầng & Tiệc Gala" />
+                <div className="bg-slate-355 h-full hover:opacity-90 transition-all" style={{ width: `${adminExpensePct}%` }} title="In ấn, CME & Teabreak" />
               </div>
-              <span className="text-[9px] text-slate-400 block mt-1 leading-snug">Sảnh họp & Đêm Gala (70%) | Teabreak, thẻ đeo, CME (30%)</span>
+              <span className="text-[9px] text-slate-400 block mt-1 leading-snug">
+                Chi phí hạ tầng & Tiệc Gala ({setupExpensePct}%) | In ấn, CME & Teabreak ({adminExpensePct}%)
+              </span>
             </div>
 
             {/* Timeline Growth columns simulation */}
@@ -282,7 +340,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           </div>
 
           <div className="flex-1 p-5 space-y-4 overflow-y-auto max-h-[420px]">
-            {logs.length === 0 ? (
+            {sortedNotificationLogs.length === 0 ? (
               <div className="space-y-4">
                 {/* Fallback illustrative logs for design preservation */}
                 <div className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors opacity-80">
@@ -311,7 +369,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                 </div>
               </div>
             ) : (
-              logs.slice(0, 5).map((log) => (
+              sortedNotificationLogs.map((log) => (
                 <div key={log.id} className="flex items-start gap-3 p-2.5 rounded-xl bg-white border border-slate-100 hover:border-indigo-300 transition-all shadow-xs">
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs ${
                     log.type === 'zalo' ? 'bg-sky-50 text-sky-600' : 'bg-indigo-50 text-indigo-600'
@@ -394,17 +452,17 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
               <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-rose-500" />
                 <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex-1">Ban Tổ Chức (BTC)</span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">2 Account</span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">{btcCount} Account</span>
               </div>
               <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-indigo-500" />
                 <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex-1">Cộng Tác Viên (CTV)</span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">4 Account</span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">{ctvCount} Account</span>
               </div>
               <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-teal-500" />
                 <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex-1">Tổng quản trị (Admin)</span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">1 Account</span>
+                <span className="text-[9px] text-slate-400 font-mono font-bold">{adminCount} Account</span>
               </div>
             </div>
           </div>
@@ -422,11 +480,11 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-              <span className="text-slate-600">Phân khúc: GÓI ĐẠI BIỂU VIP</span>
-              <span className="font-mono text-slate-900 font-black">{vipCount} ({Math.round((vipCount/maxVal)*100) || 0}%)</span>
+              <span className="text-slate-655">Phân khúc: GÓI ĐẠI BIỂU VIP</span>
+              <span className="font-mono text-slate-900 font-black">{vipCount} ({vipPct}%)</span>
             </div>
             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: `${(vipCount/maxVal)*100}%` }} />
+              <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: `${vipPct}%` }} />
             </div>
           </div>
           <span className="text-[9px] text-slate-400 block mt-2 leading-snug">Gói quyền lợi cao cấp tham dự Gala Dinner và sảnh đón VIP.</span>
@@ -435,11 +493,11 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-              <span className="text-slate-600">Phân khúc: GÓI TIÊU CHUẨN</span>
-              <span className="font-mono text-slate-900 font-black">{standardCount} ({Math.round((standardCount/maxVal)*100) || 0}%)</span>
+              <span className="text-slate-655">Phân khúc: GÓI TIÊU CHUẨN</span>
+              <span className="font-mono text-slate-900 font-black">{standardCount} ({standardPct}%)</span>
             </div>
             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div className="bg-indigo-650 h-full rounded-full transition-all" style={{ width: `${(standardCount/maxVal)*100}%` }} />
+              <div className="bg-indigo-650 h-full rounded-full transition-all" style={{ width: `${standardPct}%` }} />
             </div>
           </div>
           <span className="text-[9px] text-slate-400 block mt-2 leading-snug">Tham dự toàn văn hội nghị trực tiếp kèm tài liệu chuyên san.</span>
@@ -448,11 +506,11 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-              <span className="text-slate-600">Phân khúc: GÓI TRỰC TUYẾN (ONLINE)</span>
-              <span className="font-mono text-slate-900 font-black">{onlineCount} ({Math.round((onlineCount/maxVal)*100) || 0}%)</span>
+              <span className="text-slate-655">Phân khúc: GÓI TRỰC TUYẾN (ONLINE)</span>
+              <span className="font-mono text-slate-900 font-black">{onlineCount} ({onlinePct}%)</span>
             </div>
             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div className="bg-sky-500 h-full rounded-full transition-all" style={{ width: `${(onlineCount/maxVal)*100}%` }} />
+              <div className="bg-sky-500 h-full rounded-full transition-all" style={{ width: `${onlinePct}%` }} />
             </div>
           </div>
           <span className="text-[9px] text-slate-400 block mt-2 leading-snug">Truy cập không giới hạn luồng phát sóng, cấp CME số hóa.</span>
@@ -472,45 +530,37 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                 <th className="px-5 py-3">Đối Tượng</th>
                 <th className="px-5 py-3">Đơn Vị Công Tác</th>
                 <th className="px-5 py-3">Hình Thức</th>
-                <th className="px-5 py-3">Phát Tín Mail & Zalo OA</th>
+                <th className="px-5 py-3">Trạng Thái Hệ Thống</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-150 font-medium">
-              {attendees.slice(0, 3).map((att) => (
-                <tr key={att.id} className="hover:bg-slate-50/40 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-slate-400">{att.registrationDate}</td>
-                  <td className="px-5 py-3.5 font-bold text-slate-900">
-                    {att.title} {att.fullName}
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 font-semibold">{att.organization}</td>
-                  <td className="px-5 py-3.5">
-                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700/80 rounded font-bold text-[10px]">Đại Biểu</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[9px]">
-                      <Sparkles className="w-3 h-3 text-emerald-500 shrink-0" />
-                      Email & Zalo OK
-                    </span>
+              {recentRegistrations.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-slate-400 italic">
+                    Chưa có đăng ký nào được ghi nhận trên hệ thống.
                   </td>
                 </tr>
-              ))}
-              {speakers.slice(0, 2).map((spk) => (
-                <tr key={spk.id} className="hover:bg-slate-50/40 transition-colors">
-                  <td className="px-5 py-3.5 font-mono text-slate-400">{spk.registrationDate}</td>
-                  <td className="px-5 py-3.5 font-bold text-slate-900">
-                    {spk.title} {spk.fullName}
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 font-semibold">{spk.organization}</td>
-                  <td className="px-5 py-3.5">
-                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded font-bold text-[10px]">Báo Cáo Viên</span>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-bold text-[9px]">
-                      Abstract Saved
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              ) : (
+                recentRegistrations.map((reg) => (
+                  <tr key={reg.id} className="hover:bg-slate-50/40 transition-colors">
+                    <td className="px-5 py-3.5 font-mono text-slate-400">{reg.date}</td>
+                    <td className="px-5 py-3.5 font-bold text-slate-900">{reg.name}</td>
+                    <td className="px-5 py-3.5 text-slate-600 font-semibold">{reg.org}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${
+                        reg.type === 'Đại Biểu' ? 'bg-indigo-50 text-indigo-700/80' : 'bg-indigo-100 text-indigo-800'
+                      }`}>
+                        {reg.type}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded font-bold text-[9px] ${reg.badgeClass}`}>
+                        {reg.badgeText}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
