@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    { "source": "/manifest.json", "destination": "/api/manifest" },
+    { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/email/send", "destination": "/api/email/send" },
+    { "source": "/api/email/test-connection", "destination": "/api/email/test-connection" },
+    { "source": "/api/zalo/send", "destination": "/api/zalo/send" },
+    { "source": "/api/zalo/verify-token", "destination": "/api/zalo/verify-token" },
+    { "source": "/api/zalo/refresh-token", "destination": "/api/zalo/refresh-token" },
+    { "source": "/api/whatsapp/send", "destination": "/api/whatsapp/send" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}

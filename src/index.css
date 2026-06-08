@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Roboto", "Arial", sans-serif;
+
+  /* ==========================================
+     OFFICIAL VSAPS BRAND COLOR PALETTE
+     ========================================== */
+  --color-vsaps-primary: #0A2540;
+  --color-vsaps-primary-navy: #0A2540;
+  --color-vsaps-primary-blue: #112E51;
+  
+  --color-vsaps-accent: #DB2777;
+  --color-vsaps-pink: #DB2777;
+  --color-vsaps-accent-light: #F43F5E;
+  
+  --color-vsaps-background: #F4F6F9;
+  --color-vsaps-text: #212529;
+  --color-vsaps-muted: #6C757D;
+
+  /* ==========================================
+     INTEGRATING COLORS TO TAILWIND UTILITIES
+     ========================================== */
+  
+  /* Overwrite indigo with primary Navy (#0A2540 / #112E51) to instantly style menus, headers, elements, & buttons */
+  --color-indigo-50: #F4F6F9;
+  --color-indigo-100: #E9ECEF;
+  --color-indigo-150: #DEE2E6;
+  --color-indigo-200: #CED4DA;
+  --color-indigo-300: #DB2777; /* Accent Highlight Pink */
+  --color-indigo-400: #6C757D; /* VSAPS Muted text */
+  --color-indigo-500: #112E51; /* Primary Navy Medium */
+  --color-indigo-600: #0A2540; /* Primary Brand Navy */
+  --color-indigo-650: #DB2777; /* Brand Accent Pink */
+  --color-indigo-700: #112E51;
+  --color-indigo-800: #0D2D4D; /* Activated option/badge background */
+  --color-indigo-900: #071D33; /* Darker navy */
+  --color-indigo-950: #0A2540; /* VSAPS Navy Header & Sidebar */
+
+  /* Map teal to Navy and Gold spectrum for high premium vibe */
+  --color-teal-50: #F4F6F9;
+  --color-teal-100: #E9ECEF;
+  --color-teal-200: #CED4DA;
+  --color-teal-205: #DEE2E6;
+  --color-teal-600: #0A2540;
+  --color-teal-700: #112E51;
+  --color-teal-800: #0A2540;
+  --color-teal-850: #0A2540;
+  --color-teal-900: #0A2540;
+  --color-teal-950: #071321;
+
+  /* Map slate palette to VSAPS Neutral Off-Black (#212529) and Muted Gray (#6C757D) */
+  --color-slate-50: #F4F6F9;  /* Background color */
+  --color-slate-55: #FFFFFF;
+  --color-slate-100: #E9ECEF;
+  --color-slate-150: #DEE2E6; /* Border lines */
+  --color-slate-200: #DEE2E6;
+  --color-slate-250: #CED4DA;
+  --color-slate-300: #CED4DA;
+  --color-slate-350: #DB2777; /* Border highlight pink */
+  --color-slate-400: #6C757D; /* VSAPS Muted Gray */
+  --color-slate-450: #6C757D;
+  --color-slate-500: #6C757D;
+  --color-slate-605: #495057;
+  --color-slate-650: #343A40;
+  --color-slate-700: #212529; /* Text Main color */
+  --color-slate-800: #212529; /* Text Main color */
+  --color-slate-850: #212529;
+  --color-slate-905: #0A2540; /* Bold Deep Navy titles */
+  --color-slate-950: #051321;
+
+  /* Map amber with luxury pink (#DB2777 / #F43F5E) for premium KPI highlights & charts */
+  --color-amber-50: #FFF1F2; /* soft pink background */
+  --color-amber-100: #FFE4E6;
+  --color-amber-200: #FECDD3;
+  --color-amber-300: #F43F5E; /* Accent pink line */
+  --color-amber-400: #DB2777; /* VSAPS Hồng Quyến Rũ / Sang Trọng */
+  --color-amber-500: #EC4899; /* Secondary option Pink */
+  --color-amber-600: #BE185D;
+  --color-amber-700: #9D174D;
+}
+
+/* Base resets & tweaks for smooth VSAPS interface look */
+body {
+  font-family: "Roboto", "Arial", sans-serif;
+  background-color: var(--color-vsaps-background);
+  color: var(--color-vsaps-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   GLOBAL TABLE STYLING & SYNCHRONIZATION FOR BRAND NAVY & PINK
+   ========================================================================== */
+
+/* Structure & Borders */
+table {
+  border-collapse: collapse !important;
+}
+
+/* Table Header Row Styling (Navy is Primary Background) */
+thead, 
+thead tr {
+  background-color: var(--color-vsaps-primary) !important;
+  color: #ffffff !important;
+}
+
+thead th {
+  background-color: var(--color-vsaps-primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-family: inherit;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 3.5px solid var(--color-vsaps-pink) !important; /* Premium Pink Bottom Separation Accent */
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+}
+
+/* Table Header interactive elements (Buttons/Sort indicators) */
+thead th button,
+thead th button *,
+thead th span {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+/* Sorting icons in table header (Teal maps to Pink as well) */
+thead th svg,
+thead th button svg,
+thead th svg *,
+thead th button svg * {
+  color: #F43F5E !important; /* Brilliant Accent Pink */
+  stroke: #F43F5E !important;
+}
+
+/* Alternating rows and soft hover dynamics on table body rows */
+tbody tr {
+  transition: all 0.15s ease-in-out !important;
+}
+
+tbody tr:nth-child(even) {
+  background-color: rgba(10, 37, 64, 0.02) !important; /* extremely subtle off-white Navy tint */
+}
+
+tbody tr:hover {
+  background-color: rgba(219, 39, 119, 0.04) !important; /* elegant soft pink tint on row hover */
+}
+
+tbody td {
+  border-bottom: 1px solid #DEE2E6 !important;
+}
+
