@@ -323,27 +323,29 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       {formCfg?.isOpen !== false && (<>
 
       {/* Header section */}
-      <div
-        className="p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden"
-        style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}
-      >
-        <div className="absolute top-0 right-0 p-3 opacity-15">
-          <HeartHandshake className="w-32 h-32 text-white" />
+      {!formCfg?.hideHeader && (
+        <div
+          className="p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden"
+          style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}
+        >
+          <div className="absolute top-0 right-0 p-3 opacity-15">
+            <HeartHandshake className="w-32 h-32 text-white" />
+          </div>
+
+          {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-12 object-contain mx-auto mb-2 rounded" />}
+
+          <span className="px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider inline-block"
+            style={{ backgroundColor: `${formCfg?.accentColor || '#f59e0b'}20`, color: formCfg?.accentColor || '#f59e0b', border: `1px solid ${formCfg?.accentColor || '#f59e0b'}40` }}>
+            {formCfg?.organizerLabel || 'VSAPS 2026 PARTNER REGISTRATION'}
+          </span>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-white uppercase tracking-tight">
+            {formCfg?.formTitle || 'Đăng Ký Đồng Hành & Tài Trợ Hội Nghị'}
+          </h1>
+          <p className="text-xs md:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: `${formCfg?.accentColor || '#ffffff'}b0` }}>
+            {formCfg?.formDescription || 'Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.'}
+          </p>
         </div>
-
-        {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-12 object-contain mx-auto mb-2 rounded" />}
-
-        <span className="px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider inline-block"
-          style={{ backgroundColor: `${formCfg?.accentColor || '#f59e0b'}20`, color: formCfg?.accentColor || '#f59e0b', border: `1px solid ${formCfg?.accentColor || '#f59e0b'}40` }}>
-          {formCfg?.organizerLabel || 'VSAPS 2026 PARTNER REGISTRATION'}
-        </span>
-        <h1 className="text-2xl md:text-3xl font-extrabold text-white uppercase tracking-tight">
-          {formCfg?.formTitle || 'Đăng Ký Đồng Hành & Tài Trợ Hội Nghị'}
-        </h1>
-        <p className="text-xs md:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: `${formCfg?.accentColor || '#ffffff'}b0` }}>
-          {formCfg?.formDescription || 'Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.'}
-        </p>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

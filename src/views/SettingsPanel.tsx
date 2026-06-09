@@ -2652,6 +2652,38 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     </div>
                   </div>
 
+                  {/* Hide Header toggle */}
+                  <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="text-xs font-black text-slate-800 block">
+                        Ẩn Header của Form
+                      </span>
+                      <span className="text-[10px] text-slate-450 block mt-0.5">
+                        Bật = Ẩn phần header màu phía trên cùng của form public (thích hợp khi nhúng iframe).
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full border ${
+                        (cfg as any).hideHeader
+                          ? 'bg-amber-100 text-amber-700 border-amber-300'
+                          : 'bg-slate-100 text-slate-500 border-slate-200'
+                      }`}>
+                        {(cfg as any).hideHeader ? '● Đã ẩn' : '○ Đang hiển thị'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormCfg({ hideHeader: !(cfg as any).hideHeader })}
+                        className={`relative w-11 h-6 rounded-full transition-colors cursor-pointer border-none ${
+                          (cfg as any).hideHeader ? 'bg-amber-500' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          (cfg as any).hideHeader ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Closed message */}
                   {(cfg as any).isOpen === false && (
                     <div className="space-y-1">

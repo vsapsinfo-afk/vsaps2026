@@ -723,13 +723,14 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
             <>
 
           {/* Header Section */}
-          <div
-            className="text-white p-6 md:p-8 border-b-4 relative"
-            style={{
-              backgroundColor: formCfg?.headerBgColor || '#042f2e',
-              borderBottomColor: formCfg?.accentColor || '#fbbf24',
-            }}
-          >
+          {!formCfg?.hideHeader && (
+            <div
+              className="text-white p-6 md:p-8 border-b-4 relative"
+              style={{
+                backgroundColor: formCfg?.headerBgColor || '#042f2e',
+                borderBottomColor: formCfg?.accentColor || '#fbbf24',
+              }}
+            >
             <div className="absolute right-4 top-4 hidden md:block">
               <span className="text-[9px] font-black px-3 py-1 rounded-full border uppercase tracking-widest font-mono"
                 style={{ color: formCfg?.accentColor || '#fbbf24', backgroundColor: `${formCfg?.accentColor || '#fbbf24'}18`, borderColor: `${formCfg?.accentColor || '#fbbf24'}40` }}>
@@ -754,6 +755,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
               </p>
             </div>
           </div>
+          )}
 
           {/* FormStepper rendered inside the registration portal */}
           <FormStepper currentStep={currentStep} isSubmitted={false} />

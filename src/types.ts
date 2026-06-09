@@ -254,6 +254,8 @@ export interface BilingualLabel {
 export interface PublicFormConfig {
   /** Bật/tắt form này — khi false hiển thị thông báo đóng */
   isOpen: boolean;
+  /** Bật/tắt hiển thị header của form public */
+  hideHeader?: boolean;
   /** Thông báo hiển thị khi form đóng */
   closedMessage?: string;
   /** Tiêu đề chính của form (H1) */

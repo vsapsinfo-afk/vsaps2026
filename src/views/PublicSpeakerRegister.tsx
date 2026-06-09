@@ -234,22 +234,24 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
 
           {formCfg?.isOpen !== false && (<>
 
-          <div
-            className="text-white p-8 border-b-4"
-            style={{ backgroundColor: formCfg?.headerBgColor || '#1e1b4b', borderBottomColor: formCfg?.accentColor || '#818cf8' }}
-          >
-            {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-10 object-contain mb-3 rounded" />}
-            <span className="text-[9px] font-black tracking-widest uppercase block font-mono mb-1"
-              style={{ color: formCfg?.accentColor || '#818cf8' }}>
-              {formCfg?.organizerLabel || 'HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)'}
-            </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              {formCfg?.formTitle || 'ĐĂNG KÝ BÁO CÁO KHOA HỌC'}
-            </h1>
-            <p className="text-white/70 text-sm mt-1">
-              {formCfg?.formDescription || 'Dành cho báo cáo viên quốc tế và nội địa đệ trình tóm tắt đề tài lâm sàng.'}
-            </p>
-          </div>
+          {!formCfg?.hideHeader && (
+            <div
+              className="text-white p-8 border-b-4"
+              style={{ backgroundColor: formCfg?.headerBgColor || '#1e1b4b', borderBottomColor: formCfg?.accentColor || '#818cf8' }}
+            >
+              {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-10 object-contain mb-3 rounded" />}
+              <span className="text-[9px] font-black tracking-widest uppercase block font-mono mb-1"
+                style={{ color: formCfg?.accentColor || '#818cf8' }}>
+                {formCfg?.organizerLabel || 'HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)'}
+              </span>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                {formCfg?.formTitle || 'ĐĂNG KÝ BÁO CÁO KHOA HỌC'}
+              </h1>
+              <p className="text-white/70 text-sm mt-1">
+                {formCfg?.formDescription || 'Dành cho báo cáo viên quốc tế và nội địa đệ trình tóm tắt đề tài lâm sàng.'}
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="p-8 space-y-6">
             {errorMsg && (
