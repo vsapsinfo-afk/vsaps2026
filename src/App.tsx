@@ -147,6 +147,39 @@ function AppContent() {
         } catch (soundErr) {
           console.log('Audio autoplay blocked by browser policy');
         }
+
+        // Trigger native browser push notification if permitted
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then(reg => {
+                reg.showNotification(payload.title, {
+                  body: payload.message,
+                  icon: '/icons/icon-192.png',
+                  badge: '/icons/icon-192.png',
+                  vibrate: [200, 100, 200],
+                  tag: payload.id,
+                  data: {
+                    url: window.location.origin + '/?view=notifications'
+                  }
+                });
+              });
+            } else {
+              new Notification(payload.title, {
+                body: payload.message,
+                icon: '/icons/icon-192.png'
+              });
+            }
+          } catch (notifErr) {
+            console.error('Error showing native notification:', notifErr);
+            try {
+              new Notification(payload.title, {
+                body: payload.message,
+                icon: '/icons/icon-192.png'
+              });
+            } catch (e) {}
+          }
+        }
       },
       (history) => {
         setNotifications(history);
@@ -157,6 +190,23 @@ function AppContent() {
       unsubscribe();
     };
   }, []);
+
+  // Request native browser Notification permission on startup if logged in
+  useEffect(() => {
+    if (user && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission status:', permission);
+        if (permission === 'granted') {
+          try {
+            new Notification('VSAPS 2026', {
+              body: '🔔 Đã kích hoạt thành công thông báo đẩy trên trình duyệt của bạn!',
+              icon: '/icons/icon-192.png'
+            });
+          } catch (e) {}
+        }
+      });
+    }
+  }, [user]);
 
   // Auto-dismiss toast
   useEffect(() => {

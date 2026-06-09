@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2 } from 'lucide-react';
+import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone } from 'lucide-react';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { NotificationTemplate, SentNotificationLog } from '../types';
@@ -29,6 +29,56 @@ export default function NotificationSystem() {
   const [pushMessage, setPushMessage] = useState('Hội nghị chuẩn bị đón đại biểu tại sảnh chính lúc 08h30. Đề nghị các phân ban tập trung.');
   const [pushCategory, setPushCategory] = useState<'info' | 'success' | 'warning' | 'system' | 'badge'>('badge');
   const [isPushing, setIsPushing] = useState(false);
+
+  // Native Push notification permission state
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+
+  const handleRequestPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Trình duyệt của bạn không hỗ trợ Notifications API.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setNotifPermission(permission);
+    if (permission === 'granted') {
+      triggerTestNativeNotification();
+    }
+  };
+
+  const triggerTestNativeNotification = () => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification('VSAPS 2026 - Kiểm thử', {
+              body: '🔔 Hệ thống thông báo đẩy Native đang hoạt động hoàn hảo!',
+              icon: '/icons/icon-192.png',
+              badge: '/icons/icon-192.png',
+              vibrate: [200, 100, 200]
+            });
+          });
+        } else {
+          new Notification('VSAPS 2026 - Kiểm thử', {
+            body: '🔔 Hệ thống thông báo đẩy Native đang hoạt động hoàn hảo!',
+            icon: '/icons/icon-192.png'
+          });
+        }
+      } catch (err) {
+        console.error('Error showing native notification:', err);
+        new Notification('VSAPS 2026 - Kiểm thử', {
+          body: '🔔 Hệ thống thông báo đẩy Native đang hoạt động hoàn hảo!',
+          icon: '/icons/icon-192.png'
+        });
+      }
+    } else {
+      alert('Vui lòng cấp quyền thông báo đẩy để thử nghiệm!');
+    }
+  };
 
   const handleSendRealtimePush = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -346,6 +396,124 @@ export default function NotificationSystem() {
           <div className="pt-4 border-t border-slate-900 flex justify-between items-center text-[9px] text-slate-600 font-mono">
             <span>SOCKET GATEWAY: ACTIVE</span>
             <span>PORT 1120_VSAPS</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Native Browser Push Notification Settings Panel */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <span className="text-xs font-black text-slate-800 uppercase block tracking-wider mb-2">Cấu Hình Thông Báo Đẩy Thiết Bị (Native Device Push)</span>
+          <p className="text-xs text-slate-450 mb-4 leading-relaxed">
+            Hệ thống thông báo đẩy trực tiếp không thông qua OneSignal hoặc dịch vụ bên thứ ba. Sử dụng Web Notifications API kết hợp Service Worker để nhận tin báo khẩn, đại biểu, báo cáo viên và nhà tài trợ đăng ký mới tức thời trên cả Web và Di động (Mobile Chrome/Safari PWA).
+          </p>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-slate-500">Trạng thái quyền trên trình duyệt:</span>
+              {notifPermission === 'granted' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-250">
+                  <Check className="w-3 h-3 text-emerald-600" />
+                  Đã cho phép (Granted)
+                </span>
+              )}
+              {notifPermission === 'denied' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-250">
+                  <BellOff className="w-3 h-3 text-rose-600" />
+                  Bị chặn (Blocked)
+                </span>
+              )}
+              {notifPermission === 'default' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-250">
+                  <Info className="w-3 h-3 text-amber-600" />
+                  Chưa thiết lập (Default)
+                </span>
+              )}
+            </div>
+
+            {notifPermission === 'denied' && (
+              <div className="bg-rose-50/50 p-3 rounded-xl border border-rose-100 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <div className="text-[10px] text-rose-700 leading-normal">
+                  <span className="font-bold block">Thông báo đã bị chặn trên thiết bị của bạn.</span>
+                  <span>Để nhận được thông báo đẩy, vui lòng nhấp vào biểu tượng ổ khóa hoặc cài đặt trang web trên thanh địa chỉ trình duyệt, chọn &ldquo;Cho phép&rdquo; đối với phần Quyền thông báo (Notifications).</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {notifPermission !== 'granted' ? (
+                <button
+                  type="button"
+                  onClick={handleRequestPermission}
+                  className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  Yêu Cầu Quyền Thông Báo
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={triggerTestNativeNotification}
+                    className="px-4 py-2 rounded-lg bg-indigo-650 hover:bg-indigo-755 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    Bắn Thử Native Push
+                  </button>
+                  <span className="text-[10px] text-slate-400 italic">Nhấn để nhận một thông báo đẩy kiểm thử hệ thống.</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Device preview simulating how push notifications appear on Mobile vs Web */}
+        <div className="bg-slate-950 rounded-2xl p-5 border border-slate-800 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-full blur-xl pointer-events-none" />
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-900 pb-2">
+              <span className="text-[9px] font-mono font-black text-indigo-400 tracking-widest uppercase">MÔ PHỎNG NATIVE DEVICE DIỆN MẠO</span>
+              <span className="text-[8px] font-mono text-slate-500">BROWSER & MOBILE PWA</span>
+            </div>
+
+            <div className="space-y-3">
+              {/* Desktop banner simulation */}
+              <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl shadow-md flex items-start gap-2.5 max-w-sm mx-auto">
+                <div className="w-7 h-7 rounded-lg bg-slate-950 flex items-center justify-center shrink-0 border border-slate-800 text-[12px]">
+                  🔔
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-bold text-slate-300">Chrome • localhost:5173</span>
+                    <span className="text-[8px] text-slate-500">Bây giờ</span>
+                  </div>
+                  <h6 className="text-[10px] font-extrabold text-slate-100 truncate">VSAPS 2026: Đại biểu mới đăng ký</h6>
+                  <p className="text-[9px] text-slate-400 truncate mt-0.5">BS. Nguyễn Văn A vừa đăng ký tham dự thành công gói hội viên.</p>
+                </div>
+              </div>
+
+              {/* Mobile banner simulation */}
+              <div className="bg-black/90 border border-neutral-900 p-3 rounded-2xl shadow-xl flex items-center gap-2.5 max-w-xs mx-auto">
+                <div className="w-6 h-6 rounded-full bg-slate-800/80 flex items-center justify-center shrink-0 text-[10px]">
+                  🔔
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[8px] font-extrabold text-neutral-300 uppercase tracking-tight">VSAPS 2026 (PWA Mobile)</span>
+                    <span className="text-[7px] text-neutral-500">1 phút trước</span>
+                  </div>
+                  <h6 className="text-[9px] font-bold text-neutral-100 truncate">Báo cáo viên mới đăng ký đề tài</h6>
+                  <p className="text-[8px] text-neutral-400 truncate">PGS.TS. Lê Văn B vừa đăng ký báo cáo chủ đề Phẫu thuật thẩm mỹ.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-900 flex justify-between items-center text-[9px] text-slate-500 font-mono">
+            <span>DEVICE SIMULATOR LAYER</span>
+            <span>W3C PUSH NOTIFICATIONS</span>
           </div>
         </div>
       </div>
