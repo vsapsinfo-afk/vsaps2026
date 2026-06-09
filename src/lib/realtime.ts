@@ -33,7 +33,7 @@ export function subscribeToNotifications(
     console.error('Error loading notification history:', e);
   }
 
-  // Handle local fallback events
+  // Handle local fallback events (single-tab)
   const handleLocalNotif = (e: Event) => {
     const notif = (e as CustomEvent).detail as RealtimeNotification;
     onNotification(notif);
@@ -46,10 +46,33 @@ export function subscribeToNotifications(
   window.addEventListener('local-notification', handleLocalNotif);
   window.addEventListener('local-clear-notifications', handleLocalClear);
 
+  // Setup BroadcastChannel for cross-tab local communication
+  let bc: BroadcastChannel | null = null;
+  try {
+    bc = new BroadcastChannel('vsaps-notifications-local');
+    bc.onmessage = (event) => {
+      if (event.data && event.data.type === 'clear') {
+        localNotifications = [];
+        localStorage.setItem('vsaps_push_notifications', JSON.stringify([]));
+        if (onHistory) onHistory([]);
+      } else {
+        const notif = event.data as RealtimeNotification;
+        if (!localNotifications.some(n => n.id === notif.id)) {
+          localNotifications = [notif, ...localNotifications].slice(0, 50);
+          localStorage.setItem('vsaps_push_notifications', JSON.stringify(localNotifications));
+        }
+        onNotification(notif);
+      }
+    };
+  } catch (e) {
+    console.error('Error setting up BroadcastChannel in listener:', e);
+  }
+
   if (!isSupabaseConfigured()) {
     return () => {
       window.removeEventListener('local-notification', handleLocalNotif);
       window.removeEventListener('local-clear-notifications', handleLocalClear);
+      if (bc) bc.close();
     };
   }
 
@@ -60,8 +83,10 @@ export function subscribeToNotifications(
     .on('broadcast', { event: 'new-notification' }, (payload) => {
       const notif = payload.payload as RealtimeNotification;
       // Append to history
-      localNotifications = [notif, ...localNotifications].slice(0, 50);
-      localStorage.setItem('vsaps_push_notifications', JSON.stringify(localNotifications));
+      if (!localNotifications.some(n => n.id === notif.id)) {
+        localNotifications = [notif, ...localNotifications].slice(0, 50);
+        localStorage.setItem('vsaps_push_notifications', JSON.stringify(localNotifications));
+      }
       onNotification(notif);
     })
     .on('broadcast', { event: 'clear-notifications' }, () => {
@@ -76,6 +101,7 @@ export function subscribeToNotifications(
   return () => {
     window.removeEventListener('local-notification', handleLocalNotif);
     window.removeEventListener('local-clear-notifications', handleLocalClear);
+    if (bc) bc.close();
     supabase.removeChannel(channel);
   };
 }
@@ -83,7 +109,7 @@ export function subscribeToNotifications(
 /**
  * Gửi thông báo đẩy thời gian thực tới tất cả các máy trạm đang mở
  */
-export async function sendRealtimeNotification(
+export function sendRealtimeNotification(
   title: string,
   message: string,
   category: 'info' | 'success' | 'warning' | 'system' | 'badge' = 'info'
@@ -101,29 +127,63 @@ export async function sendRealtimeNotification(
   localNotifications = [notif, ...localNotifications].slice(0, 50);
   localStorage.setItem('vsaps_push_notifications', JSON.stringify(localNotifications));
 
-  if (!isSupabaseConfigured()) {
-    // Local event dispatch
-    const event = new CustomEvent('local-notification', { detail: notif });
-    window.dispatchEvent(event);
-    return true;
+  // Dispatch via BroadcastChannel for multi-tab local communication
+  try {
+    const bc = new BroadcastChannel('vsaps-notifications-local');
+    bc.postMessage(notif);
+    setTimeout(() => {
+      bc.close();
+    }, 50);
+  } catch (e) {
+    console.error('Error broadcasting via BroadcastChannel:', e);
   }
 
-  try {
+  // Local event dispatch (single-tab)
+  const event = new CustomEvent('local-notification', { detail: notif });
+  window.dispatchEvent(event);
+
+  if (!isSupabaseConfigured()) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise<boolean>((resolve) => {
     const channel = supabase.channel('vsaps-notifications');
-    await channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.send({
+
+    const triggerBroadcast = async () => {
+      try {
+        const res = await channel.send({
           type: 'broadcast',
           event: 'new-notification',
           payload: notif,
         });
+        console.log('Supabase Realtime broadcast sent:', res);
+        resolve(true);
+      } catch (err) {
+        console.error('Error in channel.send:', err);
+        resolve(false);
       }
-    });
-    return true;
-  } catch (error) {
-    console.error('Error broadcasting notification via Supabase:', error);
-    return false;
-  }
+    };
+
+    const isSubscribed = (channel as any).state === 'joined' || (channel as any).status === 'joined';
+
+    if (isSubscribed) {
+      triggerBroadcast();
+    } else {
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await triggerBroadcast();
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('Supabase Realtime subscribe failed:', status);
+          resolve(false);
+        }
+      });
+    }
+
+    // Set a safety timeout of 3.5 seconds
+    setTimeout(() => {
+      resolve(false);
+    }, 3500);
+  });
 }
 
 /**
@@ -133,25 +193,52 @@ export async function clearServerNotifications(): Promise<boolean> {
   localNotifications = [];
   localStorage.setItem('vsaps_push_notifications', JSON.stringify([]));
   
+  // Local event dispatch
+  window.dispatchEvent(new CustomEvent('local-clear-notifications'));
+  
+  // Dispatch via BroadcastChannel for multi-tab
+  try {
+    const bc = new BroadcastChannel('vsaps-notifications-local');
+    bc.postMessage({ type: 'clear' });
+    setTimeout(() => bc.close(), 50);
+  } catch (e) {
+    console.error(e);
+  }
+
   if (!isSupabaseConfigured()) {
-    window.dispatchEvent(new CustomEvent('local-clear-notifications'));
     return true;
   }
 
-  try {
+  return new Promise<boolean>((resolve) => {
     const channel = supabase.channel('vsaps-notifications');
-    await channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
+    const isSubscribed = (channel as any).state === 'joined' || (channel as any).status === 'joined';
+
+    const triggerClear = async () => {
+      try {
         await channel.send({
           type: 'broadcast',
           event: 'clear-notifications',
           payload: {},
         });
+        resolve(true);
+      } catch (err) {
+        console.error('Error clearing via Supabase:', err);
+        resolve(false);
       }
-    });
-    return true;
-  } catch (e) {
-    console.error('Error clearing notifications via Supabase:', e);
-    return false;
-  }
+    };
+
+    if (isSubscribed) {
+      triggerClear();
+    } else {
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await triggerClear();
+        } else {
+          resolve(false);
+        }
+      });
+    }
+
+    setTimeout(() => resolve(false), 3000);
+  });
 }

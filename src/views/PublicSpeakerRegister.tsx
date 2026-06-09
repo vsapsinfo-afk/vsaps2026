@@ -95,7 +95,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       const saved = await store.saveSpeakerAsync(speakerData);
 
       // Broadcast realtime push notification to administrators
-      sendRealtimeNotification(
+      await sendRealtimeNotification(
         'Báo cáo viên Đăng ký bài',
         `Báo cáo viên ${saved.title} ${saved.fullName} (${saved.organization}) vừa nộp bài báo cáo: "${saved.presentationTitle}"`,
         'badge'

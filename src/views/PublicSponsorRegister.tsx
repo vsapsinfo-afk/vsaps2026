@@ -175,7 +175,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       const saved = await store.saveSponsorAsync(sponsorData);
       
       // Broadcast realtime push notification to administrators
-      sendRealtimeNotification(
+      await sendRealtimeNotification(
         'Nhà tài trợ Đăng ký mới',
         `Đơn vị "${saved.name}" vừa đăng ký cam kết tài trợ hạng mức ${saved.tier.toUpperCase()} với số tiền ${(saved.pledgedAmount || 0).toLocaleString('vi-VN')} VND!`,
         'warning'

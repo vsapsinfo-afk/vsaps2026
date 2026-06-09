@@ -448,7 +448,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       const saved = await store.saveAttendeeAsync(attendeeData);
       
       // Broadcast realtime push notification to administrators
-      sendRealtimeNotification(
+      await sendRealtimeNotification(
         'Đại biểu Đăng Ký Mới',
         `Đại biểu ${saved.title} ${saved.fullName} (${saved.organization}) vừa đăng ký thành công gói ${saved.packageName}!`,
         'success'
