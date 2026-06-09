@@ -170,27 +170,27 @@ function AppContent() {
         if (rawConfig) {
           const config = JSON.parse(rawConfig);
           if (config && config.isEnabled && config.appId) {
-            if (!(window as any).OneSignal) {
-              const script = document.createElement('script');
+            let script = document.querySelector('script[src*="OneSignalSDK.page.js"]') as HTMLScriptElement;
+            if (!script) {
+              script = document.createElement('script');
               script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
               script.defer = true;
               document.head.appendChild(script);
-
-              script.onload = () => {
-                const OneSignal = (window as any).OneSignal || [];
-                OneSignal.push(() => {
-                  OneSignal.init({
-                    appId: config.appId,
-                    safari_web_id: config.safariWebId || undefined,
-                    notifyButton: {
-                      enable: true,
-                      size: 'medium',
-                      position: 'bottom-right',
-                    },
-                  });
-                });
-              };
             }
+
+            const windowObj = window as any;
+            windowObj.OneSignalDeferred = windowObj.OneSignalDeferred || [];
+            windowObj.OneSignalDeferred.push(async (OneSignal: any) => {
+              await OneSignal.init({
+                appId: config.appId,
+                safari_web_id: config.safariWebId || undefined,
+                notifyButton: {
+                  enable: true,
+                  size: 'medium',
+                  position: 'bottom-right',
+                },
+              });
+            });
           }
         }
       } catch (e) {
