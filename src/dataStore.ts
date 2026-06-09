@@ -2093,14 +2093,17 @@ export class DataStore {
     return { ...this.oneSignalConfig };
   }
 
-  saveOneSignalConfig(config: OneSignalConfig): void {
+  async saveOneSignalConfig(config: OneSignalConfig): Promise<void> {
     this.oneSignalConfig = { ...config };
     this.saveToLocalStorage(DataStore.KEY_ONESIGNAL, this.oneSignalConfig);
 
     if (isSupabaseConfigured()) {
-      supabase.from('system_config').upsert({ key: 'onesignal_config', value: config }).then(({ error }) => {
+      try {
+        const { error } = await supabase.from('system_config').upsert({ key: 'onesignal_config', value: config });
         if (error) console.error('Error saving OneSignal config to Supabase:', error);
-      });
+      } catch (e) {
+        console.error('Error saving OneSignal config to Supabase:', e);
+      }
     }
     window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'system_config', key: 'onesignal_config' } }));
   }

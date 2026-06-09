@@ -470,7 +470,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
     setIsOnesignalTesting(true);
     setOnesignalTestResult(null);
     try {
-      store.saveOneSignalConfig(onesignalConfig);
+      await store.saveOneSignalConfig(onesignalConfig);
       
       const res = await fetch('/api/onesignal/send-push', {
         method: 'POST',
@@ -480,6 +480,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
         body: JSON.stringify({
           title: 'VSAPS 2026 - Kiểm thử kết nối',
           message: '🔔 OneSignal Push Notification hoạt động hoàn hảo!',
+          isTest: true,
         }),
       });
 
@@ -2646,9 +2647,9 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                 </ul>
               </div>
 
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                store.saveOneSignalConfig(onesignalConfig);
+                await store.saveOneSignalConfig(onesignalConfig);
                 alert('Đã lưu cấu hình OneSignal thành công!');
               }} className="space-y-4">
                 

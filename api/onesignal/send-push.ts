@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { title, message } = req.body;
+    const { title, message, isTest } = req.body;
     if (!title || !message) {
       return res.status(400).json({ success: false, message: 'Missing title or message' });
     }
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    if (!isEnabled) {
+    if (!isEnabled && !isTest) {
       return res.json({ success: true, message: 'OneSignal integration is disabled' });
     }
 
