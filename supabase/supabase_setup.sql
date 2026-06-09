@@ -577,6 +577,12 @@ INSERT INTO public.system_config (key, value) VALUES
   "businessAccountId": "9827364519283",
   "isConfigured": true,
   "testPhone": "0912345678"
+}'::jsonb),
+('onesignal_config', '{
+  "appId": "",
+  "restApiKey": "",
+  "safariWebId": "",
+  "isEnabled": false
 }'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
