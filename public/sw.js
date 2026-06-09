@@ -1,3 +1,6 @@
+// Import OneSignal SDK Service Worker
+importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+
 // VSAPS 2026 - Service Worker
 // Strategy: Cache First for static assets, Network First for API/Supabase
 // Background Sync for offline check-in queue

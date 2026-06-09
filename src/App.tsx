@@ -184,6 +184,7 @@ function AppContent() {
               await OneSignal.init({
                 appId: config.appId,
                 safari_web_id: config.safariWebId || undefined,
+                serviceWorkerPath: 'sw.js',
                 notifyButton: {
                   enable: true,
                   size: 'medium',
