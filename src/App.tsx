@@ -164,12 +164,17 @@ function AppContent() {
 
   // Dynamically load and initialize OneSignal Push Notification if enabled in settings
   useEffect(() => {
+    let isInitialized = false;
+
     const initOneSignal = () => {
       try {
         const rawConfig = localStorage.getItem('vsaps_config_onesignal');
         if (rawConfig) {
           const config = JSON.parse(rawConfig);
           if (config && config.isEnabled && config.appId) {
+            if (isInitialized) return;
+            isInitialized = true;
+
             let script = document.querySelector('script[src*="OneSignalSDK.page.js"]') as HTMLScriptElement;
             if (!script) {
               script = document.createElement('script');
@@ -181,6 +186,10 @@ function AppContent() {
             const windowObj = window as any;
             windowObj.OneSignalDeferred = windowObj.OneSignalDeferred || [];
             windowObj.OneSignalDeferred.push(async (OneSignal: any) => {
+              if (OneSignal.isInitialized && OneSignal.isInitialized()) {
+                console.log('[OneSignal] SDK already initialized, skipping init');
+                return;
+              }
               await OneSignal.init({
                 appId: config.appId,
                 safari_web_id: config.safariWebId || undefined,

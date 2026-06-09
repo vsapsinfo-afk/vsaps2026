@@ -9,6 +9,8 @@
     { "source": "/api/zalo/refresh-token", "destination": "/api/zalo/refresh-token" },
     { "source": "/api/whatsapp/send", "destination": "/api/whatsapp/send" },
     { "source": "/api/onesignal/send-push", "destination": "/api/onesignal/send-push" },
+    { "source": "/sw.js", "destination": "/sw.js" },
+    { "source": "/OneSignalSDKWorker.js", "destination": "/OneSignalSDKWorker.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
