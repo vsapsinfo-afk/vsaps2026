@@ -398,7 +398,7 @@ function AppContent() {
         </main>
 
         {/* Mobile Bottom Navigation Menu */}
-        <div className="md:hidden fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40 bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-xl flex items-center justify-around p-1.5 h-16 select-none">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg flex items-center justify-around pb-[env(safe-area-inset-bottom,0px)] h-[calc(4rem+env(safe-area-inset-bottom,0px))] select-none">
           {[
             { id: 'overview', name: 'Tổng Quan', icon: BarChart2 },
             { id: 'attendees', name: 'Đại Biểu', icon: Users },
