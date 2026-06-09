@@ -210,37 +210,50 @@ function AppContent() {
 
   // Dynamically load and initialize OneSignal Push Notification if enabled in settings
   useEffect(() => {
-    try {
-      const rawConfig = localStorage.getItem('vsaps_config_onesignal');
-      if (rawConfig) {
-        const config = JSON.parse(rawConfig);
-        if (config && config.isEnabled && config.appId) {
-          if (!(window as any).OneSignal) {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-            script.defer = true;
-            document.head.appendChild(script);
+    const initOneSignal = () => {
+      try {
+        const rawConfig = localStorage.getItem('vsaps_config_onesignal');
+        if (rawConfig) {
+          const config = JSON.parse(rawConfig);
+          if (config && config.isEnabled && config.appId) {
+            if (!(window as any).OneSignal) {
+              const script = document.createElement('script');
+              script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+              script.defer = true;
+              document.head.appendChild(script);
 
-            script.onload = () => {
-              const OneSignal = (window as any).OneSignal || [];
-              OneSignal.push(() => {
-                OneSignal.init({
-                  appId: config.appId,
-                  safari_web_id: config.safariWebId || undefined,
-                  notifyButton: {
-                    enable: true,
-                    size: 'medium',
-                    position: 'bottom-right',
-                  },
+              script.onload = () => {
+                const OneSignal = (window as any).OneSignal || [];
+                OneSignal.push(() => {
+                  OneSignal.init({
+                    appId: config.appId,
+                    safari_web_id: config.safariWebId || undefined,
+                    notifyButton: {
+                      enable: true,
+                      size: 'medium',
+                      position: 'bottom-right',
+                    },
+                  });
                 });
-              });
-            };
+              };
+            }
           }
         }
+      } catch (e) {
+        console.error('Error loading OneSignal Web SDK:', e);
       }
-    } catch (e) {
-      console.error('Error loading OneSignal Web SDK:', e);
-    }
+    };
+
+    // Run on mount
+    initOneSignal();
+
+    // Listen to store load changes
+    window.addEventListener('store-loaded', initOneSignal);
+    window.addEventListener('store-updated', initOneSignal);
+    return () => {
+      window.removeEventListener('store-loaded', initOneSignal);
+      window.removeEventListener('store-updated', initOneSignal);
+    };
   }, []);
 
   // Auto-dismiss toast
