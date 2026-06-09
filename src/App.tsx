@@ -71,7 +71,7 @@ function AppContent() {
     }
   }, [user]);
 
-  const [refreshKey, setRefreshKey] = useState(0);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -80,18 +80,7 @@ function AppContent() {
   const [activeToast, setActiveToast] = useState<RealtimeNotification | null>(null);
   const [sseConnected, setSseConnected] = useState<boolean>(true);
 
-  // Listen for changes/loading in store and increment refreshKey to reload current view component
-  useEffect(() => {
-    const handleStoreChange = () => {
-      setRefreshKey(prev => prev + 1);
-    };
-    window.addEventListener('store-loaded', handleStoreChange);
-    window.addEventListener('store-updated', handleStoreChange);
-    return () => {
-      window.removeEventListener('store-loaded', handleStoreChange);
-      window.removeEventListener('store-updated', handleStoreChange);
-    };
-  }, []);
+
 
   // Apply PWA logo & theme-color from config to DOM on startup
   useEffect(() => {
@@ -283,13 +272,11 @@ function AppContent() {
     }
     
     setCurrentView(view);
-    setRefreshKey(prev => prev + 1);
     setSidebarOpen(false);
   };
 
   const handleResetData = () => {
     store.resetToDefaults();
-    setRefreshKey(prev => prev + 1);
   };
 
   const renderActiveView = () => {
@@ -392,7 +379,7 @@ function AppContent() {
 
         {/* Inner page content container layout */}
         <main className="flex-1 overflow-y-auto p-4 pb-28 md:p-6 bg-slate-50/70">
-          <div className="max-w-7xl mx-auto" key={refreshKey}>
+          <div className="max-w-7xl mx-auto" key={currentView}>
             {renderActiveView()}
           </div>
         </main>
