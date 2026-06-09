@@ -573,8 +573,61 @@ export class DataStore {
     }
   }
 
+  private stripBase64FromData(data: any): any {
+    if (!data) return data;
+
+    const stripIfBase64 = (val: any): any => {
+      if (typeof val === 'string' && val.startsWith('data:')) {
+        return `[image_stripped_due_to_local_quota_size_${val.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}...]`;
+      }
+      return val;
+    };
+
+    if (Array.isArray(data)) {
+      return data.map(item => this.stripBase64FromData(item));
+    } else if (typeof data === 'object') {
+      const copy = { ...data };
+      for (const k in copy) {
+        if (Object.prototype.hasOwnProperty.call(copy, k)) {
+          const val = copy[k];
+          if (typeof val === 'string' && val.startsWith('data:')) {
+            copy[k] = stripIfBase64(val);
+          } else if (typeof val === 'object' && val !== null) {
+            copy[k] = this.stripBase64FromData(val);
+          }
+        }
+      }
+      return copy;
+    }
+    return data;
+  }
+
   private saveToLocalStorage(key: string, data: any) {
-    localStorage.setItem(key, JSON.stringify(data));
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e: any) {
+      const isQuotaError = 
+        e.name === 'QuotaExceededError' || 
+        e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || 
+        e.code === 22 || 
+        e.number === 0x80530016 ||
+        (e.message && e.message.toLowerCase().includes('quota')) ||
+        (e.message && e.message.toLowerCase().includes('exceeded'));
+
+      if (isQuotaError) {
+        console.warn(`⚠️ LocalStorage quota exceeded for key "${key}". Cleaning up base64 image data and retrying...`);
+        const cleanedData = this.stripBase64FromData(data);
+        try {
+          localStorage.setItem(key, JSON.stringify(cleanedData));
+          console.log(`✅ Successfully saved cleaned data for key "${key}" after quota cleanup.`);
+        } catch (retryErr) {
+          console.error(`❌ Still exceeded quota even after stripping base64 data for key "${key}":`, retryErr);
+        }
+      } else {
+        console.error(`Error saving to localStorage for key "${key}":`, e);
+        throw e;
+      }
+    }
   }
 
   // ==========================================
