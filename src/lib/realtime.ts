@@ -109,7 +109,7 @@ export function subscribeToNotifications(
 /**
  * Gửi thông báo đẩy thời gian thực tới tất cả các máy trạm đang mở
  */
-export function sendRealtimeNotification(
+export async function sendRealtimeNotification(
   title: string,
   message: string,
   category: 'info' | 'success' | 'warning' | 'system' | 'badge' = 'info'
@@ -142,23 +142,23 @@ export function sendRealtimeNotification(
   const event = new CustomEvent('local-notification', { detail: notif });
   window.dispatchEvent(event);
 
-  // Trigger OneSignal push notification in the background
+  // Trigger OneSignal push notification and await it to prevent browser cancelling the request on component unmount
   try {
-    fetch('/api/onesignal/send-push', {
+    const res = await fetch('/api/onesignal/send-push', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ title, message }),
-    }).then(res => res.json())
-      .then(data => console.log('[OneSignal] background push status:', data))
-      .catch(err => console.error('[OneSignal] background push failed:', err));
+    });
+    const data = await res.json();
+    console.log('[OneSignal] background push status:', data);
   } catch (e) {
     console.error('Error triggering OneSignal push:', e);
   }
 
   if (!isSupabaseConfigured()) {
-    return Promise.resolve(true);
+    return true;
   }
 
   return new Promise<boolean>((resolve) => {
