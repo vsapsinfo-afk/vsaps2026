@@ -407,47 +407,4 @@ async function clearAllCaches() {
   console.log('[SW] All caches cleared');
 }
 
-// ============================================================
-// PUSH NOTIFICATIONS (placeholder for future)
-// ============================================================
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-
-  const data = event.data.json();
-  const title = data.title || 'VSAPS 2026';
-  const options = {
-    body: data.body || 'Bạn có thông báo mới',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
-    vibrate: [100, 50, 100],
-    data: {
-      url: data.url || '/',
-    },
-    actions: data.actions || [],
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-
-  const url = event.notification.data?.url || '/';
-
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Focus existing window if available
-        for (const client of clientList) {
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
-            client.navigate(url);
-            return client.focus();
-          }
-        }
-        // Open new window
-        return self.clients.openWindow(url);
-      })
-  );
-});
+// Push notifications and clicks are handled internally by OneSignal via importScripts at the top of this file.

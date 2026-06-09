@@ -194,6 +194,8 @@ function AppContent() {
                 appId: config.appId,
                 safari_web_id: config.safariWebId || undefined,
                 serviceWorkerPath: 'sw.js',
+                serviceWorkerParam: { scope: '/' },
+                serviceWorkerOverrideForTypical: true,
                 notifyButton: {
                   enable: true,
                   size: 'medium',
