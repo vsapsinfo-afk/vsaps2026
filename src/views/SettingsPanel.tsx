@@ -58,7 +58,7 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal'>('business');
   const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
 
   // Printer config states (saved to localStorage for device-specific setup)
@@ -133,6 +133,11 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   const [sepayConfig, setSepayConfig] = useState(store.getSepayConfig());
   const [isSepayTesting, setIsSepayTesting] = useState(false);
   const [sepayTestResult, setSepayTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // OneSignal config states
+  const [onesignalConfig, setOnesignalConfig] = useState(store.getOneSignalConfig());
+  const [isOnesignalTesting, setIsOnesignalTesting] = useState(false);
+  const [onesignalTestResult, setOnesignalTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [formEmbedTarget, setFormEmbedTarget] = useState<'delegate' | 'speaker' | 'sponsor' | 'analytics' | 'custom'>('delegate');
   const [formEmbedCode, setFormEmbedCode] = useState('');
   const [formEmbedNotes, setFormEmbedNotes] = useState('');
@@ -454,6 +459,49 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
       });
     } finally {
       setZaloTesting(false);
+    }
+  };
+
+  const handleTestOneSignal = async () => {
+    if (!onesignalConfig.appId || !onesignalConfig.restApiKey) {
+      alert('Vui lòng điền đầy đủ OneSignal App ID và REST API Key.');
+      return;
+    }
+    setIsOnesignalTesting(true);
+    setOnesignalTestResult(null);
+    try {
+      store.saveOneSignalConfig(onesignalConfig);
+      
+      const res = await fetch('/api/onesignal/send-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'VSAPS 2026 - Kiểm thử kết nối',
+          message: '🔔 OneSignal Push Notification hoạt động hoàn hảo!',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOnesignalTestResult({
+          success: true,
+          message: `✅ Kết nối thành công! Đã phát push thông báo kiểm thử. ID: ${data.response?.id || 'N/A'}`
+        });
+      } else {
+        setOnesignalTestResult({
+          success: false,
+          message: `❌ Thất bại: ${data.message || 'Lỗi không xác định từ OneSignal API'}`
+        });
+      }
+    } catch (err: any) {
+      setOnesignalTestResult({
+        success: false,
+        message: `❌ Lỗi kết nối: ${err.message}`
+      });
+    } finally {
+      setIsOnesignalTesting(false);
     }
   };
 
@@ -965,6 +1013,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           >
             <span className="shrink-0 text-base">💳</span>
             <span>SePay - Xác nhận CK</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('onesignal')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'onesignal'
+                ? 'bg-indigo-700 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-850 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">🔔</span>
+            <span>OneSignal Push</span>
           </button>
 
           <button
@@ -2555,6 +2615,127 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                   <li>Lưu cấu hình → Deploy ứng dụng → Test bằng tính năng <em>Gửi thử</em> trên SePay</li>
                 </ol>
               </div>
+            </div>
+          )}
+
+          {/* ================= SECTION 9: ONESIGNAL PUSH NOTIFICATIONS ================= */}
+          {activeSubTab === 'onesignal' && (
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6 text-slate-800">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-start">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                    🔔 OneSignal Push Notifications
+                  </h3>
+                  <p className="text-[11px] text-slate-450 mt-0.5">
+                    Tích hợp OneSignal để tự động đẩy thông báo OS-level trực tiếp lên màn hình điện thoại/máy tính của quản trị viên ngay cả khi trình duyệt đã đóng.
+                  </p>
+                </div>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  onesignalConfig.isEnabled && onesignalConfig.appId ? 'bg-emerald-50 text-emerald-750 border border-emerald-200' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {onesignalConfig.isEnabled && onesignalConfig.appId ? '● Đã kích hoạt' : '○ Chưa bật'}
+                </span>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <span className="text-[10px] font-black text-slate-800 uppercase block">Hướng dẫn cài đặt:</span>
+                <ul className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600 leading-relaxed">
+                  <li>Truy cập trang chủ <a href="https://onesignal.com" target="_blank" rel="noreferrer" className="text-indigo-605 hover:underline font-bold">onesignal.com ↗</a> và tạo ứng dụng mới.</li>
+                  <li>Điền <strong>App ID</strong> và <strong>REST API Key</strong> vào các ô tương ứng bên dưới.</li>
+                  <li>Bật tính năng và bấm lưu cấu hình. Quản trị viên truy cập trang web sẽ thấy chuông đăng ký ở góc phải màn hình để nhận tin.</li>
+                </ul>
+              </div>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                store.saveOneSignalConfig(onesignalConfig);
+                alert('Đã lưu cấu hình OneSignal thành công!');
+              }} className="space-y-4">
+                
+                {/* Enable Switch */}
+                <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-150">
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">Bật tích hợp OneSignal Push</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Kích hoạt gửi thông báo qua OneSignal khi có đại biểu, báo cáo viên hoặc nhà tài trợ mới.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOnesignalConfig({ ...onesignalConfig, isEnabled: !onesignalConfig.isEnabled })}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      onesignalConfig.isEnabled ? 'bg-indigo-600' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        onesignalConfig.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">OneSignal App ID *</label>
+                    <input
+                      type="text"
+                      required={onesignalConfig.isEnabled}
+                      value={onesignalConfig.appId}
+                      onChange={(e) => setOnesignalConfig({ ...onesignalConfig, appId: e.target.value })}
+                      placeholder="e.g. 12345678-abcd-1234-abcd-1234567890ab"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">OneSignal REST API Key *</label>
+                    <input
+                      type="password"
+                      required={onesignalConfig.isEnabled}
+                      value={onesignalConfig.restApiKey}
+                      onChange={(e) => setOnesignalConfig({ ...onesignalConfig, restApiKey: e.target.value })}
+                      placeholder="e.g. N2MwYjFmN2It..."
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-xs">
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Safari Web ID (Tùy chọn cho trình duyệt Safari)</label>
+                  <input
+                    type="text"
+                    value={onesignalConfig.safariWebId || ''}
+                    onChange={(e) => setOnesignalConfig({ ...onesignalConfig, safariWebId: e.target.value })}
+                    placeholder="e.g. web.onesignal.auto.123456"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="pt-4 border-t border-slate-150 flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={isOnesignalTesting}
+                    onClick={handleTestOneSignal}
+                    className="px-4 py-2 border border-slate-200 hover:border-slate-350 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold rounded-xl cursor-pointer text-xs transition-all shadow-sm w-full sm:w-auto text-center"
+                  >
+                    {isOnesignalTesting ? '⏳ Đang truyền thử...' : '🔌 Bắn thử Push Notification'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white font-bold rounded-xl cursor-pointer text-xs transition-all shadow w-full sm:w-auto text-center"
+                  >
+                    💾 Lưu cấu hình OneSignal
+                  </button>
+                </div>
+
+                {onesignalTestResult && (
+                  <div className={`p-3 rounded-xl border text-xs leading-normal ${
+                    onesignalTestResult.success ? 'bg-emerald-50 text-emerald-800 border-emerald-250' : 'bg-rose-50 text-rose-800 border-rose-250'
+                  }`}>
+                    {onesignalTestResult.message}
+                  </div>
+                )}
+              </form>
             </div>
           )}
 

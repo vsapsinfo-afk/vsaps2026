@@ -231,6 +231,13 @@ export interface SepayConfig {
   webhookSecret?: string;
 }
 
+export interface OneSignalConfig {
+  appId: string;
+  restApiKey: string;
+  safariWebId?: string;
+  isEnabled: boolean;
+}
+
 export interface SentNotificationLog {
   id: string;
   recipient: string;

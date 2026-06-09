@@ -23,6 +23,7 @@ import {
   WhatsappConfig,
   ConferenceShift,
   VirtualSection,
+  OneSignalConfig,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -163,6 +164,13 @@ const DEFAULT_SEPAY_CONFIG: SepayConfig = {
   webhookSecret: '',
 };
 
+const DEFAULT_ONESIGNAL_CONFIG: OneSignalConfig = {
+  appId: '',
+  restApiKey: '',
+  safariWebId: '',
+  isEnabled: false,
+};
+
 export class DataStore {
   // Local storage keys
   private static KEY_ATTENDEES = 'vsaps_attendees';
@@ -187,6 +195,7 @@ export class DataStore {
   private static KEY_DATES = 'vsaps_schedule_dates';
   private static KEY_SHIFTS = 'vsaps_schedule_shifts';
   private static KEY_SECTIONS = 'vsaps_schedule_sections';
+  private static KEY_ONESIGNAL = 'vsaps_config_onesignal';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -207,6 +216,7 @@ export class DataStore {
   private businessConfig: BusinessConfig = DEFAULT_BUSINESS_CONFIG;
   private embedScripts: EmbedScript[] = [];
   private sepayConfig: SepayConfig = DEFAULT_SEPAY_CONFIG;
+  private oneSignalConfig: OneSignalConfig = DEFAULT_ONESIGNAL_CONFIG;
   private pendingSyncAttendeeIds: string[] = [];
   private rooms: string[] = [];
   private dates: string[] = [];
@@ -274,6 +284,7 @@ export class DataStore {
     this.embedScripts = this.getLocalStorage(DataStore.KEY_EMBED_SCRIPTS, INITIAL_EMBED_SCRIPTS);
     this.sepayConfig = this.getLocalStorage(DataStore.KEY_SEPAY, DEFAULT_SEPAY_CONFIG);
     this.whatsappConfig = this.getLocalStorage(DataStore.KEY_WHATSAPP, DEFAULT_WHATSAPP_CONFIG);
+    this.oneSignalConfig = this.getLocalStorage(DataStore.KEY_ONESIGNAL, DEFAULT_ONESIGNAL_CONFIG);
   }
 
   /**
@@ -441,6 +452,11 @@ export class DataStore {
         if (sepay) {
           this.sepayConfig = sepay.value;
           this.saveToLocalStorage(DataStore.KEY_SEPAY, this.sepayConfig);
+        }
+        const onesignal = configs.find(c => c.key === 'onesignal_config');
+        if (onesignal) {
+          this.oneSignalConfig = onesignal.value;
+          this.saveToLocalStorage(DataStore.KEY_ONESIGNAL, this.oneSignalConfig);
         }
       }
 
@@ -2069,6 +2085,24 @@ export class DataStore {
         if (error) console.error('Error saving SePay config to Supabase:', error);
       });
     }
+  }
+
+  // ==================== ONESIGNAL CONFIG ====================
+
+  getOneSignalConfig(): OneSignalConfig {
+    return { ...this.oneSignalConfig };
+  }
+
+  saveOneSignalConfig(config: OneSignalConfig): void {
+    this.oneSignalConfig = { ...config };
+    this.saveToLocalStorage(DataStore.KEY_ONESIGNAL, this.oneSignalConfig);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('system_config').upsert({ key: 'onesignal_config', value: config }).then(({ error }) => {
+        if (error) console.error('Error saving OneSignal config to Supabase:', error);
+      });
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'system_config', key: 'onesignal_config' } }));
   }
 
   /**

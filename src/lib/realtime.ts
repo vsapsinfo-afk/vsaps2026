@@ -142,6 +142,27 @@ export function sendRealtimeNotification(
   const event = new CustomEvent('local-notification', { detail: notif });
   window.dispatchEvent(event);
 
+  // Trigger OneSignal push notification in the background if enabled
+  try {
+    const rawConfig = localStorage.getItem('vsaps_config_onesignal');
+    if (rawConfig) {
+      const config = JSON.parse(rawConfig);
+      if (config && config.isEnabled && config.appId) {
+        fetch('/api/onesignal/send-push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title, message }),
+        }).then(res => res.json())
+          .then(data => console.log('[OneSignal] background push status:', data))
+          .catch(err => console.error('[OneSignal] background push failed:', err));
+      }
+    }
+  } catch (e) {
+    console.error('Error parsing onesignal config:', e);
+  }
+
   if (!isSupabaseConfigured()) {
     return Promise.resolve(true);
   }

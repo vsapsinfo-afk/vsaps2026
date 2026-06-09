@@ -208,6 +208,41 @@ function AppContent() {
     }
   }, [user]);
 
+  // Dynamically load and initialize OneSignal Push Notification if enabled in settings
+  useEffect(() => {
+    try {
+      const rawConfig = localStorage.getItem('vsaps_config_onesignal');
+      if (rawConfig) {
+        const config = JSON.parse(rawConfig);
+        if (config && config.isEnabled && config.appId) {
+          if (!(window as any).OneSignal) {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+            script.defer = true;
+            document.head.appendChild(script);
+
+            script.onload = () => {
+              const OneSignal = (window as any).OneSignal || [];
+              OneSignal.push(() => {
+                OneSignal.init({
+                  appId: config.appId,
+                  safari_web_id: config.safariWebId || undefined,
+                  notifyButton: {
+                    enable: true,
+                    size: 'medium',
+                    position: 'bottom-right',
+                  },
+                });
+              });
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error loading OneSignal Web SDK:', e);
+    }
+  }, []);
+
   // Auto-dismiss toast
   useEffect(() => {
     if (activeToast) {
