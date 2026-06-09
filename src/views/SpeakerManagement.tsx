@@ -53,7 +53,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   // Speaker manual Form state
   const [showSpeakerModal, setShowSpeakerModal] = useState(false);
   const [editingSpeaker, setEditingSpeaker] = useState<SpeakerRegistration | null>(null);
-  const [speakerTitle, setSpeakerTitle] = useState('BS.CKII.');
+  const [speakerTitle, setSpeakerTitle] = useState('BS');
   const [speakerFullName, setSpeakerFullName] = useState('');
   const [speakerOrganization, setSpeakerOrganization] = useState('');
   const [speakerDepartment, setSpeakerDepartment] = useState('');
@@ -201,7 +201,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   // Open modal in Create mode
   const handleAddSpeaker = () => {
     setEditingSpeaker(null);
-    setSpeakerTitle('BS.CKII.');
+    setSpeakerTitle('BS');
     setSpeakerFullName('');
     setSpeakerOrganization('');
     setSpeakerDepartment('');
@@ -1276,15 +1276,14 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       onChange={(e) => setSpeakerTitle(e.target.value)}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white font-semibold cursor-pointer focus:ring-1 focus:ring-teal-500 focus:outline-none"
                     >
-                      <option value="GS.TS.">GS.TS.</option>
+                      <option value="GS.TS.BS">GS.TS.BS</option>
                       <option value="PGS.TS.">PGS.TS.</option>
-                      <option value="TS.BS.">TS.BS.</option>
-                      <option value="ThS.BS.">ThS.BS.</option>
-                      <option value="BS.CKII.">BS.CKII.</option>
-                      <option value="BS.CKI.">BS.CKI.</option>
-                      <option value="BS.">BS.</option>
-                      <option value="KTV.">KTV.</option>
-                      <option value="ĐD.">ĐD.</option>
+                      <option value="TS.BS">TS.BS</option>
+                      <option value="ThS.BS">ThS.BS</option>
+                      <option value="BSCK1">BSCK1</option>
+                      <option value="BSCK2">BSCK2</option>
+                      <option value="BSNT">BSNT</option>
+                      <option value="BS">BS</option>
                     </select>
                   </div>
                   <div className="md:col-span-2">

@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
-import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck, Cloud } from 'lucide-react';
+import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck, Cloud, X } from 'lucide-react';
 import { store } from '../dataStore';
 import { Attendee, Role } from '../types';
 
@@ -55,7 +55,7 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   
   // Custom manual delegate insert form
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newTitle, setNewTitle] = useState('BS.');
+  const [newTitle, setNewTitle] = useState('BS');
   const [newFullName, setNewFullName] = useState('');
   const [newOrg, setNewOrg] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -73,6 +73,8 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [newPaymentStatus, setNewPaymentStatus] = useState<'paid' | 'unpaid' | 'pending_verification'>('paid');
   const [newAvatarImage, setNewAvatarImage] = useState<string | null>(null);
   const [isNewAvatarUploading, setIsNewAvatarUploading] = useState(false);
+  const [newDoctorProofImage, setNewDoctorProofImage] = useState<string | null>(null);
+  const [isNewDoctorProofUploading, setIsNewDoctorProofUploading] = useState(false);
   
   // Selected viewer for details modal
   const [viewDetailAttendee, setViewDetailAttendee] = useState<Attendee | null>(null);
@@ -756,6 +758,42 @@ Ban Thư ký Hội nghị VSAPS 2026`
     }
   };
 
+  const handleNewDoctorProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsNewDoctorProofUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewDoctorProofImage(reader.result as string);
+        setIsNewDoctorProofUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditDoctorProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && detailEditForm) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDetailEditForm({
+          ...detailEditForm,
+          doctorProofUrl: reader.result as string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveEditDoctorProof = () => {
+    if (detailEditForm) {
+      setDetailEditForm({
+        ...detailEditForm,
+        doctorProofUrl: undefined
+      });
+    }
+  };
+
   const handleAddManualDelegate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFullName || !newOrg || !newPhone || !newEmail || !newAddress) {
@@ -804,6 +842,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
       masterclassRequired: newMasterclassRequired,
       tourRequired: newTourRequired,
       avatarUrl: newAvatarImage || undefined,
+      doctorProofUrl: newDoctorProofImage || undefined,
     };
 
     store.saveAttendee(manualDelegate);
@@ -825,6 +864,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     setNewTourRequired(false);
     setNewPaymentStatus('paid');
     setNewAvatarImage(null);
+    setNewDoctorProofImage(null);
     
     loadAll();
   };
@@ -1695,28 +1735,66 @@ Ban Thư ký Hội nghị VSAPS 2026`
             </div>
             
             <form onSubmit={handleAddManualDelegate} className="flex-1 overflow-y-auto p-6 space-y-4 text-slate-700">
-              {/* Profile Avatar Upload */}
-              <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden bg-slate-200 border-2 border-slate-350 shrink-0 flex items-center justify-center">
-                  {newAvatarImage ? (
-                    <img src={newAvatarImage} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-slate-400 text-[10px] font-bold font-mono">NO IMG</span>
-                  )}
-                  {isNewAvatarUploading && (
-                    <div className="absolute inset-0 bg-slate-950/50 flex items-center justify-center text-[8px] text-white">
-                      Loading...
-                    </div>
-                  )}
+              {/* Profile Photo & Doctor Proof Upload Cards Side-by-Side */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Profile Avatar Upload */}
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-slate-200 border-2 border-slate-350 shrink-0 flex items-center justify-center">
+                    {newAvatarImage ? (
+                      <img src={newAvatarImage} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-slate-400 text-[10px] font-bold font-mono">NO IMG</span>
+                    )}
+                    {isNewAvatarUploading && (
+                      <div className="absolute inset-0 bg-slate-950/50 flex items-center justify-center text-[8px] text-white">
+                        Loading...
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase leading-tight">Ảnh đại biểu (Ảnh thẻ/Hồ sơ)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleNewAvatarUpload}
+                      className="block w-full text-xs text-slate-500 file:mr-2 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Hình ảnh đại biểu (Ảnh thẻ/Hồ sơ)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleNewAvatarUpload}
-                    className="block w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
-                  />
+
+                {/* Doctor Proof Upload */}
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-200 border-2 border-slate-350 shrink-0 flex items-center justify-center">
+                    {newDoctorProofImage ? (
+                      <div className="relative w-full h-full">
+                        <img src={newDoctorProofImage} alt="Minh chứng Bác sĩ" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setNewDoctorProofImage(null)}
+                          className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-700 shadow border-none cursor-pointer flex items-center justify-center"
+                          title="Xóa ảnh"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-[9px] font-bold font-mono text-center uppercase leading-tight p-1">No Proof</span>
+                    )}
+                    {isNewDoctorProofUploading && (
+                      <div className="absolute inset-0 bg-slate-950/50 flex items-center justify-center text-[8px] text-white">
+                        Loading...
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase leading-tight">Ảnh minh chứng Bác sĩ (Chứng chỉ)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleNewDoctorProofUpload}
+                      className="block w-full text-xs text-slate-500 file:mr-2 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1729,11 +1807,14 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     onChange={(e) => setNewTitle(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none cursor-pointer"
                   >
-                    <option value="GS.TS.">GS.TS.</option>
+                    <option value="GS.TS.BS">GS.TS.BS</option>
                     <option value="PGS.TS.">PGS.TS.</option>
-                    <option value="TS.">TS.</option>
-                    <option value="ThS.">ThS.</option>
-                    <option value="BS.">BS.</option>
+                    <option value="TS.BS">TS.BS</option>
+                    <option value="ThS.BS">ThS.BS</option>
+                    <option value="BSCK1">BSCK1</option>
+                    <option value="BSCK2">BSCK2</option>
+                    <option value="BSNT">BSNT</option>
+                    <option value="BS">BS</option>
                     <option value="Đại biểu">Đại biểu</option>
                   </select>
                 </div>
@@ -2228,6 +2309,24 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           </a>
                         </div>
                       )}
+
+                      {/* Doctor proof credentials image rendering */}
+                      {viewDetailAttendee.doctorProofUrl && (
+                        <div className="pt-3 border-t border-slate-100 space-y-2">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">ẢNH MINH CHỨNG BÁC SĨ:</span>
+                          <div className="relative max-w-sm rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 group hover:shadow transition-shadow">
+                            <img 
+                              src={viewDetailAttendee.doctorProofUrl} 
+                              alt="Minh chứng Bác sĩ" 
+                              className="max-h-48 w-full object-contain cursor-zoom-in"
+                              onClick={() => window.open(viewDetailAttendee.doctorProofUrl, '_blank')}
+                            />
+                            <div className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[9px] font-bold px-2 py-0.5 rounded backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                              Click để xem ảnh lớn 🔍
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* ACTIVE EDIT FORM (Only for ADMIN/OPERATOR, role isn't 'ctv') */
@@ -2257,7 +2356,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                             onChange={(e) => setDetailEditForm({ ...detailEditForm, title: e.target.value })}
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-905 font-semibold focus:outline-none focus:border-indigo-500"
                           >
-                            {['BS.', 'TS.BS.', 'PGS.TS.', 'GS.TS.', 'BSCKI.', 'BSCKII.', 'ThS.', 'CN.', 'DS.', 'KTV.'].map(t => (
+                            {['GS.TS.BS', 'PGS.TS.', 'TS.BS', 'ThS.BS', 'BSCK1', 'BSCK2', 'BSNT', 'BS', 'Đại biểu'].map(t => (
                               <option key={t} value={t}>{t}</option>
                             ))}
                           </select>
@@ -2438,7 +2537,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                             <label htmlFor="detail-edit-masterclass" className="text-[11px] font-bold text-slate-700 select-none cursor-pointer">Masterclass</label>
                           </div>
 
-                          <div className="flex items-center gap-1.5 leading-none">
+                           <div className="flex items-center gap-1.5 leading-none">
                             <input
                               type="checkbox"
                               id="detail-edit-tour"
@@ -2447,6 +2546,39 @@ Ban Thư ký Hội nghị VSAPS 2026`
                               className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
                             />
                             <label htmlFor="detail-edit-tour" className="text-[11px] font-bold text-slate-700 select-none cursor-pointer">Tour du lịch</label>
+                          </div>
+                        </div>
+
+                        {/* Doctor Proof Upload in Edit Mode */}
+                        <div className="sm:col-span-2 border-t border-slate-100 pt-3">
+                          <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Ảnh minh chứng là Bác sĩ</label>
+                          <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            {detailEditForm.doctorProofUrl ? (
+                              <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-300 shrink-0 group flex items-center justify-center">
+                                <img src={detailEditForm.doctorProofUrl} alt="Doctor Proof" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveEditDoctorProof}
+                                  className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-700 shadow border-none cursor-pointer flex items-center justify-center"
+                                  title="Xóa ảnh"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center font-extrabold text-slate-400 text-[9px] shadow-inner shrink-0 text-center uppercase leading-tight p-1">
+                                Chưa có
+                              </div>
+                            )}
+                            <div className="space-y-1 flex-1">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleEditDoctorProofUpload}
+                                className="block w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                              />
+                              <p className="text-[9px] text-slate-400">Chọn ảnh minh chứng là Bác sĩ để cập nhật.</p>
+                            </div>
                           </div>
                         </div>
 

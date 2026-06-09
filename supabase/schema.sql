@@ -110,6 +110,7 @@ CREATE TABLE public.attendees (
     registration_period TEXT,
     province TEXT,
     avatar_url TEXT,
+    doctor_proof_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

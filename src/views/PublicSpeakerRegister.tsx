@@ -317,13 +317,14 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     onChange={(e) => setTitle(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none"
                   >
-                    <option value="GS.TS.">GS.TS. (Giáo sư Tiến sĩ)</option>
+                    <option value="GS.TS.BS">GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)</option>
                     <option value="PGS.TS.">PGS.TS. (Phó Giáo sư Tiến sĩ)</option>
-                    <option value="TS.BS.">TS.BS. (Tiến sĩ Bác sĩ)</option>
-                    <option value="ThS.BS.">ThS.BS. (Thạc sĩ Bác sĩ)</option>
-                    <option value="BSCKII.">BSCKII. (Bác sĩ Chuyên khoa II)</option>
-                    <option value="BSCKI.">BSCKI. (Bác sĩ Chuyên khoa I)</option>
-                    <option value="BS.">BS. (Bác sĩ chuyên khoa)</option>
+                    <option value="TS.BS">TS.BS (Tiến sĩ Bác sĩ)</option>
+                    <option value="ThS.BS">ThS.BS (Thạc sĩ Bác sĩ)</option>
+                    <option value="BSCK1">BSCK1 (Bác sĩ Chuyên khoa I)</option>
+                    <option value="BSCK2">BSCK2 (Bác sĩ Chuyên khoa II)</option>
+                    <option value="BSNT">BSNT (Bác sĩ Nội trú)</option>
+                    <option value="BS">BS (Bác sĩ)</option>
                     <option value="Professor">Professor (International)</option>
                     <option value="Dr.">Dr. (International)</option>
                   </select>

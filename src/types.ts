@@ -46,6 +46,7 @@ export interface Attendee {
   registrationPeriod?: 'pre_10_11' | 'post_10_11';
   province?: string;
   avatarUrl?: string;
+  doctorProofUrl?: string;
 }
 
 export interface SpeakerRegistration {
@@ -73,6 +74,25 @@ export interface SpecialtyTrack {
   id: string;
   name: string;
   description?: string;
+}
+
+export interface ConferenceShift {
+  id: string;
+  name: string;
+  startTime: string; // HH:MM
+  endTime: string;   // HH:MM
+}
+
+export interface VirtualSection {
+  id: string;
+  date: string;
+  roomName: string;
+  trackName: string;
+  buoiId: string;
+  startTime: string; // HH:MM
+  endTime: string;   // HH:MM
+  description?: string;
+  buoi?: 'sang' | 'chieu';
 }
 
 export interface ConferenceSession {

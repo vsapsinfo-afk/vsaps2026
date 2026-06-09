@@ -21,6 +21,8 @@ import {
   EmbedScript,
   SepayConfig,
   WhatsappConfig,
+  ConferenceShift,
+  VirtualSection,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -181,6 +183,10 @@ export class DataStore {
   private static KEY_EMBED_SCRIPTS = 'vsaps_embed_scripts';
   private static KEY_SEPAY = 'vsaps_config_sepay';
   private static KEY_WHATSAPP = 'vsaps_config_whatsapp';
+  private static KEY_ROOMS = 'vsaps_schedule_rooms';
+  private static KEY_DATES = 'vsaps_schedule_dates';
+  private static KEY_SHIFTS = 'vsaps_schedule_shifts';
+  private static KEY_SECTIONS = 'vsaps_schedule_sections';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -202,6 +208,10 @@ export class DataStore {
   private embedScripts: EmbedScript[] = [];
   private sepayConfig: SepayConfig = DEFAULT_SEPAY_CONFIG;
   private pendingSyncAttendeeIds: string[] = [];
+  private rooms: string[] = [];
+  private dates: string[] = [];
+  private shifts: ConferenceShift[] = [];
+  private virtualSections: VirtualSection[] = [];
 
   constructor() {
     this.loadLocalStorage();
@@ -253,6 +263,14 @@ export class DataStore {
       this.businessConfig.appUrl = 'https://vsaps2026.vercel.app';
       this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, this.businessConfig);
     }
+
+    this.rooms = this.getLocalStorage(DataStore.KEY_ROOMS, ['Hội trường 1', 'Hội trường 2', 'Hội trường 3', 'Hội trường 4']);
+    this.dates = this.getLocalStorage(DataStore.KEY_DATES, ['2026-12-11', '2026-12-12']);
+    this.shifts = this.getLocalStorage(DataStore.KEY_SHIFTS, [
+      { id: 'sang', name: 'Buổi Sáng', startTime: '08:00', endTime: '12:00' },
+      { id: 'chieu', name: 'Buổi Chiều', startTime: '13:00', endTime: '18:00' }
+    ]);
+    this.virtualSections = this.getLocalStorage(DataStore.KEY_SECTIONS, []);
     this.embedScripts = this.getLocalStorage(DataStore.KEY_EMBED_SCRIPTS, INITIAL_EMBED_SCRIPTS);
     this.sepayConfig = this.getLocalStorage(DataStore.KEY_SEPAY, DEFAULT_SEPAY_CONFIG);
     this.whatsappConfig = this.getLocalStorage(DataStore.KEY_WHATSAPP, DEFAULT_WHATSAPP_CONFIG);
@@ -292,6 +310,10 @@ export class DataStore {
         { data: logs },
         { data: scripts },
         { data: configs },
+        { data: dbRooms },
+        { data: dbDates },
+        { data: dbShifts },
+        { data: dbSections },
       ] = await Promise.all([
         supabase.from('packages').select('*'),
         supabase.from('specialty_tracks').select('*'),
@@ -307,6 +329,10 @@ export class DataStore {
         supabase.from('notification_logs').select('*'),
         supabase.from('embed_scripts').select('*'),
         supabase.from('system_config').select('*'),
+        Promise.resolve(supabase.from('rooms').select('*')).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from('schedule_dates').select('*')).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from('shifts').select('*')).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from('virtual_sections').select('*')).catch(() => ({ data: null })),
       ]);
 
       if (pkgs) {
@@ -416,6 +442,23 @@ export class DataStore {
           this.sepayConfig = sepay.value;
           this.saveToLocalStorage(DataStore.KEY_SEPAY, this.sepayConfig);
         }
+      }
+
+      if (dbRooms && dbRooms.length > 0) {
+        this.rooms = dbRooms.map(mapDbToRoom);
+        this.saveToLocalStorage(DataStore.KEY_ROOMS, this.rooms);
+      }
+      if (dbDates && dbDates.length > 0) {
+        this.dates = dbDates.map(mapDbToScheduleDate);
+        this.saveToLocalStorage(DataStore.KEY_DATES, this.dates);
+      }
+      if (dbShifts && dbShifts.length > 0) {
+        this.shifts = dbShifts.map(mapDbToShift);
+        this.saveToLocalStorage(DataStore.KEY_SHIFTS, this.shifts);
+      }
+      if (dbSections && dbSections.length > 0) {
+        this.virtualSections = dbSections.map(mapDbToVirtualSection);
+        this.saveToLocalStorage(DataStore.KEY_SECTIONS, this.virtualSections);
       }
 
       console.log('✅ Supabase cache synchronization complete!');
@@ -2098,7 +2141,185 @@ export class DataStore {
     window.dispatchEvent(new CustomEvent('pending-sync-updated'));
     return { success: errorCount === 0, errorCount };
   }
+
+  // ==================== ROOMS & DATES & SHIFTS CRUD ====================
+
+  getRooms(): string[] {
+    return this.rooms;
+  }
+
+  saveRooms(rooms: string[]): void {
+    this.rooms = rooms;
+    this.saveToLocalStorage(DataStore.KEY_ROOMS, this.rooms);
+    if (isSupabaseConfigured()) {
+      rooms.forEach(r => {
+        supabase.from('rooms').upsert(mapRoomToDb(r)).then(({ error }) => {
+          if (error) console.error('Error syncing room to Supabase:', error);
+        });
+      });
+    }
+  }
+
+  deleteRoomFromDb(roomName: string): void {
+    if (isSupabaseConfigured()) {
+      supabase.from('rooms').delete().eq('name', roomName).then(({ error }) => {
+        if (error) console.error('Error deleting room from Supabase:', error);
+      });
+    }
+  }
+
+  getDates(): string[] {
+    return this.dates;
+  }
+
+  saveDates(dates: string[]): void {
+    this.dates = dates;
+    this.saveToLocalStorage(DataStore.KEY_DATES, this.dates);
+    if (isSupabaseConfigured()) {
+      dates.forEach(d => {
+        supabase.from('schedule_dates').upsert(mapScheduleDateToDb(d)).then(({ error }) => {
+          if (error) console.error('Error syncing date to Supabase:', error);
+        });
+      });
+    }
+  }
+
+  deleteDateFromDb(dateVal: string): void {
+    if (isSupabaseConfigured()) {
+      supabase.from('schedule_dates').delete().eq('date_val', dateVal).then(({ error }) => {
+        if (error) console.error('Error deleting date from Supabase:', error);
+      });
+    }
+  }
+
+  getShifts(): ConferenceShift[] {
+    return this.shifts;
+  }
+
+  saveShift(shift: ConferenceShift): void {
+    const idx = this.shifts.findIndex(s => s.id === shift.id);
+    if (idx >= 0) {
+      this.shifts[idx] = shift;
+    } else {
+      this.shifts.push(shift);
+    }
+    this.saveToLocalStorage(DataStore.KEY_SHIFTS, this.shifts);
+    if (isSupabaseConfigured()) {
+      supabase.from('shifts').upsert(mapShiftToDb(shift)).then(({ error }) => {
+        if (error) console.error('Error syncing shift to Supabase:', error);
+      });
+    }
+  }
+
+  deleteShift(id: string): void {
+    this.shifts = this.shifts.filter(s => s.id !== id);
+    this.saveToLocalStorage(DataStore.KEY_SHIFTS, this.shifts);
+    if (isSupabaseConfigured()) {
+      supabase.from('shifts').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Error deleting shift from Supabase:', error);
+      });
+    }
+  }
+
+  getVirtualSections(): VirtualSection[] {
+    return this.virtualSections;
+  }
+
+  saveVirtualSection(sec: VirtualSection): void {
+    const idx = this.virtualSections.findIndex(s => s.id === sec.id);
+    if (idx >= 0) {
+      this.virtualSections[idx] = sec;
+    } else {
+      this.virtualSections.push(sec);
+    }
+    this.saveToLocalStorage(DataStore.KEY_SECTIONS, this.virtualSections);
+    if (isSupabaseConfigured()) {
+      supabase.from('virtual_sections').upsert(mapVirtualSectionToDb(sec)).then(({ error }) => {
+        if (error) console.error('Error syncing virtual section to Supabase:', error);
+      });
+    }
+  }
+
+  deleteVirtualSection(id: string): void {
+    this.virtualSections = this.virtualSections.filter(s => s.id !== id);
+    this.saveToLocalStorage(DataStore.KEY_SECTIONS, this.virtualSections);
+    if (isSupabaseConfigured()) {
+      supabase.from('virtual_sections').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Error deleting virtual section from Supabase:', error);
+      });
+    }
+  }
 }
 
 export const store = new DataStore();
 export default store;
+
+// ==========================================
+// SCHEDULING SYNC MAPPERS
+// ==========================================
+
+interface DbRoom {
+  name: string;
+}
+
+interface DbScheduleDate {
+  date_val: string;
+}
+
+interface DbShift {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+}
+
+interface DbVirtualSection {
+  id: string;
+  date: string;
+  room_name: string;
+  track_name: string;
+  buoi_id: string;
+  start_time: string;
+  end_time: string;
+  description: string | null;
+}
+
+const mapDbToRoom = (row: any): string => row.name;
+const mapRoomToDb = (roomName: string): DbRoom => ({ name: roomName });
+
+const mapDbToScheduleDate = (row: any): string => row.date_val;
+const mapScheduleDateToDb = (dVal: string): DbScheduleDate => ({ date_val: dVal });
+
+const mapDbToShift = (row: any): ConferenceShift => ({
+  id: row.id,
+  name: row.name,
+  startTime: row.start_time,
+  endTime: row.end_time
+});
+const mapShiftToDb = (sh: ConferenceShift): DbShift => ({
+  id: sh.id,
+  name: sh.name,
+  start_time: sh.startTime,
+  end_time: sh.endTime
+});
+
+const mapDbToVirtualSection = (row: any): VirtualSection => ({
+  id: row.id,
+  date: row.date,
+  roomName: row.room_name,
+  trackName: row.track_name,
+  buoiId: row.buoi_id,
+  startTime: row.start_time,
+  endTime: row.end_time,
+  description: row.description || undefined
+});
+const mapVirtualSectionToDb = (sec: VirtualSection): DbVirtualSection => ({
+  id: sec.id,
+  date: sec.date,
+  room_name: sec.roomName,
+  track_name: sec.trackName,
+  buoi_id: sec.buoiId || sec.buoi || 'sang',
+  start_time: sec.startTime,
+  end_time: sec.endTime,
+  description: sec.description || null
+});
