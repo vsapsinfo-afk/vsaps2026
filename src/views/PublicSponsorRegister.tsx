@@ -17,60 +17,150 @@ interface PublicSponsorRegisterProps {
 
 const SPONSOR_TIERS = [
   {
-    id: 'platinum',
-    name: 'Platinum Partner (Kim Cương)',
-    fee: 500000000,
+    id: 'diamond',
+    name: 'Kim Cương',
+    nameEn: 'Diamond Partner',
+    fee: 600000000,
+    color: '#6366f1',
     benefits: [
-      'Sở hữu 2 Gian hàng triển lãm Gold Zone vị trí trung tâm sảnh chính',
-      'In logo kích thước lớn nhất trên Backdrop chính và tài liệu kỷ yếu',
-      'Phát video quảng cáo doanh nghiệp 3 phút tại phiên Khai mạc hội nghị',
-      'Giao bài phát biểu tham luận học thuật 15 phút tại phiên Plenary',
-      'Cấp 10 Thẻ đại biểu VIP tham dự Gala Dinner và toàn bộ phiên khoa học',
-      'Vinh danh đặc biệt và trao kỷ niệm chương tri ân tại phiên Khai mạc'
+      'Tặng 50 vé tham dự Gala',
+      'Tặng 3 vé tham dự tiệc Chào mừng',
+      'Giá sử dụng phòng Hand-on training (2h): 2 suất',
+      'Đại biểu đăng ký qua nhà tài trợ: Giảm 25%',
+      'Gian hàng theo tiêu chuẩn: Độc quyền',
+      'Logo trên backdrop và các ấn phẩm: Cỡ size 6',
+      'Nêu tên cảm ơn trong suốt chương trình: Có',
+      'Banner trên web hội: 3 tháng',
+      'Standee trước cửa hội trường: 2 cái',
+      'Đăng bài viết về sản phẩm trên Web, page hội: 5 bài',
+      'Giấy cảm ơn và quà lưu niệm: Có'
+    ]
+  },
+  {
+    id: 'platinum',
+    name: 'Bạch Kim',
+    nameEn: 'Platinum Partner',
+    fee: 400000000,
+    color: '#8b5cf6',
+    benefits: [
+      'Tặng 40 vé tham dự Gala',
+      'Tặng 2 vé tham dự tiệc Chào mừng',
+      'Giá sử dụng phòng Hand-on training (2h): 1 suất',
+      'Đại biểu đăng ký qua nhà tài trợ: Giảm 20%',
+      'Gian hàng theo tiêu chuẩn: Đặc biệt 1',
+      'Logo trên backdrop và các ấn phẩm: Cỡ size 5',
+      'Nêu tên cảm ơn trong suốt chương trình: Có',
+      'Banner trên web hội: 2 tháng',
+      'Standee trước cửa hội trường: 1 cái',
+      'Đăng bài viết về sản phẩm trên Web, page hội: 3 bài',
+      'Giấy cảm ơn và quà lưu niệm: Có'
     ]
   },
   {
     id: 'gold',
-    name: 'Gold Partner (Vàng)',
-    fee: 250000000,
+    name: 'Vàng',
+    nameEn: 'Gold Partner',
+    fee: 300000000,
+    color: '#f59e0b',
     benefits: [
-      'Sở hữu 1 Gian hàng triển lãm tiêu chuẩn vị trí đắc địa',
-      'In logo nổi bật trên Website, Backdrop sảnh phụ & kỷ yếu chính thức',
-      'Trình chiếu logo quảng bá chéo tại các phiên chuyên đề',
-      'Cấp 5 Thẻ đại biểu Standard tham gia toàn bộ chương trình',
-      'Trao kỷ niệm chương tri ân danh dự từ Ban tổ chức'
+      'Tặng 30 vé tham dự Gala',
+      'Tặng 1 vé tham dự tiệc Chào mừng',
+      'Giá sử dụng phòng Hand-on training (2h): 1 suất',
+      'Đại biểu đăng ký qua nhà tài trợ: Giảm 15%',
+      'Gian hàng theo tiêu chuẩn: Đặc biệt 2',
+      'Logo trên backdrop và các ấn phẩm: Cỡ size 4',
+      'Nêu tên cảm ơn trong suốt chương trình: Có',
+      'Banner trên web hội: 1 tháng',
+      'Standee trước cửa hội trường: Không',
+      'Đăng bài viết về sản phẩm trên Web, page hội: 2 bài',
+      'Giấy cảm ơn và quà lưu niệm: Có'
     ]
   },
   {
     id: 'silver',
-    name: 'Silver Partner (Bạc)',
-    fee: 120000000,
+    name: 'Bạc',
+    nameEn: 'Silver Partner',
+    fee: 200000000,
+    color: '#94a3b8',
     benefits: [
-      'Sở hữu quyền đặt 02 Rollup quảng cáo tại phòng chuyên đề phụ',
-      'In logo tiêu chuẩn trên Kỷ yếu điện tử & Website hội nghị',
-      'Cấp 2 Thẻ đại biểu Standard tham gia phiên khoa học',
-      'Trao giấy chứng nhận tài trợ chính thức từ VSAPS'
+      'Tặng 20 vé tham dự Gala',
+      'Không có vé tham dự tiệc Chào mừng',
+      'Giá sử dụng phòng Hand-on training (2h): Ưu đãi 50%',
+      'Đại biểu đăng ký qua nhà tài trợ: Giảm 10%',
+      'Gian hàng theo tiêu chuẩn: Ưu tiên 1',
+      'Logo trên backdrop và các ấn phẩm: Cỡ size 3',
+      'Nêu tên cảm ơn trong suốt chương trình: Có',
+      'Banner trên web hội: Không',
+      'Standee trước cửa hội trường: Không',
+      'Đăng bài viết về sản phẩm trên Web, page hội: 1 bài',
+      'Giấy cảm ơn và quà lưu niệm: Có'
     ]
   },
   {
     id: 'bronze',
-    name: 'Bronze Partner (Đồng)',
-    fee: 60000000,
+    name: 'Đồng',
+    nameEn: 'Bronze Partner',
+    fee: 100000000,
+    color: '#d97706',
     benefits: [
-      'In logo kích thước nhỏ tại chân trang tài liệu kỷ yếu',
-      'Cấp 1 Thẻ đại biểu Standard tham dự hội nghị',
-      'Trao giấy chứng nhận tài trợ danh dự từ Ban tổ chức'
+      'Tặng 10 vé tham dự Gala',
+      'Không có vé tham dự tiệc Chào mừng',
+      'Giá sử dụng phòng Hand-on training (2h): Ưu đãi 40%',
+      'Đại biểu đăng ký qua nhà tài trợ: Giảm 5%',
+      'Gian hàng theo tiêu chuẩn: Ưu tiên 2',
+      'Logo trên backdrop và các ấn phẩm: Cỡ size 2',
+      'Nêu tên cảm ơn trong suốt chương trình: Có',
+      'Banner trên web hội: Không',
+      'Standee trước cửa hội trường: Không',
+      'Đăng bài viết về sản phẩm trên Web, page hội: 1 bài',
+      'Giấy cảm ơn và quà lưu niệm: Có'
     ]
   },
   {
-    id: 'co_sponsor',
-    name: 'Co-Sponsor (Đại sứ Đồng hành)',
-    fee: 30000000,
+    id: 'standard',
+    name: 'Tiêu Chuẩn',
+    nameEn: 'Standard Partner',
+    fee: 50000000,
+    color: '#64748b',
     benefits: [
-      'Vinh danh logo chung cùng các đại sứ đồng hành trên Website',
-      'Gửi tặng ấn phẩm kỷ yếu lưu niệm chính thức sau hội nghị'
+      'Không có vé tham dự Gala',
+      'Không có vé tham dự tiệc Chào mừng',
+      'Giá sử dụng phòng Hand-on training (2h): Ưu đãi 30%',
+      'Không có ưu đãi đăng ký đại biểu',
+      'Gian hàng theo tiêu chuẩn: Cơ bản',
+      'Logo trên backdrop và các ấn phẩm: Cỡ size 1',
+      'Nêu tên cảm ơn trong suốt chương trình: Có',
+      'Banner trên web hội: Không',
+      'Standee trước cửa hội trường: Không',
+      'Không có bài viết trên Web, page hội',
+      'Giấy cảm ơn và quà lưu niệm: Có'
     ]
   }
+];
+
+/* ── Benefits comparison table data ─────────────────────────────── */
+const BENEFITS_TABLE = [
+  { label: 'Phí tài trợ', values: ['600 triệu', '400 triệu', '300 triệu', '200 triệu', '100 triệu', '50 triệu'], isBold: true },
+  { label: 'Tặng vé tham dự Gala', values: ['50', '40', '30', '20', '10', '-'] },
+  { label: 'Tặng vé tham dự tiệc Chào mừng', values: ['3', '2', '1', '-', '-', '-'] },
+  { label: 'Giá sử dụng phòng Hand-on training (2h): $3,000', values: ['2 suất', '1 suất', '1 suất', 'Ưu đãi 50%', 'Ưu đãi 40%', 'Ưu đãi 30%'] },
+  { label: 'Đại biểu đăng ký qua nhà tài trợ', values: ['Giảm 25%', 'Giảm 20%', 'Giảm 15%', 'Giảm 10%', 'Giảm 5%', '-'] },
+  { label: 'Gian hàng theo tiêu chuẩn', values: ['Độc quyền', 'Đặc biệt 1', 'Đặc biệt 2', 'Ưu tiên 1', 'Ưu tiên 2', 'Cơ bản'] },
+  { label: 'Logo trên backdrop và các ấn phẩm', values: ['Cỡ size 6', 'Cỡ size 5', 'Cỡ size 4', 'Cỡ size 3', 'Cỡ size 2', 'Cỡ size 1'] },
+  { label: 'Nêu tên cảm ơn trong suốt chương trình', values: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'] },
+  { label: 'Banner trên web hội', values: ['3 tháng', '2 tháng', '1 tháng', 'Không', 'Không', 'Không'] },
+  { label: 'Standee trước cửa hội trường', values: ['2 cái', '1 cái', 'Không', 'Không', 'Không', 'Không'] },
+  { label: 'Đăng bài viết về sản phẩm trên Web, page hội', values: ['5 bài', '3 bài', '2 bài', '1 bài', '1 bài', 'Không'] },
+  { label: 'Giấy cảm ơn và quà lưu niệm', values: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'] },
+];
+
+const TIER_HEADERS = [
+  { name: 'Kim cương', color: '#6366f1' },
+  { name: 'Bạch kim', color: '#8b5cf6' },
+  { name: 'Vàng', color: '#f59e0b' },
+  { name: 'Bạc', color: '#94a3b8' },
+  { name: 'Đồng', color: '#d97706' },
+  { name: 'Tiêu chuẩn', color: '#64748b' },
 ];
 
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
@@ -79,7 +169,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const L = useFormLabel(formCfg);
   // Form States
   const [name, setName] = useState('');
-  const [tier, setTier] = useState<'platinum' | 'gold' | 'silver' | 'bronze' | 'co_sponsor'>('gold');
+  const [tier, setTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard'>('gold');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -308,7 +398,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 font-sans text-slate-800">
+    <div className="max-w-6xl mx-auto px-4 py-8 font-sans text-slate-800">
 
       {/* CLOSED FORM SCREEN */}
       {formCfg?.isOpen === false && (
@@ -346,6 +436,63 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
           </p>
         </div>
       )}
+
+      {/* ═══════ BENEFITS COMPARISON TABLE ═══════ */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+        {/* Table Header */}
+        <div className="bg-gradient-to-r from-[#2c3e6b] to-[#3b5998] px-6 py-4 text-center">
+          <h2 className="text-white font-extrabold text-lg md:text-xl tracking-wide uppercase" style={{ fontStyle: 'italic' }}>
+            Phí và quyền lợi nhà tài trợ
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px] md:text-xs border-collapse min-w-[700px]">
+            {/* Column Headers */}
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-[28%] border-r border-slate-100">
+                  Quyền lợi nhà tài trợ
+                </th>
+                {TIER_HEADERS.map((h, i) => (
+                  <th key={i} className="py-3 px-2 text-center font-extrabold uppercase tracking-wide text-[10px] border-r border-slate-100 last:border-r-0" style={{ color: h.color }}>
+                    {h.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {BENEFITS_TABLE.map((row, rowIdx) => (
+                <tr key={rowIdx} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
+                  <td className={`py-2.5 px-4 text-slate-700 border-r border-slate-100 leading-snug ${row.isBold ? 'font-extrabold text-slate-900' : 'font-semibold'}`}>
+                    {row.label}
+                  </td>
+                  {row.values.map((val, colIdx) => {
+                    const isEmpty = val === '-' || val === 'Không';
+                    return (
+                      <td key={colIdx} className={`py-2.5 px-2 text-center border-r border-slate-100 last:border-r-0 ${
+                        row.isBold ? 'font-extrabold text-slate-900' : isEmpty ? 'text-slate-300 font-medium' : 'font-semibold text-slate-700'
+                      }`}>
+                        {val}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-center">
+          <p className="text-[10px] text-slate-400 font-semibold tracking-wide">
+            HỘI NGHỊ KHOA HỌC THƯỜNG NIÊN LẦN THỨ 10 CỦA HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS) — TP. HỒ CHÍ MINH 2026
+          </p>
+          <p className="text-[9px] text-slate-350 mt-0.5">
+            Website: vsaps.vn &nbsp;—&nbsp; Email: vsapsevents@gmail.com &nbsp;—&nbsp; Hotline: +84964551151
+          </p>
+        </div>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -480,12 +627,12 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 {L.section('tierSelect', '2. Lựa Chọn Phân Khúc Đồng Hành', '2. Sponsorship Package Selection')}
               </h3>
 
-              <div className="col-span-1 space-y-2.5">
+              <div className="col-span-1 space-y-2">
                 {SPONSOR_TIERS.map((t) => (
                   <label 
                     key={t.id}
-                    className={`p-3.5 border rounded-2xl flex items-start gap-3 cursor-pointer hover:bg-slate-55 transition-all select-none relative ${
-                      tier === t.id ? 'border-indigo-600 bg-indigo-50/30' : 'border-slate-200 bg-white'
+                    className={`p-3 border rounded-2xl flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all select-none relative ${
+                      tier === t.id ? 'border-indigo-600 bg-indigo-50/30 shadow-sm' : 'border-slate-200 bg-white'
                     }`}
                   >
                     <input
@@ -493,16 +640,19 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                       name="sponsorTier"
                       checked={tier === t.id}
                       onChange={() => setTier(t.id as any)}
-                      className="mt-1 text-indigo-600 focus:ring-indigo-55"
+                      className="mt-0.5 text-indigo-600 focus:ring-indigo-55 shrink-0"
                     />
-                    <div className="space-y-0.5">
-                      <p className="font-extrabold text-slate-900 text-[12.5px]">
-                        {L.t(t.name, t.id === 'platinum' ? 'Platinum Partner' : t.id === 'gold' ? 'Gold Partner' : t.id === 'silver' ? 'Silver Partner' : t.id === 'bronze' ? 'Bronze Partner' : 'Co-Sponsor')}
-                      </p>
-                      <p className="text-xs font-black font-mono text-indigo-700">{(t.fee).toLocaleString()}đ</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                        <p className="font-extrabold text-slate-900 text-[12px] truncate">
+                          {L.t(t.name, t.nameEn)}
+                        </p>
+                      </div>
+                      <p className="text-[11px] font-black font-mono text-indigo-700 mt-0.5 ml-4">{(t.fee).toLocaleString()}đ</p>
                     </div>
                     {tier === t.id && (
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold">
+                      <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                         ✓
                       </span>
                     )}

@@ -19,7 +19,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
 
   // Form fields for adding a new sponsor
   const [name, setName] = useState('');
-  const [tier, setTier] = useState<'platinum' | 'gold' | 'silver' | 'bronze' | 'co_sponsor'>('gold');
+  const [tier, setTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard' | 'co_sponsor'>('gold');
   const [pledgedAmount, setPledgedAmount] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -56,7 +56,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   // States for editing sponsor details
   const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
   const [editName, setEditName] = useState('');
-  const [editTier, setEditTier] = useState<'platinum' | 'gold' | 'silver' | 'bronze' | 'co_sponsor'>('gold');
+  const [editTier, setEditTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard' | 'co_sponsor'>('gold');
   const [editPledgedAmount, setEditPledgedAmount] = useState('');
   const [editContactPerson, setEditContactPerson] = useState('');
   const [editContactEmail, setEditContactEmail] = useState('');
@@ -460,11 +460,16 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                 {/* Sponsor level header */}
                 <div className="flex items-center justify-between">
                   <span className={`px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-widest ${
-                    sponsor.tier === 'platinum' ? 'bg-indigo-55 text-indigo-700' :
-                    sponsor.tier === 'gold' ? 'bg-amber-50 text-amber-700' :
+                    sponsor.tier === 'diamond' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                    sponsor.tier === 'platinum' ? 'bg-purple-50 text-purple-750 border border-purple-200' :
+                    sponsor.tier === 'gold' ? 'bg-amber-50 text-amber-705 border border-amber-200' :
+                    sponsor.tier === 'silver' ? 'bg-slate-50 text-slate-600 border border-slate-200' :
+                    sponsor.tier === 'bronze' ? 'bg-orange-50 text-orange-700 border border-orange-205' :
+                    sponsor.tier === 'standard' ? 'bg-zinc-50 text-zinc-600 border border-zinc-200' :
+                    sponsor.tier === 'co_sponsor' ? 'bg-emerald-50 text-emerald-705 border border-emerald-200' :
                     'bg-slate-100 text-slate-650'
                   }`}>
-                    {sponsor.tier} Partner
+                    {sponsor.tier === 'co_sponsor' ? 'Co-Sponsor' : `${sponsor.tier} Partner`}
                   </span>
                   
                   <span className="text-[10px] text-slate-400 font-mono font-bold">{sponsor.id}</span>
@@ -777,12 +782,14 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                   <select
                     value={tier}
                     onChange={(e: any) => setTier(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700"
                   >
-                    <option value="platinum">Platinum Sponsor</option>
-                    <option value="gold">Gold Sponsor</option>
-                    <option value="silver">Silver Sponsor</option>
-                    <option value="bronze">Bronze Sponsor</option>
+                    <option value="diamond">Diamond Sponsor (600tr)</option>
+                    <option value="platinum">Platinum Sponsor (400tr)</option>
+                    <option value="gold">Gold Sponsor (300tr)</option>
+                    <option value="silver">Silver Sponsor (200tr)</option>
+                    <option value="bronze">Bronze Sponsor (100tr)</option>
+                    <option value="standard">Standard Sponsor (50tr)</option>
                     <option value="co_sponsor">Co-Sponsor</option>
                   </select>
                 </div>
@@ -1045,12 +1052,14 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                   <select
                     value={editTier}
                     onChange={(e: any) => setEditTier(e.target.value)}
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700"
                   >
-                    <option value="platinum">Platinum Sponsor</option>
-                    <option value="gold">Gold Sponsor</option>
-                    <option value="silver">Silver Sponsor</option>
-                    <option value="bronze">Bronze Sponsor</option>
+                    <option value="diamond">Diamond Sponsor (600tr)</option>
+                    <option value="platinum">Platinum Sponsor (400tr)</option>
+                    <option value="gold">Gold Sponsor (300tr)</option>
+                    <option value="silver">Silver Sponsor (200tr)</option>
+                    <option value="bronze">Bronze Sponsor (100tr)</option>
+                    <option value="standard">Standard Sponsor (50tr)</option>
                     <option value="co_sponsor">Co-Sponsor</option>
                   </select>
                 </div>

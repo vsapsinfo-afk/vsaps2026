@@ -111,7 +111,7 @@ export interface ConferenceSession {
 export interface Sponsor {
   id: string;
   name: string;
-  tier: 'platinum' | 'gold' | 'silver' | 'bronze' | 'co_sponsor';
+  tier: 'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard' | 'co_sponsor';
   logoUrl?: string; // or base64
   pledgedAmount: number;
   paidAmount: number;
