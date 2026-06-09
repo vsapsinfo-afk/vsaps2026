@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone } from 'lucide-react';
+import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette } from 'lucide-react';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { NotificationTemplate, SentNotificationLog } from '../types';
@@ -17,6 +17,148 @@ export default function NotificationSystem() {
   // Form edit fields
   const [subject, setSubject] = useState(templates[0]?.subject || '');
   const [content, setContent] = useState(templates[0]?.content || '');
+
+  // Rich Text Editor & Preview States
+  const [editorMode, setEditorMode] = useState<'visual' | 'code'>('visual');
+  const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
+  const editorRef = React.useRef<HTMLDivElement>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const lastLoadedTemplateId = React.useRef<string | null>(null);
+
+  // Sync content when selected template changes
+  React.useEffect(() => {
+    if (selectedTemplate) {
+      if (lastLoadedTemplateId.current !== selectedTemplate.id) {
+        setContent(selectedTemplate.content);
+        setSubject(selectedTemplate.subject || '');
+        lastLoadedTemplateId.current = selectedTemplate.id;
+        setEditTab('edit'); // Reset to edit tab
+        if (editorRef.current && selectedTemplate.channel === 'email' && editorMode === 'visual') {
+          editorRef.current.innerHTML = selectedTemplate.content;
+        }
+      }
+    }
+  }, [selectedTemplate]);
+
+  // Sync contenteditable content when switching to visual mode
+  React.useEffect(() => {
+    if (editorMode === 'visual' && editorRef.current && selectedTemplate?.channel === 'email') {
+      editorRef.current.innerHTML = content;
+    }
+  }, [editorMode]);
+
+  const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
+    setContent(e.currentTarget.innerHTML);
+  };
+
+  const handleFormat = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      setContent(editorRef.current.innerHTML);
+      editorRef.current.focus();
+    }
+  };
+
+  const insertPlaceholder = (ph: string) => {
+    const textToInsert = `{{${ph}}}`;
+    if (selectedTemplate?.channel === 'email' && editorMode === 'visual') {
+      // visual mode: insert at cursor in contenteditable
+      editorRef.current?.focus();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(textToInsert);
+        range.insertNode(textNode);
+        
+        // Move cursor after the inserted text
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        // Fallback: append at the end
+        if (editorRef.current) {
+          editorRef.current.innerHTML += textToInsert;
+        }
+      }
+      if (editorRef.current) {
+        setContent(editorRef.current.innerHTML);
+      }
+    } else {
+      // code mode / other channels: insert at cursor in textarea
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const val = textarea.value;
+        const newVal = val.substring(0, start) + textToInsert + val.substring(end);
+        setContent(newVal);
+        setTimeout(() => {
+          textarea.focus();
+          textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
+        }, 10);
+      } else {
+        // Fallback
+        setContent(prev => prev + textToInsert);
+      }
+    }
+  };
+
+  const getPreviewHtml = () => {
+    const mockAttendee = {
+      id: 'ATT-2026',
+      title: 'PGS.TS.BS.',
+      fullName: 'Nguyễn Xuân Sơn',
+      packageName: 'Gói Đại Biểu VIP',
+      packageFee: 3000000,
+      paymentStatus: 'paid',
+      organization: 'Bệnh viện Trung ương Quân đội 108',
+      qrCodeValue: 'VSAPS2026-ATT-2026-SON'
+    };
+
+    const payStatusText = 'Đã Thanh Toán';
+    const isHtml = /<[a-z][\s\S]*>/i.test(content);
+    const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
+    
+    // Replace placeholders in the body
+    let previewBody = formattedBody
+      .replace(/\{\{title\}\}/g, mockAttendee.title)
+      .replace(/\{\{fullname\}\}/g, mockAttendee.fullName)
+      .replace(/\{\{package\}\}/g, mockAttendee.packageName)
+      .replace(/\{\{code\}\}/g, mockAttendee.id)
+      .replace(/\{\{payment_status\}\}/g, payStatusText)
+      .replace(/\{\{organization\}\}/g, mockAttendee.organization)
+      .replace(/\{\{presentation_title\}\}/g, 'Báo cáo đột phá trong Công nghệ phẫu thuật thẩm mỹ sọ mặt');
+
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; text-align: left; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+        <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
+          <h2 style="color: #1e1b4b; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Hội Nghị VSAPS 2026</h2>
+          <p style="color: #4f46e5; font-size: 11px; margin: 5px 0 0 0; font-weight: bold;">Hội Nghị Khoa Học Thẩm Mỹ Quốc Tế Thường Niên</p>
+        </div>
+        
+        <div class="rich-editor-content" style="font-size: 14px; color: #334155; line-height: 1.6;">
+          ${previewBody}
+        </div>
+        
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
+            <tr><td style="padding: 6px 0; font-weight: bold; width: 130px;">Mã Đại Biểu:</td><td style="padding: 6px 0; color: #4f46e5; font-family: monospace; font-weight: bold;">${mockAttendee.id}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: bold;">Gói Tham Dự:</td><td style="padding: 6px 0;">${mockAttendee.packageName}</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: bold;">Lệ Phí:</td><td style="padding: 6px 0; font-family: monospace; font-weight: bold;">${mockAttendee.packageFee.toLocaleString()} VNĐ</td></tr>
+            <tr><td style="padding: 6px 0; font-weight: bold;">Trạng Thái:</td><td style="padding: 6px 0; font-weight: bold; color: #10b981;">${payStatusText}</td></tr>
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 25px 0; background-color: #f1f5f9; padding: 20px; border-radius: 8px;">
+          <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; font-weight: bold;">MÃ QR CHECK-IN (SIMULATED)</p>
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(mockAttendee.qrCodeValue)}" alt="QR Code" style="width: 150px; height: 150px; display: inline-block; border: 4px solid white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
+        </div>
+      </div>
+    `;
+  };
+
 
   // Test send simulations states
   const [testReceiver, setTestReceiver] = useState('phandu8899@gmail.com');
@@ -177,6 +319,27 @@ export default function NotificationSystem() {
 
   return (
     <div className="space-y-6 font-sans text-slate-805">
+      <style dangerouslySetInnerHTML={{__html: `
+        .rich-editor-content ul {
+          list-style-type: disc !important;
+          margin-left: 1.5rem !important;
+          padding-left: 0.5rem !important;
+          list-style-position: outside !important;
+        }
+        .rich-editor-content ol {
+          list-style-type: decimal !important;
+          margin-left: 1.5rem !important;
+          padding-left: 0.5rem !important;
+          list-style-position: outside !important;
+        }
+        .rich-editor-content a {
+          color: #4f46e5 !important;
+          text-decoration: underline !important;
+        }
+        .rich-editor-content p {
+          margin-bottom: 0.75rem !important;
+        }
+      `}} />
       {/* Grid notification layouts split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -238,16 +401,266 @@ export default function NotificationSystem() {
                 </div>
               )}
 
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 block mb-1">Ruột văn bản thông điệp (Message Body) *</label>
-                <textarea
-                  required
-                  rows={10}
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl font-mono leading-relaxed focus:ring-1 focus:ring-teal-500 focus:outline-none focus:bg-white text-[11px]"
-                />
-              </div>
+              {/* Tab Switcher & Editor mode switches (only for email) */}
+              {selectedTemplate.channel === 'email' && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2 select-none">
+                  <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setEditTab('edit')}
+                      className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none bg-transparent ${
+                        editTab === 'edit' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Soạn Thảo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditTab('preview')}
+                      className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none bg-transparent ${
+                        editTab === 'preview' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Xem Trước (Preview)
+                    </button>
+                  </div>
+
+                  {editTab === 'edit' && (
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+                      <button
+                        type="button"
+                        onClick={() => setEditorMode('visual')}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none bg-transparent ${
+                          editorMode === 'visual' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Trực quan (Visual)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditorMode('code')}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none bg-transparent ${
+                          editorMode === 'code' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Code className="w-3.5 h-3.5" />
+                        Mã HTML (Code)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Placeholder Inserter Buttons */}
+              {editTab === 'edit' && (
+                <div className="flex items-center gap-2 mb-2 bg-slate-55 p-2.5 border border-slate-150 rounded-xl">
+                  <span className="text-[9.5px] font-bold text-slate-500 select-none shrink-0">Chèn nhanh biến:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { code: 'title', label: 'Danh xưng (ví dụ: BS.)' },
+                      { code: 'fullname', label: 'Họ & Tên' },
+                      { code: 'code', label: 'Mã Đại biểu' },
+                      { code: 'package', label: 'Gói đăng ký' },
+                      { code: 'payment_status', label: 'Trạng thái thanh toán' },
+                      { code: 'organization', label: 'Đơn vị công tác' },
+                      { code: 'presentation_title', label: 'Đề tài báo cáo' }
+                    ].map(ph => (
+                      <button
+                        key={ph.code}
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          insertPlaceholder(ph.code);
+                        }}
+                        className="px-2 py-0.5 bg-white hover:bg-teal-50 border border-slate-205 hover:border-teal-350 rounded-lg text-[9px] font-bold text-slate-700 hover:text-teal-700 transition-all cursor-pointer shadow-sm"
+                        title={ph.label}
+                      >
+                        {`{{${ph.code}}}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Formatting Toolbar (Only for Visual Editor Mode) */}
+              {selectedTemplate.channel === 'email' && editTab === 'edit' && editorMode === 'visual' && (
+                <div className="flex flex-wrap items-center gap-1 p-1.5 bg-slate-55 border border-slate-200 rounded-xl mb-1 select-none">
+                  {/* Basic typography */}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('bold'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chữ đậm"
+                  >
+                    <Bold className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('italic'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chữ nghiêng"
+                  >
+                    <Italic className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('underline'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Gạch chân"
+                  >
+                    <Underline className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                  {/* Alignment */}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('justifyLeft'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Căn lề trái"
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('justifyCenter'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Căn lề giữa"
+                  >
+                    <AlignCenter className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('justifyRight'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Căn lề phải"
+                  >
+                    <AlignRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                  {/* Lists */}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('insertUnorderedList'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Danh sách dấu chấm"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('insertOrderedList'); }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Danh sách số"
+                  >
+                    <ListOrdered className="w-3.5 h-3.5" />
+                  </button>
+
+                  <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                  {/* Link insertion */}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+                      if (url) handleFormat('createLink', url);
+                    }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn liên kết"
+                  >
+                    <Link className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Color selector dropdown */}
+                  <div className="relative group flex items-center">
+                    <button
+                      type="button"
+                      className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Chọn màu chữ"
+                    >
+                      <Palette className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="absolute top-full left-0 mt-1 hidden group-hover:flex bg-white border border-slate-200 p-1.5 rounded-lg shadow-lg gap-1.5 z-30">
+                      {[
+                        { color: '#000000', name: 'Đen' },
+                        { color: '#4b5563', name: 'Xám' },
+                        { color: '#4f46e5', name: 'Indigo' },
+                        { color: '#0d9488', name: 'Teal' },
+                        { color: '#dc2626', name: 'Đỏ' },
+                        { color: '#ea580c', name: 'Cam' }
+                      ].map(item => (
+                        <button
+                          key={item.color}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleFormat('foreColor', item.color);
+                          }}
+                          className="w-5 h-5 rounded-full border border-slate-300 cursor-pointer transition-transform hover:scale-110"
+                          style={{ backgroundColor: item.color }}
+                          title={item.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); handleFormat('removeFormat'); }}
+                    className="px-2 py-0.5 hover:bg-slate-250 rounded text-slate-500 font-mono text-[9px] border border-slate-200 transition-colors cursor-pointer"
+                    title="Xóa định dạng"
+                  >
+                    Xóa định dạng
+                  </button>
+                </div>
+              )}
+
+              {/* Editor/Preview Display Body */}
+              {editTab === 'edit' ? (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Nội dung mẫu tin (Message Body) *</label>
+                  
+                  {selectedTemplate.channel === 'email' && editorMode === 'visual' ? (
+                    <div className="relative">
+                      <div
+                        ref={editorRef}
+                        contentEditable
+                        onInput={handleEditorInput}
+                        className="w-full min-h-[300px] max-h-[500px] overflow-y-auto px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 text-[13px] leading-relaxed rich-editor-content"
+                        style={{ borderStyle: 'solid' }}
+                      />
+                    </div>
+                  ) : (
+                    <textarea
+                      ref={textareaRef}
+                      required
+                      rows={12}
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl font-mono leading-relaxed focus:ring-1 focus:ring-teal-500 focus:outline-none focus:bg-white text-[11.5px]"
+                    />
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Bản xem trước thư gửi đi (Live Email Preview)</label>
+                  <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 max-h-[600px] overflow-y-auto">
+                    <div
+                      className="w-full"
+                      dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Guide of placeholders */}
               <div className="bg-slate-55 p-3.5 rounded-xl border border-slate-200 flex items-start gap-2">

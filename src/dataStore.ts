@@ -1743,7 +1743,8 @@ export class DataStore {
 
     if (canSend) {
       try {
-        const formattedBody = content.replace(/\n/g, '<br/>');
+        const isHtml = /<[a-z][\s\S]*>/i.test(content);
+        const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
