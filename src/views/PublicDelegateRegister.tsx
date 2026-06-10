@@ -1111,6 +1111,46 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   </h3>
                 </div>
 
+                {/* Time Period picker moved here */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
+                  <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
+                    {L.f('timelineOption', 'Lựa chọn Thời điểm Đăng ký *', 'Registration Timeline Option *')}
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPeriod('pre_10_11')}
+                      className={`p-3 text-xs font-extrabold rounded-xl transition-all border text-left flex justify-between items-center cursor-pointer ${
+                        period === 'pre_10_11'
+                          ? 'bg-teal-900 text-amber-400 border-teal-950 shadow-md ring-2 ring-teal-900/10'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-350'
+                      }`}
+                    >
+                      <span>{L.t('Trước Ngày 10/11/2026 (Giá Ưu Đãi)', 'Before Nov 10, 2026 (Early Bird)')}</span>
+                      <span className="font-mono text-[9px] px-2 py-0.5 bg-amber-400/10 text-amber-500 rounded font-normal">
+                        {L.t('Được khuyên dùng', 'Recommended')}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPeriod('post_10_11')}
+                      className={`p-3 text-xs font-extrabold rounded-xl transition-all border text-left flex justify-between items-center cursor-pointer ${
+                        period === 'post_10_11'
+                          ? 'bg-teal-900 text-amber-400 border-teal-950 shadow-md ring-2 ring-teal-900/10'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-350'
+                      }`}
+                    >
+                      <span>{L.t('Từ 10/11/2026 trở đi (Giá Cận Sự Kiện)', 'From Nov 10, 2026 (Regular Price)')}</span>
+                      <span className="font-mono text-[9px] px-2 py-0.5 bg-rose-500/15 text-rose-500 rounded font-normal">
+                        {L.t('Cận hội nghị', 'Regular')}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-[9.5px] text-slate-500 leading-snug">
+                    {L.t('* Biểu giá chi tiết của gói học tập và dịch vụ phụ trội (như Tour tham quan) tự động quy đổi theo thời điểm quý đại biểu chọn.', '* Detailed pricing for packages and add-ons (e.g., tours) automatically adapts to your selected date.')}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                   {packages.map((pkg) => {
                     const isSelected = packageId === pkg.id;
@@ -1205,54 +1245,14 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
               </div>
             )}
 
-            {/* STEP 3: THỜI ĐIỂM & DỊCH VỤ PHỤ TRỢ TỰ CHỌN */}
+            {/* STEP 3: DỊCH VỤ PHỤ TRỢ TỰ CHỌN */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 border-b border-teal-100 pb-2">
                   <span className="bg-teal-900 text-amber-400 font-mono font-bold px-2 py-0.5 rounded text-[10px]">03</span>
                   <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
-                    {L.section('scheduleAddOns', 'THỜI ĐIỂM & DỊCH VỤ PHỤ TRỢ TỰ CHỌN', 'SCHEDULE & OPTIONAL ADD-ON SERVICES')}
+                    {L.section('scheduleAddOns', 'DỊCH VỤ PHỤ TRỢ TỰ CHỌN', 'OPTIONAL ADD-ON SERVICES')}
                   </h3>
-                </div>
-
-                {/* Time Period picker */}
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
-                  <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
-                    {L.f('timelineOption', 'Lựa chọn Thời điểm Đăng ký *', 'Registration Timeline Option *')}
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPeriod('pre_10_11')}
-                      className={`p-3 text-xs font-extrabold rounded-xl transition-all border text-left flex justify-between items-center cursor-pointer ${
-                        period === 'pre_10_11'
-                          ? 'bg-teal-900 text-amber-400 border-teal-950 shadow-md ring-2 ring-teal-900/10'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-350'
-                      }`}
-                    >
-                      <span>{L.t('Trước Ngày 10/11/2026 (Giá Ưu Đãi)', 'Before Nov 10, 2026 (Early Bird)')}</span>
-                      <span className="font-mono text-[9px] px-2 py-0.5 bg-amber-400/10 text-amber-500 rounded font-normal">
-                        {L.t('Được khuyên dùng', 'Recommended')}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPeriod('post_10_11')}
-                      className={`p-3 text-xs font-extrabold rounded-xl transition-all border text-left flex justify-between items-center cursor-pointer ${
-                        period === 'post_10_11'
-                          ? 'bg-teal-900 text-amber-400 border-teal-950 shadow-md ring-2 ring-teal-900/10'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-350'
-                      }`}
-                    >
-                      <span>{L.t('Từ 10/11/2026 trở đi (Giá Cận Sự Kiện)', 'From Nov 10, 2026 (Regular Price)')}</span>
-                      <span className="font-mono text-[9px] px-2 py-0.5 bg-rose-500/15 text-rose-500 rounded font-normal">
-                        {L.t('Cận hội nghị', 'Regular')}
-                      </span>
-                    </button>
-                  </div>
-                  <p className="text-[9.5px] text-slate-500 leading-snug">
-                    {L.t('* Biểu giá chi tiết của gói học tập và dịch vụ phụ trội (như Tour tham quan) tự động quy đổi theo thời điểm quý đại biểu chọn.', '* Detailed pricing for packages and add-ons (e.g., tours) automatically adapts to your selected date.')}
-                  </p>
                 </div>
 
                 {/* Grid of Add-On Services (Dynamic from Config) */}

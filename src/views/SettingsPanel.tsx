@@ -3309,8 +3309,8 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                           if (formActiveSection === 'delegate') {
                             sections.push(
                               { key: 'personalInfo', labelVi: 'Phần 1: Thông tin đại biểu', labelEn: 'Section 1: Delegate Info', placeholderVi: 'THÔNG TIN ĐẠI BIỂU ĐĂNG KÝ', placeholderEn: 'DELEGATE PERSONAL INFORMATION' },
-                              { key: 'scheduleAddOns', labelVi: 'Phần 2: Thời điểm & Dịch vụ', labelEn: 'Section 2: Schedule & Services', placeholderVi: 'THỜI ĐIỂM & DỊCH VỤ PHỤ TRỢ TỰ CHỌN', placeholderEn: 'SCHEDULE & OPTIONAL ADD-ON SERVICES' },
-                              { key: 'package', labelVi: 'Phần 3: Chọn gói đăng ký', labelEn: 'Section 3: Package Select', placeholderVi: 'CHỌN GÓI ĐĂNG KÝ HỘI NGHỊ', placeholderEn: 'CONFERENCE REGISTRATION PACKAGE' },
+                              { key: 'package', labelVi: 'Phần 2: Chọn gói đăng ký', labelEn: 'Section 2: Package Select', placeholderVi: 'CHỌN GÓI ĐĂNG KÝ HỘI NGHỊ', placeholderEn: 'CONFERENCE REGISTRATION PACKAGE' },
+                              { key: 'scheduleAddOns', labelVi: 'Phần 3: Dịch vụ phụ trợ tự chọn', labelEn: 'Section 3: Optional Add-on Services', placeholderVi: 'DỊCH VỤ PHỤ TRỢ TỰ CHỌN', placeholderEn: 'OPTIONAL ADD-ON SERVICES' },
                               { key: 'payment', labelVi: 'Phần 4: Thanh toán chuyển khoản', labelEn: 'Section 4: Payment Details', placeholderVi: 'THÔNG TIN THANH TOÁN CHUYỂN KHOẢN', placeholderEn: 'BANK TRANSFER PAYMENT DETAILS' }
                             );
                           } else if (formActiveSection === 'speaker') {
