@@ -184,6 +184,15 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sync packageId when nationality changes
+  useEffect(() => {
+    if (nationality === 'foreign') {
+      setPackageId('pkg-foreign');
+    } else if (packageId === 'pkg-foreign') {
+      setPackageId('pkg-member');
+    }
+  }, [nationality, packageId]);
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1151,10 +1160,20 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  {packages.map((pkg) => {
-                    const isSelected = packageId === pkg.id;
-                    const currentPkgPrice = currentPrices[pkg.id as keyof typeof currentPrices] ?? 0;
+                <div className={`grid grid-cols-1 gap-5 ${
+                  nationality === 'foreign' ? 'md:grid-cols-1 max-w-md mx-auto w-full' : 'md:grid-cols-3'
+                }`}>
+                  {packages
+                    .filter((pkg) => {
+                      if (nationality === 'vietname') {
+                        return pkg.id === 'pkg-member' || pkg.id === 'pkg-standard' || pkg.id === 'pkg-student';
+                      } else {
+                        return pkg.id === 'pkg-foreign';
+                      }
+                    })
+                    .map((pkg) => {
+                      const isSelected = packageId === pkg.id;
+                      const currentPkgPrice = currentPrices[pkg.id as keyof typeof currentPrices] ?? 0;
                     return (
                       <label
                         key={pkg.id}
