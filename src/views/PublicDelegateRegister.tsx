@@ -842,32 +842,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   </div>
                 </div>
 
-                {/* Language Selector */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
-                  <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
-                    {L.t('Chọn ngôn ngữ *', 'Select Language *')}
-                  </label>
-                  <div className="flex bg-slate-200/50 rounded-lg p-1 gap-2 max-w-sm">
-                    <button
-                      type="button"
-                      onClick={() => setNationality('vietname')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                        nationality === 'vietname' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {L.t('Việt Nam', 'Vietnamese')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNationality('foreign')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
-                        nationality === 'foreign' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      {L.t('Quốc tế', 'International')}
-                    </button>
-                  </div>
-                </div>
 
                 {/* Avatar & Doctor Proof row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
