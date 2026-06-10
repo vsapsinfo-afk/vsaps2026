@@ -34,6 +34,19 @@ const SPONSOR_TIERS = [
       'Standee trước cửa hội trường: 2 cái',
       'Đăng bài viết về sản phẩm trên Web, page hội: 5 bài',
       'Giấy cảm ơn và quà lưu niệm: Có'
+    ],
+    benefitsEn: [
+      'Complimentary 50 Gala tickets',
+      'Complimentary 3 Welcome Dinner tickets',
+      'Hands-on training room use (2h): 2 slots',
+      'Delegate registration discount: 25% Off',
+      'Standard exhibition booth: Exclusive',
+      'Logo on backdrop & printed materials: Size 6',
+      'Verbal thank-you announcement: Yes',
+      'Society website banner advertisement: 3 Months',
+      'Standee at hall entrance: 2 pcs',
+      'Product promotion posts on Web/Page: 5 posts',
+      'Appreciation certificate & souvenir: Yes'
     ]
   },
   {
@@ -54,6 +67,19 @@ const SPONSOR_TIERS = [
       'Standee trước cửa hội trường: 1 cái',
       'Đăng bài viết về sản phẩm trên Web, page hội: 3 bài',
       'Giấy cảm ơn và quà lưu niệm: Có'
+    ],
+    benefitsEn: [
+      'Complimentary 40 Gala tickets',
+      'Complimentary 2 Welcome Dinner tickets',
+      'Hands-on training room use (2h): 1 slot',
+      'Delegate registration discount: 20% Off',
+      'Standard exhibition booth: Special 1',
+      'Logo on backdrop & printed materials: Size 5',
+      'Verbal thank-you announcement: Yes',
+      'Society website banner advertisement: 2 Months',
+      'Standee at hall entrance: 1 pc',
+      'Product promotion posts on Web/Page: 3 posts',
+      'Appreciation certificate & souvenir: Yes'
     ]
   },
   {
@@ -74,6 +100,19 @@ const SPONSOR_TIERS = [
       'Standee trước cửa hội trường: Không',
       'Đăng bài viết về sản phẩm trên Web, page hội: 2 bài',
       'Giấy cảm ơn và quà lưu niệm: Có'
+    ],
+    benefitsEn: [
+      'Complimentary 30 Gala tickets',
+      'Complimentary 1 Welcome Dinner ticket',
+      'Hands-on training room use (2h): 1 slot',
+      'Delegate registration discount: 15% Off',
+      'Standard exhibition booth: Special 2',
+      'Logo on backdrop & printed materials: Size 4',
+      'Verbal thank-you announcement: Yes',
+      'Society website banner advertisement: 1 Month',
+      'Standee at hall entrance: No',
+      'Product promotion posts on Web/Page: 2 posts',
+      'Appreciation certificate & souvenir: Yes'
     ]
   },
   {
@@ -94,6 +133,19 @@ const SPONSOR_TIERS = [
       'Standee trước cửa hội trường: Không',
       'Đăng bài viết về sản phẩm trên Web, page hội: 1 bài',
       'Giấy cảm ơn và quà lưu niệm: Có'
+    ],
+    benefitsEn: [
+      'Complimentary 20 Gala tickets',
+      'No Welcome Dinner tickets',
+      'Hands-on training room use (2h): 50% Discount',
+      'Delegate registration discount: 10% Off',
+      'Standard exhibition booth: Priority 1',
+      'Logo on backdrop & printed materials: Size 3',
+      'Verbal thank-you announcement: Yes',
+      'Society website banner advertisement: No',
+      'Standee at hall entrance: No',
+      'Product promotion posts on Web/Page: 1 post',
+      'Appreciation certificate & souvenir: Yes'
     ]
   },
   {
@@ -114,6 +166,19 @@ const SPONSOR_TIERS = [
       'Standee trước cửa hội trường: Không',
       'Đăng bài viết về sản phẩm trên Web, page hội: 1 bài',
       'Giấy cảm ơn và quà lưu niệm: Có'
+    ],
+    benefitsEn: [
+      'Complimentary 10 Gala tickets',
+      'No Welcome Dinner tickets',
+      'Hands-on training room use (2h): 40% Discount',
+      'Delegate registration discount: 5% Off',
+      'Standard exhibition booth: Priority 2',
+      'Logo on backdrop & printed materials: Size 2',
+      'Verbal thank-you announcement: Yes',
+      'Society website banner advertisement: No',
+      'Standee at hall entrance: No',
+      'Product promotion posts on Web/Page: 1 post',
+      'Appreciation certificate & souvenir: Yes'
     ]
   },
   {
@@ -134,39 +199,53 @@ const SPONSOR_TIERS = [
       'Standee trước cửa hội trường: Không',
       'Không có bài viết trên Web, page hội',
       'Giấy cảm ơn và quà lưu niệm: Có'
+    ],
+    benefitsEn: [
+      'No Gala tickets',
+      'No Welcome Dinner tickets',
+      'Hands-on training room use (2h): 30% Discount',
+      'No delegate registration discount',
+      'Standard exhibition booth: Basic',
+      'Logo on backdrop & printed materials: Size 1',
+      'Verbal thank-you announcement: Yes',
+      'Society website banner advertisement: No',
+      'Standee at hall entrance: No',
+      'No product promotion posts on Web/Page',
+      'Appreciation certificate & souvenir: Yes'
     ]
   }
 ];
 
 /* ── Benefits comparison table data ─────────────────────────────── */
 const BENEFITS_TABLE = [
-  { label: 'Phí tài trợ', values: ['600 triệu', '400 triệu', '300 triệu', '200 triệu', '100 triệu', '50 triệu'], isBold: true },
-  { label: 'Tặng vé tham dự Gala', values: ['50', '40', '30', '20', '10', '-'] },
-  { label: 'Tặng vé tham dự tiệc Chào mừng', values: ['3', '2', '1', '-', '-', '-'] },
-  { label: 'Giá sử dụng phòng Hand-on training (2h): $3,000', values: ['2 suất', '1 suất', '1 suất', 'Ưu đãi 50%', 'Ưu đãi 40%', 'Ưu đãi 30%'] },
-  { label: 'Đại biểu đăng ký qua nhà tài trợ', values: ['Giảm 25%', 'Giảm 20%', 'Giảm 15%', 'Giảm 10%', 'Giảm 5%', '-'] },
-  { label: 'Gian hàng theo tiêu chuẩn', values: ['Độc quyền', 'Đặc biệt 1', 'Đặc biệt 2', 'Ưu tiên 1', 'Ưu tiên 2', 'Cơ bản'] },
-  { label: 'Logo trên backdrop và các ấn phẩm', values: ['Cỡ size 6', 'Cỡ size 5', 'Cỡ size 4', 'Cỡ size 3', 'Cỡ size 2', 'Cỡ size 1'] },
-  { label: 'Nêu tên cảm ơn trong suốt chương trình', values: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'] },
-  { label: 'Banner trên web hội', values: ['3 tháng', '2 tháng', '1 tháng', 'Không', 'Không', 'Không'] },
-  { label: 'Standee trước cửa hội trường', values: ['2 cái', '1 cái', 'Không', 'Không', 'Không', 'Không'] },
-  { label: 'Đăng bài viết về sản phẩm trên Web, page hội', values: ['5 bài', '3 bài', '2 bài', '1 bài', '1 bài', 'Không'] },
-  { label: 'Giấy cảm ơn và quà lưu niệm', values: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'] },
+  { labelVi: 'Phí tài trợ', labelEn: 'Sponsorship Fee', valuesVi: ['600 triệu', '400 triệu', '300 triệu', '200 triệu', '100 triệu', '50 triệu'], valuesEn: ['600M VND', '400M VND', '300M VND', '200M VND', '100M VND', '50M VND'], isBold: true },
+  { labelVi: 'Tặng vé tham dự Gala', labelEn: 'Complimentary Gala Tickets', valuesVi: ['50', '40', '30', '20', '10', '-'], valuesEn: ['50', '40', '30', '20', '10', '-'] },
+  { labelVi: 'Tặng vé tham dự tiệc Chào mừng', labelEn: 'Complimentary Welcome Dinner Tickets', valuesVi: ['3', '2', '1', '-', '-', '-'], valuesEn: ['3', '2', '1', '-', '-', '-'] },
+  { labelVi: 'Giá sử dụng phòng Hand-on training (2h): $3,000', labelEn: 'Hands-on Training Room Use (2h): $3,000', valuesVi: ['2 suất', '1 suất', '1 suất', 'Ưu đãi 50%', 'Ưu đãi 40%', 'Ưu đãi 30%'], valuesEn: ['2 slots', '1 slot', '1 slot', '50% Discount', '40% Discount', '30% Discount'] },
+  { labelVi: 'Đại biểu đăng ký qua nhà tài trợ', labelEn: 'Delegate Registration Discount', valuesVi: ['Giảm 25%', 'Giảm 20%', 'Giảm 15%', 'Giảm 10%', 'Giảm 5%', '-'], valuesEn: ['25% Off', '20% Off', '15% Off', '10% Off', '5% Off', '-'] },
+  { labelVi: 'Gian hàng theo tiêu chuẩn', labelEn: 'Standard Exhibition Booth', valuesVi: ['Độc quyền', 'Đặc biệt 1', 'Đặc biệt 2', 'Ưu tiên 1', 'Ưu tiên 2', 'Cơ bản'], valuesEn: ['Exclusive', 'Special 1', 'Special 2', 'Priority 1', 'Priority 2', 'Basic'] },
+  { labelVi: 'Logo trên backdrop và các ấn phẩm', labelEn: 'Logo on Backdrop & Printings', valuesVi: ['Cỡ size 6', 'Cỡ size 5', 'Cỡ size 4', 'Cỡ size 3', 'Cỡ size 2', 'Cỡ size 1'], valuesEn: ['Size 6', 'Size 5', 'Size 4', 'Size 3', 'Size 2', 'Size 1'] },
+  { labelVi: 'Nêu tên cảm ơn trong suốt chương trình', labelEn: 'Verbal Thank-you Announcement', valuesVi: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'], valuesEn: ['Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes'] },
+  { labelVi: 'Banner trên web hội', labelEn: 'Banner on Society Website', valuesVi: ['3 tháng', '2 tháng', '1 tháng', 'Không', 'Không', 'Không'], valuesEn: ['3 Months', '2 Months', '1 Month', 'No', 'No', 'No'] },
+  { labelVi: 'Standee trước cửa hội trường', labelEn: 'Standee at Hall Entrance', valuesVi: ['2 cái', '1 cái', 'Không', 'Không', 'Không', 'Không'], valuesEn: ['2 pcs', '1 pc', 'No', 'No', 'No', 'No'] },
+  { labelVi: 'Đăng bài viết về sản phẩm trên Web, page hội', labelEn: 'Product Promotion Post on Web/Page', valuesVi: ['5 bài', '3 bài', '2 bài', '1 bài', '1 bài', 'Không'], valuesEn: ['5 Posts', '3 Posts', '2 Posts', '1 Post', '1 Post', 'No'] },
+  { labelVi: 'Giấy cảm ơn và quà lưu niệm', labelEn: 'Appreciation Certificate & Souvenir', valuesVi: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'], valuesEn: ['Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes'] },
 ];
 
 const TIER_HEADERS = [
-  { name: 'Kim cương', color: '#6366f1' },
-  { name: 'Bạch kim', color: '#8b5cf6' },
-  { name: 'Vàng', color: '#f59e0b' },
-  { name: 'Bạc', color: '#94a3b8' },
-  { name: 'Đồng', color: '#d97706' },
-  { name: 'Tiêu chuẩn', color: '#64748b' },
+  { name: 'Kim cương', nameEn: 'Diamond', color: '#6366f1' },
+  { name: 'Bạch kim', nameEn: 'Platinum', color: '#8b5cf6' },
+  { name: 'Vàng', nameEn: 'Gold', color: '#f59e0b' },
+  { name: 'Bạc', nameEn: 'Silver', color: '#94a3b8' },
+  { name: 'Đồng', nameEn: 'Bronze', color: '#d97706' },
+  { name: 'Tiêu chuẩn', nameEn: 'Standard', color: '#64748b' },
 ];
 
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.sponsorFormConfig;
-  const L = useFormLabel(formCfg);
+  const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
+  const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   // Form States
   const [name, setName] = useState('');
   const [tier, setTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard'>('gold');
@@ -189,14 +268,15 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Auto-populate benefits when tier changes
+  // Auto-populate benefits when tier or nationality changes
   useEffect(() => {
     const matched = SPONSOR_TIERS.find(t => t.id === tier);
     if (matched) {
-      setCustomBenefits(matched.benefits);
-      setCustomBenefitsText(matched.benefits.join('\n'));
+      const list = nationality === 'vietname' ? matched.benefits : (matched as any).benefitsEn || matched.benefits;
+      setCustomBenefits(list);
+      setCustomBenefitsText(list.join('\n'));
     }
-  }, [tier]);
+  }, [tier, nationality]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -234,7 +314,10 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !contactPerson || !contactEmail || !contactPhone) {
-      setErrorMsg('Vui lòng điền đầy đủ tất cả các trường thông tin liên hệ bắt buộc (*).');
+      setErrorMsg(nationality === 'vietname'
+        ? 'Vui lòng điền đầy đủ tất cả các trường thông tin liên hệ bắt buộc (*).'
+        : 'Please fill in all required contact fields (*).'
+      );
       return;
     }
     setErrorMsg('');
@@ -276,7 +359,10 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       window.scrollTo(0, 0);
     } catch (err: any) {
       console.error(err);
-      setErrorMsg(`Không thể hoàn tất đăng ký nhà tài trợ: ${err.message || err.details || 'Lỗi cơ sở dữ liệu.'}`);
+      setErrorMsg(nationality === 'vietname'
+        ? `Không thể hoàn tất đăng ký nhà tài trợ: ${err.message || err.details || 'Lỗi cơ sở dữ liệu.'}`
+        : `Failed to complete sponsor registration: ${err.message || err.details || 'Database error.'}`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -292,9 +378,9 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
             <div className="w-16 h-16 bg-emerald-500/10 border-2 border-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 relative z-10">
               <CheckCircle className="w-9 h-9 text-emerald-300" />
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight relative z-10">ĐĂNG KÝ ĐỒNG HÀNH THÀNH CÔNG</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight relative z-10">{L.t('ĐĂNG KÝ ĐỒNG HÀNH THÀNH CÔNG', 'SPONSOR REGISTRATION SUCCESSFUL')}</h2>
             <p className="text-teal-200 text-sm mt-2 font-medium max-w-lg mx-auto relative z-10">
-              Cảm ơn doanh nghiệp {createdSponsor.name} đã đăng ký trở thành đối tác đồng hành tại VSAPS 2026.
+              {L.t(`Cảm ơn doanh nghiệp ${createdSponsor.name} đã đăng ký trở thành đối tác đồng hành tại VSAPS 2026.`, `Thank you to ${createdSponsor.name} for registering as a partner at VSAPS 2026.`)}
             </p>
           </div>
 
@@ -302,7 +388,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 divide-y md:divide-y-0 md:divide-x divide-slate-100">
               {/* Left Column: Sponsor profile details */}
               <div className="space-y-4">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">CHI TIẾT ĐĂNG KÝ HỒ SƠ</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">{L.t('CHI TIẾT ĐĂNG KÝ HỒ SƠ', 'REGISTRATION DOSSIER DETAILS')}</span>
                 
                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-150">
                   {createdSponsor.logoUrl ? (
@@ -319,58 +405,61 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-base">{createdSponsor.name}</h4>
                     <span className="inline-block px-2.5 py-0.5 mt-1 bg-indigo-50 border border-indigo-150 rounded text-[9.5px] font-bold uppercase text-indigo-700 tracking-wider">
-                      {createdSponsor.tier} partner
+                      {L.t(currentTierData.name, currentTierData.nameEn)} {L.t('Đồng hành', 'Partner')}
                     </span>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs text-slate-650 font-medium">
-                  <p>• Mã đối tác: <strong className="text-slate-900 font-mono">{createdSponsor.id}</strong></p>
-                  <p>• Người liên hệ: <strong className="text-slate-900">{createdSponsor.contactPerson}</strong></p>
-                  <p>• Số điện thoại: <strong className="text-slate-900">{createdSponsor.contactPhone}</strong></p>
-                  <p>• Hộp thư điện tử: <strong className="text-slate-900">{createdSponsor.contactEmail}</strong></p>
-                  <p>• Kinh phí cam kết đóng góp: <strong className="text-indigo-700 text-sm font-black font-mono">{createdSponsor.pledgedAmount.toLocaleString()} VNĐ</strong></p>
+                  <p>• {L.t('Mã đối tác: ', 'Partner ID: ')}<strong className="text-slate-900 font-mono">{createdSponsor.id}</strong></p>
+                  <p>• {L.t('Người liên hệ: ', 'Contact Person: ')}<strong className="text-slate-900">{createdSponsor.contactPerson}</strong></p>
+                  <p>• {L.t('Số điện thoại: ', 'Phone Number: ')}<strong className="text-slate-900">{createdSponsor.contactPhone}</strong></p>
+                  <p>• {L.t('Hộp thư điện tử: ', 'Email Address: ')}<strong className="text-slate-900">{createdSponsor.contactEmail}</strong></p>
+                  <p>• {L.t('Kinh phí cam kết đóng góp: ', 'Pledged Sponsorship Fee: ')}<strong className="text-indigo-700 text-sm font-black font-mono">{createdSponsor.pledgedAmount.toLocaleString()} {L.t('VNĐ', 'VND')}</strong></p>
                 </div>
 
                 <div className="bg-amber-50 rounded-xl p-4 border border-amber-200/50">
-                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wide block mb-1">Trạng thái hồ sơ:</span>
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wide block mb-1">{L.t('Trạng thái hồ sơ:', 'Dossier Status:')}</span>
                   <p className="text-xs text-amber-950 font-medium leading-relaxed">
-                    Hợp đồng đồng hành đã sẵn sàng. Ban Thư ký sẽ liên hệ trực tiếp đến số điện thoại <strong className="text-slate-900">{createdSponsor.contactPhone}</strong> trong vòng 24 giờ tiếp theo để bàn giao thiết kế gian hàng sơ đồ vị trí và ký văn bản ghi nhận chính thức.
+                    {L.t(
+                      `Hợp đồng đồng hành đã sẵn sàng. Ban Thư ký sẽ liên hệ trực tiếp đến số điện thoại ${createdSponsor.contactPhone} trong vòng 24 giờ tiếp theo để bàn giao thiết kế gian hàng sơ đồ vị trí và ký văn bản ghi nhận chính thức.`,
+                      `The sponsorship contract is ready. The Secretariat will contact you at ${createdSponsor.contactPhone} within the next 24 hours to deliver the booth layout design and execute the official agreement.`
+                    )}
                   </p>
                 </div>
               </div>
 
               {/* Right Column: Bank billing transfer instructions */}
               <div className="md:pl-8 space-y-4 pt-6 md:pt-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">HƯỚNG DẪN CHUYỂN KHOẢN KINH PHÍ</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">{L.t('HƯỚNG DẪN CHUYỂN KHOẢN KINH PHÍ', 'BANK TRANSFER INSTRUCTIONS')}</span>
                 
                 <div className="p-4 bg-slate-50 border border-slate-250 rounded-2xl space-y-3.5 text-xs text-slate-700 font-sans shadow-inner">
                   <div className="flex items-center gap-2 text-indigo-900 border-b border-slate-200 pb-2">
                     <Landmark className="w-5 h-5 text-indigo-600" />
-                    <span className="font-bold text-xs uppercase tracking-wider">Tài khoản ngân hàng của BTC</span>
+                    <span className="font-bold text-xs uppercase tracking-wider">{L.t('Tài khoản ngân hàng của BTC', 'BTC Bank Account Details')}</span>
                   </div>
                   
                   <div className="space-y-1.5">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Ngân hàng thụ hưởng:</span>
-                      <strong className="text-slate-900 text-right">VIETCOMBANK - Chi nhánh Hà Nội</strong>
+                      <span className="text-slate-400">{L.t('Ngân hàng thụ hưởng:', 'Beneficiary Bank:')}</span>
+                      <strong className="text-slate-900 text-right">VIETCOMBANK - Hanoi Branch</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Tên tài khoản hưởng:</span>
+                      <span className="text-slate-400">{L.t('Tên tài khoản hưởng:', 'Account Name:')}</span>
                       <strong className="text-slate-900 text-right">HIEP HOI PHAU THUAT THAM MY VSAPS</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Số tài khoản:</span>
+                      <span className="text-slate-400">{L.t('Số tài khoản:', 'Account Number:')}</span>
                       <strong className="text-slate-900 text-right font-mono text-sm tracking-wide">0011 0042 99999</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Số tiền chuyển khoản:</span>
-                      <strong className="text-indigo-750 text-sm font-black font-mono">{(createdSponsor.pledgedAmount).toLocaleString()} VNĐ</strong>
+                      <span className="text-slate-400">{L.t('Số tiền chuyển khoản:', 'Transfer Amount:')}</span>
+                      <strong className="text-indigo-755 text-sm font-black font-mono">{(createdSponsor.pledgedAmount).toLocaleString()} {L.t('VNĐ', 'VND')}</strong>
                     </div>
                     <div className="flex flex-col gap-1 bg-white p-2.5 rounded-xl border border-slate-200 mt-2">
-                      <span className="text-[9.5px] font-bold text-rose-500 uppercase tracking-wide">Cú pháp chuyển tiền chính xác (MEMO):</span>
+                      <span className="text-[9.5px] font-bold text-rose-500 uppercase tracking-wide">{L.t('Cú pháp chuyển tiền chính xác (MEMO):', 'Exact Transfer Description (MEMO):')}</span>
                       <p className="font-mono text-xs font-black text-slate-900 tracking-tight bg-slate-50 p-2 rounded border text-center select-all">
-                        {createdSponsor.id} {createdSponsor.name.toUpperCase().replace(/[^A-Z0-9 ]/g, '')} TAI TRO VSAPS2026
+                        {createdSponsor.id} {createdSponsor.name.toUpperCase().replace(/[^A-Z0-9 ]/g, '')} {L.t('TAI TRO VSAPS2026', 'SPONSOR VSAPS2026')}
                       </p>
                     </div>
                   </div>
@@ -378,7 +467,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex gap-2 text-[10.5px] text-slate-500 leading-snug">
                   <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
-                  <span>Cổng thanh toán tự động ghi nhận Realtime. Ngay khi chuyển khoản thành công, bút toán đối soát sẽ tự động kích hoạt hiển thị Logo Doanh nghiệp tại trang chủ lễ bế mạc và sảnh vinh danh.</span>
+                  <span>{L.t('Cổng thanh toán tự động ghi nhận Realtime. Ngay khi chuyển khoản thành công, bút toán đối soát sẽ tự động kích hoạt hiển thị Logo Doanh nghiệp tại trang chủ lễ bế mạc và sảnh vinh danh.', 'Automated real-time payment gateway. Upon successful transfer, the reconciliation entry will trigger the auto-display of the Company Logo on the closing ceremony screen and the hall of honor.')}</span>
                 </div>
               </div>
             </div>
@@ -388,7 +477,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 onClick={() => onNavigate('event-details')}
                 className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all text-xs"
               >
-                Quay Lại Trang Chủ Hội Nghị
+                {L.t('Quay Lại Trang Chủ Hội Nghị', 'Back to Event Homepage')}
               </button>
             </div>
           </div>
@@ -404,9 +493,9 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       {formCfg?.isOpen === false && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center mb-8" style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}>
           <div className="text-5xl mb-4">🔒</div>
-          <h2 className="text-white font-black text-xl mb-3">Cổng đăng ký tài trợ đã đóng</h2>
-          <p className="text-white/70 text-sm max-w-md mx-auto">{formCfg?.closedMessage || 'Cổng đăng ký tài trợ hiện đã đóng. Vui lòng liên hệ Ban tổ chức.'}</p>
-          <button onClick={() => onNavigate('event-details')} className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">← Về trang chủ</button>
+          <h2 className="text-white font-black text-xl mb-3">{L.t('Cổng đăng ký tài trợ đã đóng', 'Sponsorship Portal Closed')}</h2>
+          <p className="text-white/70 text-sm max-w-md mx-auto">{formCfg?.closedMessage || L.t('Cổng đăng ký tài trợ hiện đã đóng. Vui lòng liên hệ Ban tổ chức.', 'The sponsorship registration portal is currently closed. Please contact the Organizer.')}</p>
+          <button onClick={() => onNavigate('event-details')} className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">{L.t('← Về trang chủ', '← Back to Event Homepage')}</button>
         </div>
       )}
 
@@ -426,13 +515,13 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
           <span className="px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider inline-block"
             style={{ backgroundColor: `${formCfg?.accentColor || '#f59e0b'}20`, color: formCfg?.accentColor || '#f59e0b', border: `1px solid ${formCfg?.accentColor || '#f59e0b'}40` }}>
-            {formCfg?.organizerLabel || 'VSAPS 2026 PARTNER REGISTRATION'}
+            {formCfg?.organizerLabel || L.t('ĐĂNG KÝ ĐỒNG HÀNH & TÀI TRỢ - VSAPS 2026', 'VSAPS 2026 PARTNER & SPONSOR REGISTRATION')}
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-white uppercase tracking-tight">
-            {formCfg?.formTitle || 'Đăng Ký Đồng Hành & Tài Trợ Hội Nghị'}
+            {formCfg?.formTitle || L.t('Đăng Ký Đồng Hành & Tài Trợ Hội Nghị', 'Conference Partnership & Sponsorship Registration')}
           </h1>
           <p className="text-xs md:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: `${formCfg?.accentColor || '#ffffff'}b0` }}>
-            {formCfg?.formDescription || 'Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.'}
+            {formCfg?.formDescription || L.t('Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.', 'Expose your medical brand and devices directly to 1,000+ leading industry specialists.')}
           </p>
         </div>
       )}
@@ -442,7 +531,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
         {/* Table Header */}
         <div className="bg-gradient-to-r from-[#2c3e6b] to-[#3b5998] px-6 py-4 text-center">
           <h2 className="text-white font-extrabold text-lg md:text-xl tracking-wide uppercase" style={{ fontStyle: 'italic' }}>
-            Phí và quyền lợi nhà tài trợ
+            {L.t('Phí và quyền lợi nhà tài trợ', 'Sponsorship Fees & Benefits')}
           </h2>
         </div>
 
@@ -452,33 +541,37 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="text-left py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-[28%] border-r border-slate-100">
-                  Quyền lợi nhà tài trợ
+                  {L.t('Quyền lợi nhà tài trợ', 'Sponsor Benefits')}
                 </th>
                 {TIER_HEADERS.map((h, i) => (
                   <th key={i} className="py-3 px-2 text-center font-extrabold uppercase tracking-wide text-[10px] border-r border-slate-100 last:border-r-0" style={{ color: h.color }}>
-                    {h.name}
+                    {nationality === 'vietname' ? h.name : h.nameEn}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {BENEFITS_TABLE.map((row, rowIdx) => (
-                <tr key={rowIdx} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
-                  <td className={`py-2.5 px-4 text-slate-700 border-r border-slate-100 leading-snug ${row.isBold ? 'font-extrabold text-slate-900' : 'font-semibold'}`}>
-                    {row.label}
-                  </td>
-                  {row.values.map((val, colIdx) => {
-                    const isEmpty = val === '-' || val === 'Không';
-                    return (
-                      <td key={colIdx} className={`py-2.5 px-2 text-center border-r border-slate-100 last:border-r-0 ${
-                        row.isBold ? 'font-extrabold text-slate-900' : isEmpty ? 'text-slate-300 font-medium' : 'font-semibold text-slate-700'
-                      }`}>
-                        {val}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {BENEFITS_TABLE.map((row, rowIdx) => {
+                const label = nationality === 'vietname' ? row.labelVi : row.labelEn;
+                const values = nationality === 'vietname' ? row.valuesVi : row.valuesEn;
+                return (
+                  <tr key={rowIdx} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
+                    <td className={`py-2.5 px-4 text-slate-700 border-r border-slate-100 leading-snug ${row.isBold ? 'font-extrabold text-slate-900' : 'font-semibold'}`}>
+                      {label}
+                    </td>
+                    {values.map((val, colIdx) => {
+                      const isEmpty = val === '-' || val === 'Không' || val === 'No';
+                      return (
+                        <td key={colIdx} className={`py-2.5 px-2 text-center border-r border-slate-100 last:border-r-0 ${
+                          row.isBold ? 'font-extrabold text-slate-900' : isEmpty ? 'text-slate-300 font-medium' : 'font-semibold text-slate-700'
+                        }`}>
+                          {val}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -486,7 +579,10 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
         {/* Footer */}
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-center">
           <p className="text-[10px] text-slate-400 font-semibold tracking-wide">
-            HỘI NGHỊ KHOA HỌC THƯỜNG NIÊN LẦN THỨ 10 CỦA HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS) — TP. HỒ CHÍ MINH 2026
+            {L.t(
+              'HỘI NGHỊ KHOA HỌC THƯỜNG NIÊN LẦN THỨ 10 CỦA HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS) — TP. HỒ CHÍ MINH 2026',
+              'THE 10TH ANNUAL SCIENTIFIC CONFERENCE OF THE VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS) — HO CHI MINH CITY 2026'
+            )}
           </p>
           <p className="text-[9px] text-slate-350 mt-0.5">
             Website: vsaps.vn &nbsp;—&nbsp; Email: vsapsevents@gmail.com &nbsp;—&nbsp; Hotline: +84964551151
@@ -498,6 +594,33 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Left Column: Register profile data */}
           <div className="lg:col-span-7 space-y-6">
+            {/* Language Selector */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
+                {L.f('nationality', 'Chọn ngôn ngữ *', 'Select Language *')}
+              </label>
+              <div className="flex bg-slate-100 rounded-lg p-1 gap-2 max-w-sm">
+                <button
+                  type="button"
+                  onClick={() => setNationality('vietname')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
+                    nationality === 'vietname' ? 'bg-stone-900 text-amber-400 shadow-md' : 'text-slate-655 hover:text-slate-900 bg-transparent'
+                  }`}
+                >
+                  {L.t('Việt Nam', 'Vietnamese')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNationality('foreign')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
+                    nationality === 'foreign' ? 'bg-stone-900 text-amber-400 shadow-md' : 'text-slate-655 hover:text-slate-900 bg-transparent'
+                  }`}
+                >
+                  International
+                </button>
+              </div>
+            </div>
+
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
                 <span className="w-1.5 h-3.5 bg-teal-600 rounded"></span>
