@@ -953,15 +953,15 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                       onChange={(e) => setTitle(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-medium focus:border-teal-600 focus:outline-none focus:bg-white transition-all cursor-pointer"
                     >
-                      <option value="GS.TS.BS">GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)</option>
-                      <option value="PGS.TS.BS">PGS.TS.BS (Phó Giáo sư Tiến sĩ Bác sĩ)</option>
-                      <option value="TS.BS">TS.BS (Tiến sĩ Bác sĩ)</option>
-                      <option value="ThS.BS">ThS.BS (Thạc sĩ Bác sĩ)</option>
-                      <option value="BSCK1">BSCK1 (Bác sĩ Chuyên khoa I)</option>
-                      <option value="BSCK2">BSCK2 (Bác sĩ Chuyên khoa II)</option>
-                      <option value="BSNT">BSNT (Bác sĩ Nội trú)</option>
-                      <option value="BS">BS (Bác sĩ)</option>
-                      <option value="Đại biểu">Khác... (Đại biểu/Khác)</option>
+                      <option value="GS.TS.BS">{L.t('GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)', 'Prof. Dr. Med.')}</option>
+                      <option value="PGS.TS.BS">{L.t('PGS.TS.BS (Phó Giáo sư Tiến sĩ Bác sĩ)', 'Assoc. Prof. Dr. Med.')}</option>
+                      <option value="TS.BS">{L.t('TS.BS (Tiến sĩ Bác sĩ)', 'Dr. Med. / PhD')}</option>
+                      <option value="ThS.BS">{L.t('ThS.BS (Thạc sĩ Bác sĩ)', 'M.Med. / Master')}</option>
+                      <option value="BSCK1">{L.t('BSCK1 (Bác sĩ Chuyên khoa I)', 'Specialist I')}</option>
+                      <option value="BSCK2">{L.t('BSCK2 (Bác sĩ Chuyên khoa II)', 'Specialist II')}</option>
+                      <option value="BSNT">{L.t('BSNT (Bác sĩ Nội trú)', 'Resident Physician')}</option>
+                      <option value="BS">{L.t('BS (Bác sĩ)', 'MD (Medical Doctor)')}</option>
+                      <option value="Đại biểu">{L.t('Khác... (Đại biểu/Khác)', 'Other / Delegate')}</option>
                     </select>
                   </div>
 

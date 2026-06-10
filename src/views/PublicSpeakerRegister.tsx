@@ -319,16 +319,16 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     onChange={(e) => setTitle(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none"
                   >
-                    <option value="GS.TS.BS">GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)</option>
-                    <option value="PGS.TS.BS">PGS.TS.BS (Phó Giáo sư Tiến sĩ Bác sĩ)</option>
-                    <option value="TS.BS">TS.BS (Tiến sĩ Bác sĩ)</option>
-                    <option value="ThS.BS">ThS.BS (Thạc sĩ Bác sĩ)</option>
-                    <option value="BSCK1">BSCK1 (Bác sĩ Chuyên khoa I)</option>
-                    <option value="BSCK2">BSCK2 (Bác sĩ Chuyên khoa II)</option>
-                    <option value="BSNT">BSNT (Bác sĩ Nội trú)</option>
-                    <option value="BS">BS (Bác sĩ)</option>
-                    <option value="Professor">Professor (International)</option>
-                    <option value="Dr.">Dr. (International)</option>
+                    <option value="GS.TS.BS">{L.t('GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)', 'Prof. Dr. Med.')}</option>
+                    <option value="PGS.TS.BS">{L.t('PGS.TS.BS (Phó Giáo sư Tiến sĩ Bác sĩ)', 'Assoc. Prof. Dr. Med.')}</option>
+                    <option value="TS.BS">{L.t('TS.BS (Tiến sĩ Bác sĩ)', 'Dr. Med. / PhD')}</option>
+                    <option value="ThS.BS">{L.t('ThS.BS (Thạc sĩ Bác sĩ)', 'M.Med. / Master')}</option>
+                    <option value="BSCK1">{L.t('BSCK1 (Bác sĩ Chuyên khoa I)', 'Specialist I')}</option>
+                    <option value="BSCK2">{L.t('BSCK2 (Bác sĩ Chuyên khoa II)', 'Specialist II')}</option>
+                    <option value="BSNT">{L.t('BSNT (Bác sĩ Nội trú)', 'Resident Physician')}</option>
+                    <option value="BS">{L.t('BS (Bác sĩ)', 'MD (Medical Doctor)')}</option>
+                    <option value="Professor">{L.t('Professor (International)', 'Professor')}</option>
+                    <option value="Dr.">{L.t('Dr. (International)', 'Dr.')}</option>
                   </select>
                 </div>
 
