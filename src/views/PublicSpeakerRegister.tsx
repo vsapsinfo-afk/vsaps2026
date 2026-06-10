@@ -286,7 +286,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 </div>
                 <div className="space-y-1 text-center sm:text-left">
                   <span className="text-xs font-bold text-slate-850 block uppercase tracking-wide">
-                    {L.t('Ảnh Chân Dung / Chân Dung Khoa Học *', 'Scientific Portrait / Avatar *')}
+                    {L.f('avatar', 'Ảnh Chân Dung / Chân Dung Khoa Học *', 'Scientific Portrait / Avatar *')}
                   </span>
                   <p className="text-[10px] text-slate-500 leading-snug">
                     {L.t('Ảnh chân dung của báo cáo viên sẽ được in trên Kỷ yếu Hội nghị, Thẻ đại biểu danh dự & Website chính thức.', 'The portrait photo of the speaker will be printed in the Conference Proceedings, Honorary Badge & Official Website.')}
@@ -312,7 +312,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Học hàm / Học vị *', 'Academic Title *')}
+                    {L.f('academicTitle', 'Học hàm / Học vị *', 'Academic Title *')}
                   </label>
                   <select
                     value={title}
@@ -334,7 +334,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Họ và Tên *', 'Full Name *')}
+                    {L.f('fullName', 'Họ và Tên *', 'Full Name *')}
                   </label>
                   <input
                     type="text"
@@ -350,7 +350,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Đơn vị công tác chính *', 'Primary Institution *')}
+                    {L.f('institution', 'Đơn vị công tác chính *', 'Primary Institution *')}
                   </label>
                   <input
                     type="text"
@@ -364,7 +364,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Khoa / Phòng ban / Bộ môn *', 'Department / Specialty *')}
+                    {L.f('department', 'Khoa / Phòng ban / Bộ môn *', 'Department / Specialty *')}
                   </label>
                   <input
                     type="text"
@@ -380,7 +380,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Số điện thoại *', 'Phone Number *')}
+                    {L.f('phone', 'Số điện thoại *', 'Phone Number *')}
                   </label>
                   <input
                     type="tel"
@@ -394,7 +394,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Email liên hệ trao đổi học thuật *', 'Academic Contact Email *')}
+                    {L.f('email', 'Email liên hệ trao đổi học thuật *', 'Academic Contact Email *')}
                   </label>
                   <input
                     type="email"
@@ -411,7 +411,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 <RichTextEditor
                   value={bio}
                   onChange={setBio}
-                  label={L.t('Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ', 'Short Scientific Bio - Around 100 words') as string}
+                  label={L.f('bio', 'Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ', 'Short Scientific Bio - Around 100 words')}
                   placeholder={L.p('Giới thiệu học hàm học vị, số năm chuyên khoa, các chức vụ danh dự hoặc công trình đại diện...', 'Brief intro, academic title, years of experience, honorary positions, or publication highlights...')}
                   id="speaker-bio"
                 />
@@ -428,7 +428,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Tên đề tài bài báo cáo khoa học *', 'Presentation Title *')}
+                    {L.f('presentationTitle', 'Tên đề tài bài báo cáo khoa học *', 'Presentation Title *')}
                   </label>
                   <input
                     type="text"
@@ -442,7 +442,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.t('Chuyên mục / Chuyên khoa chính *', 'Scientific Category / Track *')}
+                    {L.f('category', 'Chuyên mục / Chuyên khoa chính *', 'Scientific Category / Track *')}
                   </label>
                   <select
                     value={presentationTrack}
@@ -462,7 +462,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 <RichTextEditor
                   value={abstractText}
                   onChange={setAbstractText}
-                  label={L.t('Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *', 'Abstract text - Limit 500 words *') as string}
+                  label={L.f('abstractText', 'Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *', 'Abstract text - Limit 500 words *')}
                   placeholder={L.p('Cấu trúc bắt buộc chuẩn Y học: Đặt vấn đề, Đối tượng - Phương pháp nghiên cứu, Kết quả, Kết luận thảo luận...', 'Standard medical structure: Objective, Materials & Methods, Results, Conclusion & Discussion...')}
                   id="speaker-abstract"
                 />
@@ -472,7 +472,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <span className="text-xs font-bold text-slate-800 block">
-                    {L.t('Tải lên slide nháp / đề cương / tóm tắt đầy đủ', 'Upload draft slides / outline / full abstract')}
+                    {L.f('uploadFile', 'Tải lên slide nháp / đề cương / tóm tắt đầy đủ', 'Upload draft slides / outline / full abstract')}
                   </span>
                   <p className="text-[10px] text-slate-500">
                     {L.t('Chấp nhận định dạng .pdf, .docx, .ppt, .pptx tối đa 15MB. Bản này dùng để hội đồng đọc bình duyệt chuyên sâu.', 'Accepts .pdf, .docx, .ppt, .pptx formats, max 15MB. This file will be reviewed by the academic committee.')}

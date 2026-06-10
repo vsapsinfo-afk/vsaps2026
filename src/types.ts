@@ -297,6 +297,7 @@ export interface PublicFormConfig {
   language?: 'vi' | 'en' | 'both';
   /** Tên các section tùy chỉnh — key: section id, value: label song ngữ */
   sectionLabels?: Record<string, BilingualLabel>;
+  fieldLabels?: Record<string, BilingualLabel>;
 }
 
 export interface BusinessConfig {

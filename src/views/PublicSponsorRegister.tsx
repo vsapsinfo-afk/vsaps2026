@@ -507,7 +507,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               {/* Logo upload block */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-slate-500 block uppercase tracking-wide">
-                  {L.t('Logo Thương Hiệu / Doanh Nghiệp *', 'Brand / Company Logo *')}
+                  {L.f('logo', 'Logo Thương Hiệu / Doanh Nghiệp *', 'Brand / Company Logo *')}
                 </label>
                 <div 
                   onDragOver={handleDragOver}
@@ -552,7 +552,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
               <div>
                 <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                  {L.t('Tên Thương hiệu / Doanh nghiệp đăng ký *', 'Brand / Registered Company Name *')}
+                  {L.f('companyName', 'Tên Thương hiệu / Doanh nghiệp đăng ký *', 'Brand / Registered Company Name *')}
                 </label>
                 <input
                   type="text"
@@ -567,7 +567,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                    {L.t('Họ & Tên Đại diện liên hệ *', 'Contact Person Name *')}
+                    {L.f('contactName', 'Họ & Tên Đại diện liên hệ *', 'Contact Person Name *')}
                   </label>
                   <input
                     type="text"
@@ -580,7 +580,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                    {L.t('Số điện thoại liên hệ *', 'Contact Phone Number *')}
+                    {L.f('contactPhone', 'Số điện thoại liên hệ *', 'Contact Phone Number *')}
                   </label>
                   <input
                     type="tel"
@@ -595,7 +595,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
               <div>
                 <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                  {L.t('Email nhận thư báo ký kết & tài liệu *', 'Email for Contracts & Documents *')}
+                  {L.f('contactEmail', 'Email nhận thư báo ký kết & tài liệu *', 'Email for Contracts & Documents *')}
                 </label>
                 <input
                   type="email"
@@ -611,7 +611,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 <RichTextEditor
                   value={notes}
                   onChange={setNotes}
-                  label={L.t('Ghi chú hoặc yêu cầu đặc biệt của Doanh nghiệp', 'Company requests or special notes') as string}
+                  label={L.f('notes', 'Ghi chú hoặc yêu cầu đặc biệt của Doanh nghiệp', 'Company requests or special notes')}
                   placeholder={L.p('Yêu cầu sơ đồ gian hàng, mong muốn ghép chung, thời hạn ký hợp hợp hạch toán...', 'Booth layout requirements, co-branding request, accounting deadlines...')}
                   id="sponsor-notes"
                 />

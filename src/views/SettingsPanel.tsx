@@ -3376,6 +3376,115 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                         })()}
                       </div>
                     </div>
+
+                    {/* Field Labels configuration */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        ✍️ Tùy Chỉnh Các Nhãn Trường Nhập Liệu (Labels)
+                      </span>
+                      <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                        Chỉnh sửa nhãn (label) hiển thị của các trường thông tin trong form công khai ở cả 2 ngôn ngữ.
+                      </p>
+
+                      <div className="space-y-4 pt-2 border-t border-slate-200">
+                        {(() => {
+                          const currentFieldLabels = (cfg as any).fieldLabels || {};
+                          
+                          // Define fields based on form type
+                          const fields: { key: string; labelVi: string; labelEn: string; placeholderVi: string; placeholderEn: string }[] = [];
+                          if (formActiveSection === 'delegate') {
+                            fields.push(
+                              { key: 'nationality', labelVi: 'Chọn ngôn ngữ / Quốc tịch', labelEn: 'Select Language / Nationality', placeholderVi: 'Chọn ngôn ngữ *', placeholderEn: 'Select Language *' },
+                              { key: 'avatar', labelVi: 'Ảnh Chân Dung / Avatar', labelEn: 'Portrait / Avatar', placeholderVi: 'Ảnh Chân Dung / Avatar *', placeholderEn: ' scientific Portrait *' },
+                              { key: 'doctorProof', labelVi: 'Minh chứng Bác Sĩ', labelEn: 'Doctor Credentials Proof', placeholderVi: 'Minh chứng Bác Sĩ *', placeholderEn: 'Doctor Credentials Proof *' },
+                              { key: 'academicTitle', labelVi: 'Học hàm / Học vị', labelEn: 'Academic Title', placeholderVi: 'Học hàm / Học vị *', placeholderEn: 'Academic Title *' },
+                              { key: 'fullName', labelVi: 'Họ và Tên', labelEn: 'Full Name', placeholderVi: 'Họ và Tên (In hoa có dấu) *', placeholderEn: 'Full Name (Capitalized) *' },
+                              { key: 'gender', labelVi: 'Giới tính', labelEn: 'Gender', placeholderVi: 'Giới tính *', placeholderEn: 'Gender *' },
+                              { key: 'yearOfBirth', labelVi: 'Năm sinh', labelEn: 'Year of Birth', placeholderVi: 'Năm sinh *', placeholderEn: 'Year of Birth *' },
+                              { key: 'phone', labelVi: 'Số điện thoại di động', labelEn: 'Contact Phone Number', placeholderVi: 'Số điện thoại di động *', placeholderEn: 'Contact Phone Number *' },
+                              { key: 'email', labelVi: 'Địa chỉ Email nhận vé & CME', labelEn: 'Email for Ticket & CME', placeholderVi: 'Địa chỉ Email nhận vé & CME *', placeholderEn: 'Email for Ticket & CME *' },
+                              { key: 'workplace', labelVi: 'Đơn vị công tác', labelEn: 'Workplace', placeholderVi: 'Đơn vị công tác (Bệnh viện/Khoa Y/Viện thẩm mỹ) *', placeholderEn: 'Workplace (Hospital/Medical School/Clinic) *' },
+                              { key: 'address', labelVi: 'Địa chỉ liên hệ', labelEn: 'Contact Address', placeholderVi: 'Địa chỉ liên hệ *', placeholderEn: 'Contact Address *' },
+                              { key: 'timelineOption', labelVi: 'Lựa chọn Thời điểm Đăng ký', labelEn: 'Registration Timeline Option', placeholderVi: 'Lựa chọn Thời điểm Đăng ký *', placeholderEn: 'Registration Timeline Option *' },
+                              { key: 'notes', labelVi: 'Ghi chú cho BTC', labelEn: 'Notes for Organizer', placeholderVi: 'Ghi chú yêu cầu đặc biệt khác cho BTC', placeholderEn: 'Special notes or request for Organizer' }
+                            );
+                          } else if (formActiveSection === 'speaker') {
+                            fields.push(
+                              { key: 'avatar', labelVi: 'Ảnh Chân Dung', labelEn: 'Portrait Image', placeholderVi: 'Ảnh Chân Dung / Chân Dung Khoa Học *', placeholderEn: 'Scientific Portrait / Avatar *' },
+                              { key: 'academicTitle', labelVi: 'Học hàm / Học vị', labelEn: 'Academic Title', placeholderVi: 'Học hàm / Học vị *', placeholderEn: 'Academic Title *' },
+                              { key: 'fullName', labelVi: 'Họ và Tên', labelEn: 'Full Name', placeholderVi: 'Họ và Tên *', placeholderEn: 'Full Name *' },
+                              { key: 'institution', labelVi: 'Đơn vị công tác chính', labelEn: 'Primary Institution', placeholderVi: 'Đơn vị công tác chính *', placeholderEn: 'Primary Institution *' },
+                              { key: 'department', labelVi: 'Khoa / Phòng ban', labelEn: 'Department / Specialty', placeholderVi: 'Khoa / Phòng ban / Bộ môn *', placeholderEn: 'Department / Specialty *' },
+                              { key: 'phone', labelVi: 'Số điện thoại', labelEn: 'Phone Number', placeholderVi: 'Số điện thoại *', placeholderEn: 'Phone Number *' },
+                              { key: 'email', labelVi: 'Email liên hệ trao đổi học thuật', labelEn: 'Academic Contact Email', placeholderVi: 'Email liên hệ trao đổi học thuật *', placeholderEn: 'Academic Contact Email *' },
+                              { key: 'bio', labelVi: 'Tiểu sử khoa học tóm tắt (Bio)', labelEn: 'Short Scientific Bio', placeholderVi: 'Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ', placeholderEn: 'Short Scientific Bio - Around 100 words' },
+                              { key: 'presentationTitle', labelVi: 'Tên đề tài báo cáo khoa học', labelEn: 'Presentation Title', placeholderVi: 'Tên đề tài bài báo cáo khoa học *', placeholderEn: 'Presentation Title *' },
+                              { key: 'category', labelVi: 'Chuyên mục / Chuyên khoa chính', labelEn: 'Scientific Track', placeholderVi: 'Chuyên mục / Chuyên khoa chính *', placeholderEn: 'Scientific Category / Track *' },
+                              { key: 'abstractText', labelVi: 'Tóm tắt nội dung báo cáo', labelEn: 'Abstract Text', placeholderVi: 'Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *', placeholderEn: 'Abstract text - Limit 500 words *' },
+                              { key: 'uploadFile', labelVi: 'Tải lên slide/đề cương', labelEn: 'Upload draft slides/abstract', placeholderVi: 'Tải lên slide nháp / đề cương / tóm tắt đầy đủ', placeholderEn: 'Upload draft slides / outline / full abstract' }
+                            );
+                          } else if (formActiveSection === 'sponsor') {
+                            fields.push(
+                              { key: 'logo', labelVi: 'Logo Doanh Nghiệp', labelEn: 'Brand / Company Logo', placeholderVi: 'Logo Thương Hiệu / Doanh Nghiệp *', placeholderEn: 'Brand / Company Logo *' },
+                              { key: 'companyName', labelVi: 'Tên Doanh nghiệp đăng ký', labelEn: 'Registered Company Name', placeholderVi: 'Tên Thương hiệu / Doanh nghiệp đăng ký *', placeholderEn: 'Brand / Registered Company Name *' },
+                              { key: 'contactName', labelVi: 'Họ & Tên Người liên hệ', labelEn: 'Contact Person Name', placeholderVi: 'Họ & Tên Đại diện liên hệ *', placeholderEn: 'Contact Person Name *' },
+                              { key: 'contactPhone', labelVi: 'Số điện thoại liên hệ', labelEn: 'Contact Phone Number', placeholderVi: 'Số điện thoại liên hệ *', placeholderEn: 'Contact Phone Number *' },
+                              { key: 'contactEmail', labelVi: 'Email liên hệ nhận hợp đồng', labelEn: 'Email for Contracts', placeholderVi: 'Email nhận thư báo ký kết & tài liệu *', placeholderEn: 'Email for Contracts & Documents *' },
+                              { key: 'notes', labelVi: 'Ghi chú của Doanh nghiệp', labelEn: 'Company notes', placeholderVi: 'Ghi chú hoặc yêu cầu đặc biệt của Doanh nghiệp', placeholderEn: 'Company requests or special notes' }
+                            );
+                          }
+
+                          return fields.map((fld) => {
+                            const valVi = currentFieldLabels[fld.key]?.vi || '';
+                            const valEn = currentFieldLabels[fld.key]?.en || '';
+
+                            return (
+                              <div key={fld.key} className="space-y-2 pb-2 border-b border-slate-200 last:border-0 last:pb-0">
+                                <span className="text-[10px] font-extrabold text-violet-755 block uppercase font-mono">
+                                  {fld.labelVi} / {fld.labelEn}
+                                </span>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <span className="text-[9.5px] text-slate-455 font-bold block">Tên Tiếng Việt</span>
+                                    <input
+                                      type="text"
+                                      value={valVi}
+                                      placeholder={fld.placeholderVi}
+                                      onChange={(e) => {
+                                        const newLabels = { ...currentFieldLabels };
+                                        newLabels[fld.key] = {
+                                          vi: e.target.value,
+                                          en: newLabels[fld.key]?.en || fld.placeholderEn
+                                        };
+                                        setFormCfg({ fieldLabels: newLabels });
+                                      }}
+                                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[9.5px] text-slate-455 font-bold block">Tên Tiếng Anh</span>
+                                    <input
+                                      type="text"
+                                      value={valEn}
+                                      placeholder={fld.placeholderEn}
+                                      onChange={(e) => {
+                                        const newLabels = { ...currentFieldLabels };
+                                        newLabels[fld.key] = {
+                                          vi: newLabels[fld.key]?.vi || fld.placeholderVi,
+                                          en: e.target.value
+                                        };
+                                        setFormCfg({ fieldLabels: newLabels });
+                                      }}
+                                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="pt-2 flex gap-3">

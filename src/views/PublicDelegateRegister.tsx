@@ -822,7 +822,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 {/* Language Selector */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
                   <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
-                    {L.t('Chọn ngôn ngữ *', 'Select Language *')}
+                    {L.f('nationality', 'Chọn ngôn ngữ *', 'Select Language *')}
                   </label>
                   <div className="flex bg-slate-200/50 rounded-lg p-1 gap-2 max-w-sm">
                     <button
@@ -867,7 +867,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     </div>
                     <div className="space-y-1 text-center sm:text-left flex-1 min-w-0">
                       <span className="text-xs font-bold text-slate-800 block uppercase tracking-wide">
-                        {L.t('Ảnh Chân Dung / Avatar *', ' scientific Portrait *')}
+                        {L.f('avatar', 'Ảnh Chân Dung / Avatar *', ' scientific Portrait *')}
                       </span>
                       <p className="text-[10px] text-slate-500 leading-snug">
                         Khuyên dùng ảnh chân dung rõ mặt để check-in nhận diện khuôn mặt tức thì.
@@ -908,7 +908,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     </div>
                     <div className="space-y-1 text-center sm:text-left flex-1 min-w-0">
                       <span className="text-xs font-bold text-slate-800 block uppercase tracking-wide">
-                        {L.t('Minh chứng Bác Sĩ *', 'Doctor Credentials Proof *')}
+                        {L.f('doctorProof', 'Minh chứng Bác Sĩ *', 'Doctor Credentials Proof *')}
                       </span>
                       <p className="text-[10px] text-slate-500 leading-snug">
                         Tải ảnh Thẻ bác sĩ, bằng cấp chuyên khoa, hoặc chứng chỉ hành nghề.
@@ -936,7 +936,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-3">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Học hàm / Học vị *', 'Academic Title *')}
+                      {L.f('academicTitle', 'Học hàm / Học vị *', 'Academic Title *')}
                     </label>
                     <select
                       value={title}
@@ -957,7 +957,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
                   <div className="md:col-span-6">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Họ và Tên (In hoa có dấu) *', 'Full Name (Capitalized) *')}
+                      {L.f('fullName', 'Họ và Tên (In hoa có dấu) *', 'Full Name (Capitalized) *')}
                     </label>
                     <input
                       type="text"
@@ -971,7 +971,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
                   <div className="md:col-span-3">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Giới tính *', 'Gender *')}
+                      {L.f('gender', 'Giới tính *', 'Gender *')}
                     </label>
                     <div className="flex bg-slate-50 rounded-xl border border-slate-200 p-1">
                       <button
@@ -1000,7 +1000,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-4">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Năm sinh *', 'Year of Birth *')}
+                      {L.f('yearOfBirth', 'Năm sinh *', 'Year of Birth *')}
                     </label>
                     <input
                       type="text"
@@ -1018,7 +1018,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
                   <div className="md:col-span-4">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Số điện thoại di động *', 'Contact Phone Number *')}
+                      {L.f('phone', 'Số điện thoại di động *', 'Contact Phone Number *')}
                     </label>
                     <input
                       type="tel"
@@ -1035,7 +1035,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
                   <div className="md:col-span-4">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Địa chỉ Email nhận vé & CME *', 'Email for Ticket & CME *')}
+                      {L.f('email', 'Địa chỉ Email nhận vé & CME *', 'Email for Ticket & CME *')}
                     </label>
                     <input
                       type="email"
@@ -1052,7 +1052,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-12">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Đơn vị công tác (Bệnh viện/Khoa Y/Viện thẩm mỹ) *', 'Workplace (Hospital/Medical School/Clinic) *')}
+                      {L.f('workplace', 'Đơn vị công tác (Bệnh viện/Khoa Y/Viện thẩm mỹ) *', 'Workplace (Hospital/Medical School/Clinic) *')}
                     </label>
                     <input
                       type="text"
@@ -1069,7 +1069,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 <div className="grid grid-cols-1 gap-4">
                   <div className="col-span-1">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Địa chỉ liên hệ *', 'Contact Address *')}
+                      {L.f('address', 'Địa chỉ liên hệ *', 'Contact Address *')}
                     </label>
                     <input
                       type="text"
@@ -1217,7 +1217,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 {/* Time Period picker */}
                 <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
                   <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
-                    {L.t('Lựa chọn Thời điểm Đăng ký *', 'Registration Timeline Option *')}
+                    {L.f('timelineOption', 'Lựa chọn Thời điểm Đăng ký *', 'Registration Timeline Option *')}
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     <button
@@ -1308,7 +1308,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   <RichTextEditor
                     value={notes}
                     onChange={setNotes}
-                    label={L.t('Ghi chú yêu cầu đặc biệt khác cho BTC', 'Special notes or request for Organizer')}
+                    label={L.f('notes', 'Ghi chú yêu cầu đặc biệt khác cho BTC', 'Special notes or request for Organizer')}
                     placeholder={L.p('ví dụ: Đóng gói ăn chay, Xuất hóa đơn đỏ cho cơ quan bệnh viện công (ghi rõ MST, Tên tổ chức)...', 'e.g. Vegetarian meal request, Invoice request with Tax code and Organization name...')}
                     id="delegate-notes"
                   />

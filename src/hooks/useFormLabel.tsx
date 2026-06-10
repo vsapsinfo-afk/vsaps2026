@@ -16,6 +16,8 @@ export interface FormLabelHelper {
   section: (key: string, defaultVi: string, defaultEn: string) => React.ReactNode;
   /** Render label field song ngữ */
   t: (vi: string, en: string) => React.ReactNode;
+  /** Render label field song ngữ từ config fieldLabels */
+  f: (key: string, defaultVi: string, defaultEn: string) => React.ReactNode;
   /** Render placeholder — trả về string */
   p: (vi: string, en: string) => string;
   /** Language mode */
@@ -59,11 +61,24 @@ export function useFormLabel(formCfg?: PublicFormConfig, overrideLang?: LangMode
     );
   };
 
+  const f = (key: string, defaultVi: string, defaultEn: string): React.ReactNode => {
+    const custom = formCfg?.fieldLabels?.[key];
+    const vi = custom?.vi || defaultVi;
+    const en = custom?.en || defaultEn;
+    if (!isBoth) return lang === 'en' ? en : vi;
+    return (
+      <span>
+        {vi}
+        <span className="ml-1.5 text-slate-400 font-normal text-[9px]">/ {en}</span>
+      </span>
+    );
+  };
+
   const p = (vi: string, en: string): string => {
     if (lang === 'en') return en;
     if (lang === 'vi') return vi;
     return `${vi} / ${en}`;
   };
 
-  return { section, t, p, lang, showVi, showEn };
+  return { section, t, f, p, lang, showVi, showEn };
 }
