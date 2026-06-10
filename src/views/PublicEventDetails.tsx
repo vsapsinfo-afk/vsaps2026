@@ -900,19 +900,42 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {packages.map((pkg) => (
-                  <div key={pkg.id} className={`bg-white rounded-2xl border ${pkg.id === 'pkg-standard' ? 'border-2 border-teal-500 shadow-xl relative' : 'border-slate-100 shadow-md'} overflow-hidden flex flex-col justify-between transition-all hover:shadow-lg`}>
-                    {pkg.id === 'pkg-standard' && (
-                      <div className="absolute top-0 right-0 bg-teal-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest">
-                        Khuyên Dùng
-                      </div>
-                    )}
-                    <div className="p-6 flex-1">
-                      <span className="text-[9px] font-bold text-teal-600 tracking-wider uppercase bg-teal-50 px-2 py-0.5 rounded mb-2 inline-block">Category Package</span>
-                      <h4 className="font-extrabold text-slate-900 text-md leading-snug mb-2">{pkg.name}</h4>
-                      <div className="text-xl font-black text-slate-950 mb-4 border-b border-dashed border-slate-100 pb-3">
-                        {pkg.fee === 0 ? 'Miễn Phí' : `${pkg.fee.toLocaleString('vi-VN')} VNĐ`}
-                      </div>
+                {packages.map((pkg) => {
+                  const today = new Date();
+                  const targetDate = new Date('2026-11-10');
+                  const isPost = today >= targetDate;
+                  
+                  let feeDisplay = '';
+                  if (pkg.id === 'pkg-free') {
+                    feeDisplay = 'Miễn Phí';
+                  } else {
+                    const PRICING = {
+                      'pkg-member': isPost ? 3000000 : 2500000,
+                      'pkg-standard': isPost ? 3500000 : 3000000,
+                      'pkg-student': isPost ? 1500000 : 1000000,
+                      'pkg-foreign': isPost ? 5000000 : 3750000,
+                    };
+                    const fee = PRICING[pkg.id as keyof typeof PRICING] ?? pkg.fee;
+                    if (pkg.id === 'pkg-foreign') {
+                      feeDisplay = isPost ? `$200 (${fee.toLocaleString('vi-VN')} VNĐ)` : `$150 (${fee.toLocaleString('vi-VN')} VNĐ)`;
+                    } else {
+                      feeDisplay = `${fee.toLocaleString('vi-VN')} VNĐ`;
+                    }
+                  }
+
+                  return (
+                    <div key={pkg.id} className={`bg-white rounded-2xl border ${pkg.id === 'pkg-standard' ? 'border-2 border-teal-500 shadow-xl relative' : 'border-slate-100 shadow-md'} overflow-hidden flex flex-col justify-between transition-all hover:shadow-lg`}>
+                      {pkg.id === 'pkg-standard' && (
+                        <div className="absolute top-0 right-0 bg-teal-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-widest">
+                          Khuyên Dùng
+                        </div>
+                      )}
+                      <div className="p-6 flex-1">
+                        <span className="text-[9px] font-bold text-teal-600 tracking-wider uppercase bg-teal-50 px-2 py-0.5 rounded mb-2 inline-block">Category Package</span>
+                        <h4 className="font-extrabold text-slate-900 text-md leading-snug mb-2">{pkg.name}</h4>
+                        <div className="text-xl font-black text-slate-950 mb-4 border-b border-dashed border-slate-100 pb-3">
+                          {feeDisplay}
+                        </div>
 
                       <ul className="space-y-3">
                         {pkg.benefits.map((benefit, i) => (
@@ -932,7 +955,8 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                       </button>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
 

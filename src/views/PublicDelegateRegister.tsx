@@ -146,7 +146,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [ward, setWard] = useState('Phường Thảo Điền');
   const [address, setAddress] = useState('');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
-  const [period, setPeriod] = useState<'pre_10_11' | 'post_10_11'>('pre_10_11');
+  const [period, setPeriod] = useState<'pre_10_11' | 'post_10_11'>(() => {
+    const today = new Date();
+    const targetDate = new Date('2026-11-10');
+    return today >= targetDate ? 'post_10_11' : 'pre_10_11';
+  });
   const [addOnSelections, setAddOnSelections] = useState<Record<string, boolean>>({});
   const toggleAddOn = (id: string) => {
     setAddOnSelections(prev => ({
@@ -1155,7 +1159,19 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         </div>
 
                         <div className="font-mono font-black text-slate-950 text-base md:text-lg mt-5 border-t border-slate-100 pt-3 text-right">
-                          {currentPkgPrice.toLocaleString()} <span className="text-[10px] font-normal text-slate-400 font-sans">VNĐ</span>
+                          {pkg.id === 'pkg-foreign' ? (
+                            <span>
+                              {period === 'pre_10_11' ? '$150' : '$200'}{' '}
+                              <span className="text-[10px] font-normal text-slate-400 font-sans">
+                                ({currentPkgPrice.toLocaleString()} VNĐ)
+                              </span>
+                            </span>
+                          ) : (
+                            <span>
+                              {currentPkgPrice.toLocaleString()}{' '}
+                              <span className="text-[10px] font-normal text-slate-400 font-sans">VNĐ</span>
+                            </span>
+                          )}
                         </div>
                       </label>
                     );
@@ -1306,7 +1322,13 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   <div className="space-y-2 text-xs font-semibold text-slate-700">
                     <div className="flex justify-between">
                       <span>{L.t('Phí Gói Đăng Ký', 'Package Fee')} ({selectedPackage?.name}):</span>
-                      <span className="font-mono text-slate-905">{baseFee.toLocaleString()} VNĐ</span>
+                      <span className="font-mono text-slate-905">
+                        {selectedPackage?.id === 'pkg-foreign' ? (
+                          `${period === 'pre_10_11' ? '$150' : '$200'} (${baseFee.toLocaleString()} VNĐ)`
+                        ) : (
+                          `${baseFee.toLocaleString()} VNĐ`
+                        )}
+                      </span>
                     </div>
                     {addOnFeeDetails.map(d => (
                       <div key={d.id} className="flex justify-between">
