@@ -17,7 +17,7 @@ export interface UserAccount {
 
 export interface Attendee {
   id: string;
-  title: string; // GS.TS, PGS.TS, TS, ThS, BS, v.v.
+  title: string; // GS.TS.BS, PGS.TS.BS, TS.BS, ThS.BS, BS, v.v.
   fullName: string;
   organization: string;
   department: string;
@@ -51,7 +51,7 @@ export interface Attendee {
 
 export interface SpeakerRegistration {
   id: string;
-  title: string; // GS.TS, PGS.TS, TS, v.v.
+  title: string; // GS.TS.BS, PGS.TS.BS, TS.BS, v.v.
   fullName: string;
   organization: string;
   department: string;

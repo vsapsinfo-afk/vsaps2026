@@ -49,7 +49,7 @@ const SAMPLE_PAPERS = [
   {
     id: 'spk-sample-102',
     title: 'Ứng dụng tổ hợp Laser Picosecond trong điều trị tăng sắc tố da ở người châu Á',
-    speakerName: 'PGS.TS. Trần Thị Thanh',
+    speakerName: 'PGS.TS.BS. Trần Thị Thanh',
     speakerTitle: 'Đại học Y dược Thành phố',
     track: 'Thẩm Mỹ Nội Khoa'
   },
@@ -1140,7 +1140,7 @@ export default function ScheduleManagement({ role }: ScheduleManagementProps) {
 
     html += `<div class="sig-block">
         <div>ĐẠI DIỆN HỘI ĐỒNG KHOA HỌC<br/><br/><br/><b>GS.TS. Phạm Minh Chi</b></div>
-        <div>TRƯỞNG BAN THƯ KÝ ĐẠI HỘI<br/><br/><br/><b>PGS.TS. Trần Lê Hùng</b></div>
+        <div>TRƯỞNG BAN THƯ KÝ ĐẠI HỘI<br/><br/><br/><b>PGS.TS.BS. Trần Lê Hùng</b></div>
     </div>
     <script>window.onload = function() { setTimeout(function() { window.print(); }, 500); }</script>
 </body>

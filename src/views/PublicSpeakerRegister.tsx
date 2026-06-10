@@ -20,7 +20,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const formCfg = businessConfig.speakerFormConfig;
   const L = useFormLabel(formCfg);
   // Form State
-  const [title, setTitle] = useState('PGS.TS.');
+  const [title, setTitle] = useState('PGS.TS.BS');
   const [fullName, setFullName] = useState('');
   const [organization, setOrganization] = useState('');
   const [department, setDepartment] = useState('');
@@ -320,7 +320,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none"
                   >
                     <option value="GS.TS.BS">GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)</option>
-                    <option value="PGS.TS.">PGS.TS. (Phó Giáo sư Tiến sĩ)</option>
+                    <option value="PGS.TS.BS">PGS.TS.BS (Phó Giáo sư Tiến sĩ Bác sĩ)</option>
                     <option value="TS.BS">TS.BS (Tiến sĩ Bác sĩ)</option>
                     <option value="ThS.BS">ThS.BS (Thạc sĩ Bác sĩ)</option>
                     <option value="BSCK1">BSCK1 (Bác sĩ Chuyên khoa I)</option>
@@ -341,7 +341,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder={L.p('ví dụ: PGS.TS. Trần Quốc Bảo', 'e.g. Prof. John Smith')}
+                    placeholder={L.p('ví dụ: PGS.TS.BS. Trần Quốc Bảo', 'e.g. Prof. John Smith')}
                     className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none placeholder-slate-400"
                   />
                 </div>

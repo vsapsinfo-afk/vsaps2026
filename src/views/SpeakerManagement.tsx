@@ -1277,7 +1277,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white font-semibold cursor-pointer focus:ring-1 focus:ring-teal-500 focus:outline-none"
                     >
                       <option value="GS.TS.BS">GS.TS.BS</option>
-                      <option value="PGS.TS.">PGS.TS.</option>
+                      <option value="PGS.TS.BS">PGS.TS.BS</option>
                       <option value="TS.BS">TS.BS</option>
                       <option value="ThS.BS">ThS.BS</option>
                       <option value="BSCK1">BSCK1</option>

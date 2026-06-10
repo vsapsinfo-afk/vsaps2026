@@ -90,7 +90,7 @@ function getSessionEnrichment(session: ConferenceSession) {
   if (session.id === 'SES-218') {
     return {
       abstract: `ĐẶT VẤN ĐỀ: Co thắt bao xơ (Capsular Contracture) là biến chứng nghiêm trọng hàng đầu trong nâng ngực túi silicone. Chúng tôi đánh giá hiệu quả bọc phủ túi ngực bằng màng nanofiber thế hệ mới kết hợp kháng sinh dự phòng tại chỗ.\n\nPHƯƠNG PHÁP: Nghiên cứu thử nghiệm lâm sàng ngẫu nhiên có đối chứng trên 120 ca phẫu thuật nâng ngực thứ phát sau biến chứng co thắt.\n\nKẾT QUẢ: Sau 18 tháng theo dõi, nhóm sử dụng màng bao phủ sinh học có tỷ lệ co thắt bao xơ tái phát bằng 0%, so với 8.5% ở nhóm đối chứng không bọc màng.\n\nKẾT LUẬN: Ứng dụng công nghệ màng bao phủ sinh học nanofiber là giải pháp đột phá tháo gỡ hoàn toàn bài toán biến chứng bao xơ của túi silicone.`,
-      bio: `PGS.TS. Chuyên khoa phẫu thuật vú hàng đầu, nổi tiếng với kỹ năng sửa bao xơ ngực phức tạp. Ông thường xuyên giảng dạy tại các khóa đào tạo quốc gia và chuyển giao kỹ nghệ nội soi ngực không đau.`
+      bio: `PGS.TS.BS. Chuyên khoa phẫu thuật vú hàng đầu, nổi tiếng với kỹ năng sửa bao xơ ngực phức tạp. Ông thường xuyên giảng dạy tại các khóa đào tạo quốc gia và chuyển giao kỹ nghệ nội soi ngực không đau.`
     };
   }
 
@@ -319,7 +319,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                       TQ
                     </div>
                     <div>
-                      <h4 className="font-semibold text-slate-900">PGS.TS. Trần Quốc Bảo</h4>
+                      <h4 className="font-semibold text-slate-900">PGS.TS.BS. Trần Quốc Bảo</h4>
                       <p className="text-xs text-teal-600 font-medium mb-1">Trưởng khoa Ngoại Lồng Ngực - Bệnh viện 108</p>
                       <p className="text-xs text-slate-500">Chuyên đề: &ldquo;Phẫu thuật Robot điều trị u trung thất trước: Kinh nghiệm tại Việt Nam&rdquo;</p>
                     </div>

@@ -1808,7 +1808,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none cursor-pointer"
                   >
                     <option value="GS.TS.BS">GS.TS.BS</option>
-                    <option value="PGS.TS.">PGS.TS.</option>
+                    <option value="PGS.TS.BS">PGS.TS.BS</option>
                     <option value="TS.BS">TS.BS</option>
                     <option value="ThS.BS">ThS.BS</option>
                     <option value="BSCK1">BSCK1</option>
@@ -2356,7 +2356,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                             onChange={(e) => setDetailEditForm({ ...detailEditForm, title: e.target.value })}
                             className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-905 font-semibold focus:outline-none focus:border-indigo-500"
                           >
-                            {['GS.TS.BS', 'PGS.TS.', 'TS.BS', 'ThS.BS', 'BSCK1', 'BSCK2', 'BSNT', 'BS', 'Đại biểu'].map(t => (
+                            {['GS.TS.BS', 'PGS.TS.BS', 'TS.BS', 'ThS.BS', 'BSCK1', 'BSCK2', 'BSNT', 'BS', 'Đại biểu'].map(t => (
                               <option key={t} value={t}>{t}</option>
                             ))}
                           </select>

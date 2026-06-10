@@ -954,7 +954,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-medium focus:border-teal-600 focus:outline-none focus:bg-white transition-all cursor-pointer"
                     >
                       <option value="GS.TS.BS">GS.TS.BS (Giáo sư Tiến sĩ Bác sĩ)</option>
-                      <option value="PGS.TS.">PGS.TS. (Phó Giáo sư Tiến sĩ)</option>
+                      <option value="PGS.TS.BS">PGS.TS.BS (Phó Giáo sư Tiến sĩ Bác sĩ)</option>
                       <option value="TS.BS">TS.BS (Tiến sĩ Bác sĩ)</option>
                       <option value="ThS.BS">ThS.BS (Thạc sĩ Bác sĩ)</option>
                       <option value="BSCK1">BSCK1 (Bác sĩ Chuyên khoa I)</option>

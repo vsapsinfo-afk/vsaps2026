@@ -359,7 +359,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-850">Duyệt bài báo khoa học (Mẫu)</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-mono leading-relaxed">Gửi Email kèm tài liệu đến PGS.TS. Trần Quốc Bảo</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 font-mono leading-relaxed">Gửi Email kèm tài liệu đến PGS.TS.BS. Trần Quốc Bảo</p>
                     <span className="text-[9px] text-slate-355 block mt-1">Lịch sử hệ thống</span>
                   </div>
                 </div>
