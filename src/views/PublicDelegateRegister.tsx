@@ -16,14 +16,15 @@ import { useFormLabel } from '../hooks/useFormLabel';
 interface FormStepperProps {
   currentStep: number;
   isSubmitted: boolean;
+  L?: any;
 }
 
-function FormStepper({ currentStep, isSubmitted }: FormStepperProps) {
+function FormStepper({ currentStep, isSubmitted, L }: FormStepperProps) {
   const steps = [
-    { number: 1, label: 'Thông tin đại biểu', desc: 'Nhập thông tin cá nhân' },
-    { number: 2, label: 'Chọn gói đăng ký', desc: 'Lựa chọn gói hội nghị' },
-    { number: 3, label: 'Dịch vụ phụ trợ', desc: 'CME, Gala, Masterclass, Tour' },
-    { number: 4, label: 'Thanh toán & Cảm ơn', desc: 'Vé check-in & Quét QR' }
+    { number: 1, label: L ? L.t('Thông tin đại biểu', 'Delegate Info') : 'Thông tin đại biểu', desc: L ? L.t('Nhập thông tin cá nhân', 'Enter personal details') : 'Nhập thông tin cá nhân' },
+    { number: 2, label: L ? L.t('Chọn gói đăng ký', 'Select Package') : 'Chọn gói đăng ký', desc: L ? L.t('Lựa chọn gói hội nghị', 'Choose registration package') : 'Lựa chọn gói hội nghị' },
+    { number: 3, label: L ? L.t('Dịch vụ phụ trợ', 'Optional Services') : 'Dịch vụ phụ trợ', desc: L ? L.t('CME, Gala, Masterclass, Tour', 'CME, Gala, Masterclass, Tour') : 'CME, Gala, Masterclass, Tour' },
+    { number: 4, label: L ? L.t('Thanh toán & Cảm ơn', 'Payment & Complete') : 'Thanh toán & Cảm ơn', desc: L ? L.t('Vé check-in & Quét QR', 'Check-in ticket & QR scan') : 'Vé check-in & Quét QR' }
   ];
 
   const activeStep = isSubmitted ? 4 : currentStep;
@@ -73,7 +74,7 @@ function FormStepper({ currentStep, isSubmitted }: FormStepperProps) {
         <div className="md:hidden flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] font-extrabold text-teal-600 uppercase tracking-widest font-mono">
-              Bước {activeStep} / 4
+              {L ? L.t('Bước', 'Step') : 'Bước'} {activeStep} / 4
             </span>
             <h4 className="text-sm font-black text-slate-900 uppercase">
               {steps[activeStep - 1].label}
@@ -529,7 +530,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       <div className="bg-slate-100 min-h-screen py-8 md:py-12 px-4 text-slate-800 font-sans">
         <div className="max-w-4xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden">
           {/* FormStepper indicating step 4 is active */}
-          <FormStepper currentStep={4} isSubmitted={true} />
+          <FormStepper currentStep={4} isSubmitted={true} L={L} />
 
           {/* Header alert */}
           <div className="bg-teal-900 text-amber-400 p-8 text-center relative border-b border-teal-800">
@@ -798,7 +799,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
           )}
 
           {/* FormStepper rendered inside the registration portal */}
-          <FormStepper currentStep={currentStep} isSubmitted={false} />
+          <FormStepper currentStep={currentStep} isSubmitted={false} L={L} />
 
           <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-8">
             
@@ -841,7 +842,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         nationality === 'foreign' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      {L.t('Quốc tế', 'International')}
+                      International
                     </button>
                   </div>
                 </div>
@@ -1094,7 +1095,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     }}
                     className="px-6 py-3 rounded-xl bg-teal-900 hover:bg-teal-950 text-white font-extrabold text-xs uppercase tracking-wider transition-all shadow hover:shadow-md cursor-pointer"
                   >
-                    Tiếp tục: Chọn gói đăng ký →
+                    {L.t('Tiếp tục: Chọn gói đăng ký →', 'Continue: Select Package →')}
                   </button>
                 </div>
               </div>
@@ -1133,7 +1134,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                               {pkg.id === 'pkg-member' ? L.t('Hội Viên', 'Member') : 
                                pkg.id === 'pkg-standard' ? L.t('Tiêu chuẩn', 'Standard') : 
                                pkg.id === 'pkg-student' ? L.t('Học Viên', 'Student/Resident') : 
-                               pkg.id === 'pkg-free' ? L.t('Báo cáo viên', 'Speaker') : L.t('Nước ngoài', 'Foreigner')}
+                               pkg.id === 'pkg-free' ? L.t('Báo cáo viên', 'Speaker') : L.t('Quốc tế', 'International')}
                             </span>
                             {isSelected && <span className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs">✓</span>}
                           </div>
@@ -1188,7 +1189,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     }}
                     className="px-6 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    ← Quay lại: Thông tin đại biểu
+                    {L.t('← Quay lại: Thông tin đại biểu', '← Back: Delegate Info')}
                   </button>
                   <button
                     type="button"
@@ -1198,7 +1199,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     }}
                     className="px-6 py-3 rounded-xl bg-teal-900 hover:bg-teal-950 text-white font-extrabold text-xs uppercase tracking-wider transition-all shadow hover:shadow-md cursor-pointer"
                   >
-                    Tiếp tục: Dịch vụ phụ trợ →
+                    {L.t('Tiếp tục: Dịch vụ phụ trợ →', 'Continue: Optional Services →')}
                   </button>
                 </div>
               </div>
@@ -1353,7 +1354,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     }}
                     className="px-6 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
                   >
-                    ← Quay lại: Chọn gói đăng ký
+                    {L.t('← Quay lại: Chọn gói đăng ký', '← Back: Select Package')}
                   </button>
                   <button
                     id="btn-submit-delegate"
@@ -1362,7 +1363,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     className="px-8 py-3 rounded-xl bg-teal-900 hover:bg-teal-950 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider cursor-pointer shadow-lg hover:shadow-xl transition-all border border-amber-400/40 relative group overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-                    {isSubmitting ? 'Đang gửi thông tin đăng ký...' : 'Xác Nhận Đăng Ký & Đi Đến Thanh Toán ⚡'}
+                    {isSubmitting ? L.t('Đang gửi thông tin đăng ký...', 'Submitting registration details...') : L.t('Xác Nhận Đăng Ký & Đi Đến Thanh Toán ⚡', 'Confirm Registration & Go to Payment ⚡')}
                   </button>
                 </div>
               </div>
