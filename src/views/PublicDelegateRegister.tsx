@@ -661,16 +661,16 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
               <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                 <Upload className="w-4 h-4 text-teal-600 animate-bounce" />
                 <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                  Đính Kèm Biên Lai Chuyển Khoản (Để BTC Đối Soát Nhanh)
+                  {L.t('Đính Kèm Biên Lai Chuyển Khoản (Để BTC Đối Soát Nhanh)', 'Attach Payment Receipt (For Fast Verification)')}
                 </h4>
               </div>
               <p className="text-[10.5px] text-slate-500 leading-normal font-medium">
-                Sau khi quét mã QR thanh toán phía trên, đại biểu vui lòng tải lên hình ảnh biên nhận chuyển khoản thành công. Ban thư ký sẽ đối soát giao dịch và phê duyệt hồ sơ của đại biểu tức thì.
+                {L.t('Sau khi quét mã QR thanh toán phía trên, đại biểu vui lòng tải lên hình ảnh biên nhận chuyển khoản thành công. Ban thư ký sẽ đối soát giao dịch và phê duyệt hồ sơ của đại biểu tức thì.', 'After scanning the VietQR code above, please upload the payment receipt. The secretariat will verify the transaction and approve your registration immediately.')}
               </p>
               <div className="flex items-center gap-3">
                 <label className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 cursor-pointer text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-all w-fit select-none">
                   <Upload className="w-4 h-4 text-slate-500" />
-                  Đính kèm hóa đơn chuyển khoản
+                  {L.t('Đính kèm hóa đơn chuyển khoản', 'Attach Receipt')}
                   <input
                     type="file"
                     accept="image/*"
@@ -678,8 +678,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     className="hidden"
                   />
                 </label>
-                {isUploading && <span className="text-[10px] text-slate-400 font-mono animate-pulse">Đang nạp file...</span>}
-                {createdAttendee.transactionProofUrl && <span className="text-xs text-emerald-650 font-bold flex items-center gap-1">✓ Đã tải ảnh hóa đơn thành công!</span>}
+                {isUploading && <span className="text-[10px] text-slate-400 font-mono animate-pulse">{L.t('Đang nạp file...', 'Uploading...')}</span>}
+                {createdAttendee.transactionProofUrl && <span className="text-xs text-emerald-650 font-bold flex items-center gap-1">{L.t('✓ Đã tải ảnh hóa đơn thành công!', '✓ Receipt uploaded successfully!')}</span>}
               </div>
               {createdAttendee.transactionProofUrl && (
                 <div className="relative w-fit mt-2 border border-slate-200 rounded-xl p-1 bg-slate-50 shadow-inner">
@@ -877,14 +877,14 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     </div>
                     <div className="space-y-1 text-center sm:text-left flex-1 min-w-0">
                       <span className="text-xs font-bold text-slate-800 block uppercase tracking-wide">
-                        {L.f('avatar', 'Ảnh Chân Dung / Avatar *', ' scientific Portrait *')}
+                        {L.f('avatar', 'Ảnh Chân Dung / Avatar *', 'Portrait Photo *')}
                       </span>
                       <p className="text-[10px] text-slate-500 leading-snug">
-                        Khuyên dùng ảnh chân dung rõ mặt để check-in nhận diện khuôn mặt tức thì.
+                        {L.t('Khuyên dùng ảnh chân dung rõ mặt để check-in nhận diện khuôn mặt tức thì.', 'Recommended clear face portrait for instant facial recognition check-in.')}
                       </p>
                       <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
                         <label className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none">
-                          Tải ảnh chân dung
+                          {L.t('Tải ảnh chân dung', 'Upload Portrait')}
                           <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
                         </label>
                         {avatarImage && (
@@ -893,7 +893,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                             onClick={() => setAvatarImage(null)}
                             className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold rounded-lg border-none cursor-pointer"
                           >
-                            Xóa
+                            {L.t('Xóa', 'Remove')}
                           </button>
                         )}
                       </div>
@@ -921,11 +921,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         {L.f('doctorProof', 'Minh chứng Bác Sĩ *', 'Doctor Credentials Proof *')}
                       </span>
                       <p className="text-[10px] text-slate-500 leading-snug">
-                        Tải ảnh Thẻ bác sĩ, bằng cấp chuyên khoa, hoặc chứng chỉ hành nghề.
+                        {L.t('Tải ảnh Thẻ bác sĩ, bằng cấp chuyên khoa, hoặc chứng chỉ hành nghề.', 'Upload doctor ID card, specialty degree, or practicing certificate.')}
                       </p>
                       <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
                         <label className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none">
-                          Tải ảnh minh chứng
+                          {L.t('Tải ảnh minh chứng', 'Upload Credentials')}
                           <input type="file" accept="image/*" onChange={handleDoctorProofUpload} className="hidden" />
                         </label>
                         {doctorProofImage && (
@@ -934,7 +934,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                             onClick={() => setDoctorProofImage(null)}
                             className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold rounded-lg border-none cursor-pointer"
                           >
-                            Xóa
+                            {L.t('Xóa', 'Remove')}
                           </button>
                         )}
                       </div>
