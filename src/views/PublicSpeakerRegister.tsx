@@ -18,7 +18,8 @@ interface PublicSpeakerRegisterProps {
 export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegisterProps) {
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.speakerFormConfig;
-  const L = useFormLabel(formCfg);
+  const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
+  const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   // Form State
   const [title, setTitle] = useState('PGS.TS.BS');
   const [fullName, setFullName] = useState('');
@@ -64,7 +65,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !email || !presentationTitle || !abstractText || !organization) {
-      setErrorMsg('Vui lòng điền đầy đủ các thông tin bắt buộc (*).');
+      setErrorMsg(nationality === 'vietname' ? 'Vui lòng điền đầy đủ các thông tin bắt buộc (*).' : 'Please fill in all required fields (*).');
       return;
     }
     setErrorMsg('');
@@ -112,7 +113,10 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       setIsSubmitted(true);
     } catch (err: any) {
       console.error('Lỗi lưu đăng ký báo cáo viên:', err);
-      setErrorMsg(`Không thể hoàn tất gửi bài báo cáo: ${err.message || err.details || 'Lỗi cơ sở dữ liệu.'}`);
+      setErrorMsg(nationality === 'vietname' 
+        ? `Không thể hoàn tất gửi bài báo cáo: ${err.message || err.details || 'Lỗi cơ sở dữ liệu.'}` 
+        : `Failed to submit presentation: ${err.message || err.details || 'Database error.'}`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -130,32 +134,32 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 className="p-1 px-3 rounded-lg bg-indigo-950/50 hover:bg-indigo-950 text-xs font-semibold flex items-center gap-1 text-teal-150"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                Quay lại
+                {L.t('Quay lại', 'Back')}
               </button>
             </div>
             <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/20">
               <CheckCircle className="w-8 h-8 text-teal-300" />
             </div>
-            <h2 className="text-2xl font-bold mb-1">Đệ Trình Báo Cáo Thành Công!</h2>
-            <p className="text-xs text-indigo-200 uppercase tracking-widest font-mono">Mã hồ sơ: {createdSpeaker.id}</p>
+            <h2 className="text-2xl font-bold mb-1">{L.t('Đệ Trình Báo Cáo Thành Công!', 'Presentation Submitted Successfully!')}</h2>
+            <p className="text-xs text-indigo-200 uppercase tracking-widest font-mono">{L.t('Mã hồ sơ: ', 'Submission ID: ')}{createdSpeaker.id}</p>
           </div>
 
           <div className="p-8 space-y-6">
             <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-200 text-slate-700 text-xs space-y-2 text-center">
               <Sparkles className="w-4 h-4 text-indigo-600 mx-auto" />
-              <p className="font-bold text-slate-900">Thông báo liên thông hệ thống tự động đã phát tín:</p>
+              <p className="font-bold text-slate-900">{L.t('Thông báo liên thông hệ thống tự động đã phát tín:', 'Automated system notifications have been dispatched:')}</p>
               <p>
-                Email tự động đã được lập trình gửi tới báo cáo viên: <strong className="text-slate-950">{createdSpeaker.email}</strong>.
+                {L.t('Email tự động đã được lập trình gửi tới báo cáo viên: ', 'Automated email has been scheduled for the speaker: ')}<strong className="text-slate-950">{createdSpeaker.email}</strong>.
               </p>
               {createdSpeaker.calendarSynced && (
                 <p className="text-xs text-slate-500">
-                  📅 <strong className="text-slate-800">Đã đồng bộ Google Calendar lân cận:</strong> Token lịch trích xuất thành công. Lịch trình thuyết trình sẽ tự cập nhật vào thiết bị cá nhân của bác sĩ khi có phê duyệt.
+                  {L.t('📅 Đã đồng bộ Google Calendar lân cận: Token lịch trích xuất thành công. Lịch trình thuyết trình sẽ tự cập nhật vào thiết bị cá nhân của bác sĩ khi có phê duyệt.', '📅 Google Calendar Sync Enabled: Calendar token generated. The presentation schedule will automatically sync to your personal calendar upon approval.')}
                 </p>
               )}
             </div>
 
             <div className="border border-slate-100 p-6 rounded-2xl bg-slate-50/50 space-y-4">
-              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block font-mono">Chi tiết hồ sơ đệ trình của bạn:</span>
+              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block font-mono">{L.t('Chi tiết hồ sơ đệ trình của bạn:', 'Your Submission Details:')}</span>
               
               <div className="space-y-2 text-xs">
                 <div className="flex items-center gap-3 pb-2 border-b border-slate-200/50">
@@ -167,40 +171,40 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     />
                   )}
                   <div>
-                    <span className="text-slate-400 font-medium">Báo cáo viên:</span>
+                    <span className="text-slate-400 font-medium">{L.t('Báo cáo viên:', 'Speaker:')}</span>
                     <p className="font-bold text-slate-900 text-sm mt-0.5">{createdSpeaker.title} {createdSpeaker.fullName}</p>
                   </div>
                 </div>
                 <div className="pt-1">
-                  <span className="text-slate-400 font-medium">Đơn vị:</span>
+                  <span className="text-slate-400 font-medium">{L.t('Đơn vị:', 'Institution:')}</span>
                   <p className="font-semibold text-slate-800 mt-0.5">{createdSpeaker.organization} ({createdSpeaker.department})</p>
                 </div>
                 <div className="border-t border-slate-200/60 pt-2">
-                  <span className="text-slate-400 font-medium">Đề tài báo cáo đăng ký:</span>
+                  <span className="text-slate-400 font-medium">{L.t('Đề tài báo cáo đăng ký:', 'Registered Presentation Title:')}</span>
                   <p className="font-bold text-slate-905 mt-0.5 leading-relaxed text-teal-850">“{createdSpeaker.presentationTitle}”</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Chuyên mục:</span>
+                  <span className="text-slate-400 font-medium">{L.t('Chuyên mục:', 'Category:')}</span>
                   <p className="font-semibold text-slate-800 mt-0.5 bg-indigo-50 inline-block px-2 py-0.5 rounded text-[11px]">{createdSpeaker.presentationTrack}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium">Tài liệu đính kèm:</span>
+                  <span className="text-slate-400 font-medium">{L.t('Tài liệu đính kèm:', 'Attached Document:')}</span>
                   <p className="font-semibold text-teal-700 mt-0.5 flex items-center gap-1">
                     <FileText className="w-3.5 h-3.5" />
                     {createdSpeaker.documentName}
                   </p>
                 </div>
                 <div className="border-t border-slate-200/60 pt-2">
-                  <span className="text-slate-400 font-medium font-mono">TRẠNG THÁI KIỂM DUYỆT ACADEMIC:</span>
+                  <span className="text-slate-400 font-medium font-mono">{L.t('TRẠNG THÁI KIỂM DUYỆT ACADEMIC:', 'ACADEMIC REVIEW STATUS:')}</span>
                   <span className="inline-flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 font-mono">
-                    ĐANG THẨM ĐỊNH (PENDING)
+                    {L.t('ĐANG THẨM ĐỊNH (PENDING)', 'REVIEW PENDING')}
                   </span>
                 </div>
               </div>
             </div>
 
             <p className="text-[11px] text-slate-500 text-center italic mt-4 leading-relaxed">
-              Hội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua email cá nhân.
+              {L.t('Hội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua email cá nhân.', 'The VSAPS 2026 Scientific Committee will review your abstract within 5 working days. You can track the status of your submission or receive revision feedback via your email.')}
             </p>
 
             <button
@@ -208,7 +212,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               onClick={() => onNavigate('event-details')}
               className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-950 text-white font-bold text-xs uppercase tracking-widest transition-all"
             >
-              Quay lại Trang Chủ Sự Kiện
+              {L.t('Quay lại Trang Chủ Sự Kiện', 'Back to Event Homepage')}
             </button>
           </div>
         </div>
@@ -226,9 +230,9 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
           {formCfg?.isOpen === false && (
             <div className="p-12 text-center" style={{ backgroundColor: formCfg?.headerBgColor || '#1e1b4b' }}>
               <div className="text-5xl mb-4">🔒</div>
-              <h2 className="text-white font-black text-xl mb-3">Cổng nộp bài đã đóng</h2>
-              <p className="text-white/70 text-sm max-w-md mx-auto">{formCfg?.closedMessage || 'Cổng nộp bài báo cáo hiện đã đóng. Vui lòng liên hệ Ban thư ký khoa học.'}</p>
-              <button onClick={() => onNavigate('event-details')} className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">← Về trang chủ</button>
+              <h2 className="text-white font-black text-xl mb-3">{L.t('Cổng nộp bài đã đóng', 'Submission Portal Closed')}</h2>
+              <p className="text-white/70 text-sm max-w-md mx-auto">{formCfg?.closedMessage || L.t('Cổng nộp bài báo cáo hiện đã đóng. Vui lòng liên hệ Ban thư ký khoa học.', 'The presentation submission portal is currently closed. Please contact the Scientific Secretariat.')}</p>
+              <button onClick={() => onNavigate('event-details')} className="mt-6 px-6 py-2.5 bg-white/20 hover:bg-white/30 text-white text-sm font-bold rounded-xl border border-white/30 cursor-pointer transition-all">{L.t('← Về trang chủ', '← Back to Event Homepage')}</button>
             </div>
           )}
 
@@ -242,13 +246,13 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-10 object-contain mb-3 rounded" />}
               <span className="text-[9px] font-black tracking-widest uppercase block font-mono mb-1"
                 style={{ color: formCfg?.accentColor || '#818cf8' }}>
-                {formCfg?.organizerLabel || 'HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)'}
+                {formCfg?.organizerLabel || L.t('HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)', 'VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS)')}
               </span>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-                {formCfg?.formTitle || 'ĐĂNG KÝ BÁO CÁO KHOA HỌC'}
+                {formCfg?.formTitle || L.t('ĐĂNG KÝ BÁO CÁO KHOA HỌC', 'SCIENTIFIC PRESENTATION REGISTRATION')}
               </h1>
               <p className="text-white/70 text-sm mt-1">
-                {formCfg?.formDescription || 'Dành cho báo cáo viên quốc tế và nội địa đệ trình tóm tắt đề tài lâm sàng.'}
+                {formCfg?.formDescription || L.t('Dành cho báo cáo viên quốc tế và nội địa đệ trình tóm tắt đề tài lâm sàng.', 'For international and domestic speakers to submit scientific abstracts.')}
               </p>
             </div>
           )}
@@ -260,6 +264,33 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 <span>{errorMsg}</span>
               </div>
             )}
+
+            {/* Language Selector */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+              <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
+                {L.f('nationality', 'Chọn ngôn ngữ *', 'Select Language *')}
+              </label>
+              <div className="flex bg-slate-200/50 rounded-lg p-1 gap-2 max-w-sm">
+                <button
+                  type="button"
+                  onClick={() => setNationality('vietname')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                    nationality === 'vietname' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {L.t('Việt Nam', 'Vietnamese')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNationality('foreign')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                    nationality === 'foreign' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  International
+                </button>
+              </div>
+            </div>
 
             {/* Speaker block information */}
             <div className="space-y-4">
@@ -280,7 +311,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                   )}
                   {isAvatarUploading && (
                     <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center text-[10px] text-white font-mono">
-                      Loading...
+                      {L.t('Đang tải...', 'Loading...')}
                     </div>
                   )}
                 </div>
