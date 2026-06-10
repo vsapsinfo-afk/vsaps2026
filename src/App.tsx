@@ -71,6 +71,8 @@ function AppContent() {
     if (user) {
       setRole(user.role);
     }
+    // Clear reload flag on successful load
+    sessionStorage.removeItem('reloaded_once');
   }, [user]);
 
 

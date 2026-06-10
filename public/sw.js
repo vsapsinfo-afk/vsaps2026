@@ -177,7 +177,15 @@ async function cacheFirst(request) {
  */
 async function networkFirst(request) {
   try {
-    const networkResponse = await fetch(request);
+    let fetchRequest = request;
+    if (request.mode === 'navigate') {
+      fetchRequest = new Request(request.url, {
+        method: 'GET',
+        headers: request.headers,
+        cache: 'no-store' // Bypass HTTP cache to always get fresh index.html
+      });
+    }
+    const networkResponse = await fetch(fetchRequest);
 
     // Cache successful responses for offline use
     if (networkResponse.ok && request.method === 'GET') {
