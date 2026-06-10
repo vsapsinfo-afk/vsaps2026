@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, CheckCircle, QrCode, Mail, Phone, FileText, Upload, AlertCircle, Sparkles, Check, HelpCircle } from 'lucide-react';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
-import { Attendee, RegistrationPackage } from '../types';
+import { Attendee, RegistrationPackage, AddOnService } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { getProvinceList, getDistrictsOf, getWardsOf } from '../data/vnProvinces';
 import SepayPaymentChecker from '../components/SepayPaymentChecker';
@@ -111,6 +111,12 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const containerRef = useRef<HTMLDivElement>(null);
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.delegateFormConfig;
+  const addOnServices: AddOnService[] = businessConfig.addOnServices || [
+    { id: 'addon-cme', nameVi: 'Chứng chỉ CME', nameEn: 'CME Certificate', descriptionVi: 'Nhận chứng chỉ đào tạo y khoa liên tục CME sau khi kết thúc khóa học tham luận.', descriptionEn: 'Receive Continuing Medical Education (CME) certificate after completing the sessions.', fee: 350000, isEnabled: true, color: 'teal' },
+    { id: 'addon-gala', nameVi: 'Gala Dinner', nameEn: 'Gala Dinner', descriptionVi: 'Đăng ký tiệc tối ẩm thực giao lưu kết nối thân mật y sỹ.', descriptionEn: 'Register for the evening Gala Dinner for friendly medical networking.', fee: 700000, isEnabled: true, color: 'amber' },
+    { id: 'addon-masterclass', nameVi: 'Master Class', nameEn: 'Master Class', descriptionVi: 'Nhận truyền thụ và chuyển giao công nghệ thẩm mỹ lâm sàn chuyên sâu.', descriptionEn: 'Receive knowledge sharing and technology transfer for advanced aesthetic clinical methods.', fee: 500000, isEnabled: true, color: 'purple' },
+    { id: 'addon-tour', nameVi: 'Tour tham quan', nameEn: 'Sightseeing Tour', descriptionVi: 'Đóng phí Tour tham luận văn hóa dã ngoại theo lịch trình hội nghị.', descriptionEn: 'Register for cultural tour field trips following the official schedule.', fee: 4500000, feePost: 5000000, isEnabled: true, color: 'pink' }
+  ];
 
   // Auto-height postMessage for iframe embedding in WordPress
   useEffect(() => {
@@ -141,6 +147,13 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [address, setAddress] = useState('');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [period, setPeriod] = useState<'pre_10_11' | 'post_10_11'>('pre_10_11');
+  const [addOnSelections, setAddOnSelections] = useState<Record<string, boolean>>({});
+  const toggleAddOn = (id: string) => {
+    setAddOnSelections(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
   
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   
@@ -319,12 +332,16 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const currentPrices = PRICING[period];
   const baseFee = currentPrices[packageId as keyof typeof currentPrices] ?? 0;
   
-  const extraCme = cmeRequired ? 350000 : 0;
-  const extraGala = galaRequired ? 700000 : 0;
-  const extraMasterclass = masterclassRequired ? 500000 : 0;
-  const extraTour = tourRequired ? (period === 'pre_10_11' ? 4500000 : 5000000) : 0;
+  // Calculate add-on fees dynamically from config
+  const addOnFeeDetails = addOnServices
+    .filter(s => addOnSelections[s.id])
+    .map(s => {
+      const fee = period === 'post_10_11' && s.feePost ? s.feePost : s.fee;
+      return { id: s.id, nameVi: s.nameVi, nameEn: s.nameEn, fee };
+    });
+  const totalAddOnFee = addOnFeeDetails.reduce((sum, d) => sum + d.fee, 0);
 
-  const calculatedTotalFee = baseFee + extraCme + extraGala + extraMasterclass + extraTour;
+  const calculatedTotalFee = baseFee + totalAddOnFee;
 
   // Dynamic preview for bank transfer using VietQR
   const currentVietQRUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${calculatedTotalFee}&addInfo=${encodeURIComponent(transferMessage)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
@@ -358,11 +375,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   };
 
   const handleToggleCme = (val: boolean) => {
-    setCmeRequired(val);
+    setAddOnSelections(prev => ({ ...prev, 'addon-cme': val }));
   };
 
   const handleToggleGala = (val: boolean) => {
-    setGalaRequired(val);
+    setAddOnSelections(prev => ({ ...prev, 'addon-gala': val }));
   };
 
   const handleSelectPackage = (pkgId: string) => {
@@ -413,6 +430,24 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
       const fullAddress = `${address.trim()}${ward ? ', ' + ward : ''}${district ? ', ' + district : ''}`;
 
+      const isCmeSelected = addOnServices.some(s => s.id.toLowerCase().includes('cme') && addOnSelections[s.id]);
+      const isGalaSelected = addOnServices.some(s => s.id.toLowerCase().includes('gala') && addOnSelections[s.id]);
+      const isMasterclassSelected = addOnServices.some(s => s.id.toLowerCase().includes('master') && addOnSelections[s.id]);
+      const isTourSelected = addOnServices.some(s => s.id.toLowerCase().includes('tour') && addOnSelections[s.id]);
+
+      let finalNotes = notes;
+      const customAddOns = addOnServices.filter(s => 
+        addOnSelections[s.id] && 
+        !s.id.toLowerCase().includes('cme') && 
+        !s.id.toLowerCase().includes('gala') && 
+        !s.id.toLowerCase().includes('master') && 
+        !s.id.toLowerCase().includes('tour')
+      );
+      if (customAddOns.length > 0) {
+        const customNames = customAddOns.map(s => s.nameVi).join(', ');
+        finalNotes = notes ? `${notes}\n[Đăng ký thêm: ${customNames}]` : `[Đăng ký thêm: ${customNames}]`;
+      }
+
       const attendeeData: Attendee = {
         id: newId,
         title,
@@ -432,14 +467,14 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
         registrationDate: new Date().toISOString().split('T')[0],
         qrCodeValue,
         isCheckedIn: false,
-        notes,
+        notes: finalNotes,
         yearOfBirth,
         gender,
-        cmeRequired,
+        cmeRequired: isCmeSelected,
         cmeIdentityNo: undefined,
-        galaRequired,
-        masterclassRequired,
-        tourRequired,
+        galaRequired: isGalaSelected,
+        masterclassRequired: isMasterclassSelected,
+        tourRequired: isTourSelected,
         registrationPeriod: period,
         province,
         avatarUrl: avatarImage || undefined,
@@ -778,6 +813,33 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
                     {L.section('personalInfo', 'THÔNG TIN ĐẠI BIỂU ĐĂNG KÝ', 'DELEGATE PERSONAL INFORMATION')}
                   </h3>
+                </div>
+
+                {/* Language Selector */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
+                    {L.t('Chọn ngôn ngữ *', 'Select Language *')}
+                  </label>
+                  <div className="flex bg-slate-200/50 rounded-lg p-1 gap-2 max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setNationality('vietname')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                        nationality === 'vietname' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {L.t('Việt Nam', 'Vietnamese')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNationality('foreign')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                        nationality === 'foreign' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {L.t('Quốc tế', 'International')}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Language Selector */}
@@ -1202,127 +1264,53 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   </p>
                 </div>
 
-                {/* Grid of 4 Extra Services */}
+                {/* Grid of Add-On Services (Dynamic from Config) */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* CME Option */}
-                  <div 
-                    onClick={() => handleToggleCme(!cmeRequired)}
-                    className={`p-4 rounded-2xl border cursor-pointer select-none transition-all ${
-                      cmeRequired 
-                        ? 'bg-teal-50/40 border-teal-600 ring-2 ring-teal-600/10' 
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <input
-                        type="checkbox"
-                        checked={cmeRequired}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleToggleCme(e.target.checked);
-                        }}
-                        className="w-5 h-5 rounded border-slate-300 text-teal-800 focus:ring-teal-700 mt-0.5 cursor-pointer"
-                      />
-                      <div>
-                        <span className="text-xs font-black text-slate-900 block uppercase">
-                          {L.t('Chứng chỉ CME (+ 350.000đ)', 'CME Certificate (+ 350,000 VND)')}
-                        </span>
-                        <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
-                          {L.t('Nhận chứng chỉ đào tạo y khoa liên tục CME sau khi kết thúc khóa học tham luận.', 'Receive Continuing Medical Education (CME) certificate after completing the sessions.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  {addOnServices.filter(svc => svc.isEnabled).map((svc) => {
+                    const isSelected = addOnSelections[svc.id] || false;
+                    const svcFee = period === 'post_10_11' && svc.feePost ? svc.feePost : svc.fee;
+                    const colorMap: Record<string, { bg: string; border: string; ring: string; text: string; checkbox: string }> = {
+                      teal:   { bg: 'bg-teal-50/40',   border: 'border-teal-600',   ring: 'ring-teal-600/10',   text: 'text-teal-900',   checkbox: 'text-teal-800' },
+                      amber:  { bg: 'bg-amber-50/40',  border: 'border-amber-500',  ring: 'ring-amber-500/10',  text: 'text-amber-850',  checkbox: 'text-amber-600' },
+                      purple: { bg: 'bg-purple-50/40', border: 'border-purple-500', ring: 'ring-purple-500/10', text: 'text-purple-850', checkbox: 'text-purple-600' },
+                      pink:   { bg: 'bg-pink-50/40',   border: 'border-pink-500',   ring: 'ring-pink-500/10',   text: 'text-pink-850',   checkbox: 'text-pink-600' },
+                      indigo: { bg: 'bg-indigo-50/40', border: 'border-indigo-500', ring: 'ring-indigo-500/10', text: 'text-indigo-850', checkbox: 'text-indigo-600' },
+                      rose:   { bg: 'bg-rose-50/40',   border: 'border-rose-500',   ring: 'ring-rose-500/10',   text: 'text-rose-850',   checkbox: 'text-rose-600' },
+                    };
+                    const c = colorMap[svc.color || 'teal'] || colorMap.teal;
 
-                  {/* Gala Dinner Option */}
-                  <div 
-                    onClick={() => handleToggleGala(!galaRequired)}
-                    className={`p-4 rounded-2xl border cursor-pointer select-none transition-all ${
-                      galaRequired 
-                        ? 'bg-amber-50/40 border-amber-500 ring-2 ring-amber-500/10' 
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <input
-                        type="checkbox"
-                        checked={galaRequired}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleToggleGala(e.target.checked);
-                        }}
-                        className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500 mt-0.5 cursor-pointer"
-                      />
-                      <div>
-                        <span className="text-xs font-black text-amber-850 block uppercase">
-                          {L.t('Gala Dinner (+ 700.000đ)', 'Gala Dinner (+ 700,000 VND)')}
-                        </span>
-                        <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
-                          {L.t('Đăng ký tiệc tối ẩm thực giao lưu kết nối thân mật y sỹ.', 'Register for the evening Gala Dinner for friendly medical networking.')}
-                        </span>
+                    return (
+                      <div
+                        key={svc.id}
+                        onClick={() => toggleAddOn(svc.id)}
+                        className={`p-4 rounded-2xl border cursor-pointer select-none transition-all ${
+                          isSelected
+                            ? `${c.bg} ${c.border} ring-2 ${c.ring}`
+                            : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleAddOn(svc.id);
+                            }}
+                            className={`w-5 h-5 rounded border-slate-300 ${c.checkbox} focus:ring-current mt-0.5 cursor-pointer`}
+                          />
+                          <div>
+                            <span className={`text-xs font-black ${c.text} block uppercase`}>
+                              {L.t(`${svc.nameVi} (+ ${svcFee.toLocaleString()}đ)`, `${svc.nameEn} (+ ${svcFee.toLocaleString()} VND)`)}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
+                              {L.t(svc.descriptionVi, svc.descriptionEn)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Masterclass Option */}
-                  <div 
-                    onClick={() => setMasterclassRequired(!masterclassRequired)}
-                    className={`p-4 rounded-2xl border cursor-pointer select-none transition-all ${
-                      masterclassRequired 
-                        ? 'bg-purple-50/40 border-purple-500 ring-2 ring-purple-500/10' 
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <input
-                        type="checkbox"
-                        checked={masterclassRequired}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setMasterclassRequired(e.target.checked);
-                        }}
-                        className="w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 mt-0.5 cursor-pointer"
-                      />
-                      <div>
-                        <span className="text-xs font-black text-purple-850 block uppercase">
-                          {L.t('Master class (+ 500.000đ)', 'Master class (+ 500,000 VND)')}
-                        </span>
-                        <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
-                          {L.t('Nhận truyền thụ và chuyển giao công nghệ thẩm mỹ lâm sàn chuyên sâu.', 'Receive knowledge sharing and technology transfer for advanced aesthetic clinical methods.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Tour Option */}
-                  <div 
-                    onClick={() => setTourRequired(!tourRequired)}
-                    className={`p-4 rounded-2xl border cursor-pointer select-none transition-all ${
-                      tourRequired 
-                        ? 'bg-pink-50/40 border-pink-500 ring-2 ring-pink-500/10' 
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <input
-                        type="checkbox"
-                        checked={tourRequired}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          setTourRequired(e.target.checked);
-                        }}
-                        className="w-5 h-5 rounded border-slate-300 text-pink-600 focus:ring-pink-500 mt-0.5 cursor-pointer"
-                      />
-                      <div>
-                        <span className="text-xs font-black text-pink-850 block uppercase">
-                          {L.t(`Tour tham quan ${period === 'pre_10_11' ? '(+ 4.500.000đ)' : '(+ 5.000.000đ)'}`, `Sightseeing Tour ${period === 'pre_10_11' ? '(+ 4,500,000 VND)' : '(+ 5,000,000 VND)'}`)}
-                        </span>
-                        <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
-                          {L.t('Đóng phí Tour tham luận văn hóa dã ngoại theo lịch trình hội nghị độc giả.', 'Register for cultural tour field trips following the official schedule.')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
 
                 {/* Note fields */}
@@ -1339,39 +1327,21 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 {/* Cumulative Fee Panel */}
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-250 space-y-3 shadow-inner">
                   <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block border-b border-slate-200 pb-2">
-                    TỔNG HỢP CHI PHÍ ĐĂNG KÝ HỘI NGHỊ
+                    {L.t('TỔNG HỢP CHI PHÍ ĐĂNG KÝ HỘI NGHỊ', 'REGISTRATION FEE SUMMARY')}
                   </span>
                   <div className="space-y-2 text-xs font-semibold text-slate-700">
                     <div className="flex justify-between">
-                      <span>Phí Gói Đăng Ký ({selectedPackage?.name}):</span>
+                      <span>{L.t('Phí Gói Đăng Ký', 'Package Fee')} ({selectedPackage?.name}):</span>
                       <span className="font-mono text-slate-905">{baseFee.toLocaleString()} VNĐ</span>
                     </div>
-                    {cmeRequired && (
-                      <div className="flex justify-between">
-                        <span>• Phí Cấp Chứng Chỉ CME:</span>
-                        <span className="font-mono text-slate-905">+{extraCme.toLocaleString()} VNĐ</span>
+                    {addOnFeeDetails.map(d => (
+                      <div key={d.id} className="flex justify-between">
+                        <span>• {L.t(d.nameVi, d.nameEn)}:</span>
+                        <span className="font-mono text-slate-905">+{d.fee.toLocaleString()} VNĐ</span>
                       </div>
-                    )}
-                    {galaRequired && (
-                      <div className="flex justify-between">
-                        <span>• Phí Tiệc Tối Gala Dinner:</span>
-                        <span className="font-mono text-slate-905">+{extraGala.toLocaleString()} VNĐ</span>
-                      </div>
-                    )}
-                    {masterclassRequired && (
-                      <div className="flex justify-between">
-                        <span>• Phí Học Tập Masterclass:</span>
-                        <span className="font-mono text-slate-905">+{extraMasterclass.toLocaleString()} VNĐ</span>
-                      </div>
-                    )}
-                    {tourRequired && (
-                      <div className="flex justify-between">
-                        <span>• Phí Tour Tham Quan Dã Ngoại:</span>
-                        <span className="font-mono text-slate-905">+{extraTour.toLocaleString()} VNĐ</span>
-                      </div>
-                    )}
+                    ))}
                     <div className="flex justify-between text-teal-900 bg-teal-50 border border-teal-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
-                      <span>TỔNG LỆ PHÍ ĐĂNG KÝ CẦN ĐÓNG:</span>
+                      <span>{L.t('TỔNG LỆ PHÍ ĐĂNG KÝ CẦN ĐÓNG:', 'TOTAL REGISTRATION FEE:')}</span>
                       <span className="font-mono">{calculatedTotalFee.toLocaleString()} VNĐ</span>
                     </div>
                   </div>

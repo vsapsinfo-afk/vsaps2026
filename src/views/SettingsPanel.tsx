@@ -48,7 +48,8 @@ import {
   Role, 
   NotificationTemplate,
   BusinessConfig,
-  EmbedScript
+  EmbedScript,
+  AddOnService
 } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 
@@ -1491,6 +1492,238 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     )}
                   </div>
                 ))}
+              </div>
+
+
+              {/* ── ADD-ON SERVICES MANAGEMENT ── */}
+              <div className="border-t border-slate-200 pt-6 mt-6 space-y-4">
+                <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Cấu hình dịch vụ phụ trợ tự chọn</h3>
+                    <p className="text-[11px] text-slate-450 mt-0.5">Chỉnh sửa tên, giá, mô tả và bật/tắt các dịch vụ phụ trợ hiển thị trên form đại biểu (CME, Gala Dinner, Masterclass, Tour...).</p>
+                  </div>
+                  {role === 'admin' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newId = 'addon-' + Date.now();
+                        const current = businessConfig.addOnServices || [];
+                        setBusinessConfig({
+                          ...businessConfig,
+                          addOnServices: [...current, {
+                            id: newId,
+                            nameVi: 'Dịch vụ mới',
+                            nameEn: 'New Service',
+                            descriptionVi: 'Mô tả dịch vụ...',
+                            descriptionEn: 'Service description...',
+                            fee: 0,
+                            feePost: 0,
+                            isEnabled: false,
+                            color: 'teal'
+                          }]
+                        });
+                      }}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer border-none"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Thêm dịch vụ
+                    </button>
+                  )}
+                </div>
+
+                {/* Default services if none configured */}
+                {(() => {
+                  const services: AddOnService[] = businessConfig.addOnServices || [
+                    { id: 'addon-cme', nameVi: 'Chứng chỉ CME', nameEn: 'CME Certificate', descriptionVi: 'Nhận chứng chỉ đào tạo y khoa liên tục CME sau khi kết thúc khóa học tham luận.', descriptionEn: 'Receive Continuing Medical Education (CME) certificate after completing the sessions.', fee: 350000, isEnabled: true, color: 'teal' },
+                    { id: 'addon-gala', nameVi: 'Gala Dinner', nameEn: 'Gala Dinner', descriptionVi: 'Đăng ký tiệc tối ẩm thực giao lưu kết nối thân mật y sỹ.', descriptionEn: 'Register for the evening Gala Dinner for friendly medical networking.', fee: 700000, isEnabled: true, color: 'amber' },
+                    { id: 'addon-masterclass', nameVi: 'Master Class', nameEn: 'Master Class', descriptionVi: 'Nhận truyền thụ và chuyển giao công nghệ thẩm mỹ lâm sàn chuyên sâu.', descriptionEn: 'Receive knowledge sharing and technology transfer for advanced aesthetic clinical methods.', fee: 500000, isEnabled: true, color: 'purple' },
+                    { id: 'addon-tour', nameVi: 'Tour tham quan', nameEn: 'Sightseeing Tour', descriptionVi: 'Đóng phí Tour tham luận văn hóa dã ngoại theo lịch trình hội nghị.', descriptionEn: 'Register for cultural tour field trips following the official schedule.', fee: 4500000, feePost: 5000000, isEnabled: true, color: 'pink' }
+                  ];
+
+                  // Initialize defaults if not yet saved
+                  if (!businessConfig.addOnServices) {
+                    setTimeout(() => {
+                      setBusinessConfig(prev => ({ ...prev, addOnServices: services }));
+                    }, 0);
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {services.map((svc, idx) => (
+                        <div key={svc.id} className="border border-slate-200 bg-white rounded-2xl p-5 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded tracking-wider ${
+                                svc.color === 'teal' ? 'bg-teal-100 text-teal-800' :
+                                svc.color === 'amber' ? 'bg-amber-100 text-amber-800' :
+                                svc.color === 'purple' ? 'bg-purple-100 text-purple-800' :
+                                svc.color === 'pink' ? 'bg-pink-100 text-pink-800' :
+                                'bg-slate-100 text-slate-700'
+                              }`}>{svc.id}</span>
+                              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                svc.isEnabled ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' : 'text-slate-500 bg-slate-100 border border-slate-200'
+                              }`}>
+                                {svc.isEnabled ? '● Đang bật' : '○ Đang tắt'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, isEnabled: !svc.isEnabled };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer border transition-all ${
+                                  svc.isEnabled ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                                }`}
+                              >
+                                {svc.isEnabled ? 'Tắt' : 'Bật'}
+                              </button>
+                              {role === 'admin' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!confirm('Xóa dịch vụ này?')) return;
+                                    const updated = services.filter((_, i) => i !== idx);
+                                    setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                  }}
+                                  className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer border-none bg-transparent"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Tên tiếng Việt *</label>
+                              <input
+                                type="text"
+                                value={svc.nameVi}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, nameVi: e.target.value };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Tên tiếng Anh *</label>
+                              <input
+                                type="text"
+                                value={svc.nameEn}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, nameEn: e.target.value };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Mô tả tiếng Việt</label>
+                              <textarea
+                                value={svc.descriptionVi}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, descriptionVi: e.target.value };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                rows={2}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Mô tả tiếng Anh</label>
+                              <textarea
+                                value={svc.descriptionEn}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, descriptionEn: e.target.value };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                rows={2}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Giá trước 10/11 (VNĐ)</label>
+                              <input
+                                type="number"
+                                min={0}
+                                step={1000}
+                                value={svc.fee}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, fee: Number(e.target.value) };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Giá từ 10/11 (VNĐ)</label>
+                              <input
+                                type="number"
+                                min={0}
+                                step={1000}
+                                value={svc.feePost ?? svc.fee}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, feePost: Number(e.target.value) };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black text-slate-500 block mb-1">Màu giao diện</label>
+                              <select
+                                value={svc.color || 'teal'}
+                                onChange={(e) => {
+                                  const updated = [...services];
+                                  updated[idx] = { ...svc, color: e.target.value };
+                                  setBusinessConfig({ ...businessConfig, addOnServices: updated });
+                                }}
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold cursor-pointer"
+                              >
+                                <option value="teal">🟢 Teal</option>
+                                <option value="amber">🟡 Amber</option>
+                                <option value="purple">🟣 Purple</option>
+                                <option value="pink">🩷 Pink</option>
+                                <option value="indigo">🔵 Indigo</option>
+                                <option value="rose">🔴 Rose</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Save button */}
+                      <div className="flex justify-end pt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            store.saveBusinessConfig(businessConfig);
+                            alert('Đã lưu cấu hình dịch vụ phụ trợ thành công!');
+                          }}
+                          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs cursor-pointer border-none shadow-sm transition-all"
+                        >
+                          💾 Lưu cấu hình dịch vụ phụ trợ
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

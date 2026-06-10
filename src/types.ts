@@ -155,6 +155,18 @@ export interface FinanceTransaction {
   isVerified: boolean; // Trạng thái đối soát thời gian thực
 }
 
+export interface AddOnService {
+  id: string;
+  nameVi: string;
+  nameEn: string;
+  descriptionVi: string;
+  descriptionEn: string;
+  fee: number; // VNĐ — giá trước 10/11
+  feePost?: number; // VNĐ — giá từ 10/11 trở đi (nếu khác)
+  isEnabled: boolean;
+  color?: string; // teal | amber | purple | pink | indigo | rose
+}
+
 export interface RegistrationPackage {
   id: string;
   name: string;
@@ -311,6 +323,8 @@ export interface BusinessConfig {
   speakerFormConfig?: PublicFormConfig;
   /** Cấu hình trang đăng ký nhà tài trợ */
   sponsorFormConfig?: PublicFormConfig;
+  /** Danh sách dịch vụ phụ trợ tùy chọn (CME, Gala, Masterclass, Tour...) */
+  addOnServices?: AddOnService[];
 }
 
 export interface EmbedScript {
