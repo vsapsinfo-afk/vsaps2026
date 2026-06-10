@@ -35,7 +35,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const response = await fetch("https://oauth.zaloapp.com/v4/oa/access_token", {
+    const oauthBase = process.env.ZALO_OAUTH_BASE_URL || "https://oauth.zaloapp.com";
+    const zaloUrl = `${oauthBase}/v4/oa/access_token`;
+
+    const fetchOptions: any = {
       method: "POST",
       headers: {
         "secret_key": secretKey,
@@ -46,8 +49,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         app_id: appId,
         grant_type: "refresh_token",
       }).toString(),
-    });
+    };
 
+    const proxyUrl = process.env.ZALO_PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
+    if (proxyUrl) {
+      try {
+        const { ProxyAgent } = require('undici');
+        fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        console.log('[Zalo OAuth API] Routing via proxy:', proxyUrl);
+      } catch (proxyErr) {
+        console.error('[Zalo OAuth API] Failed to initialize ProxyAgent:', proxyErr);
+      }
+    }
+
+    const response = await fetch(zaloUrl, fetchOptions);
     const resJson = await response.json();
 
     if (resJson && resJson.access_token) {

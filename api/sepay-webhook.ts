@@ -15,35 +15,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
   try {
-    // SePay gửi webhook với header Apikey (webhook secret)
-    const webhookSecret = process.env.SEPAY_WEBHOOK_SECRET || '';
-    const incomingKey = (req.headers['apikey'] as string) || (req.headers['authorization'] as string) || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    if (webhookSecret && incomingKey && incomingKey !== webhookSecret && incomingKey !== `Apikey ${webhookSecret}`) {
-      console.warn('[SePay Webhook] Unauthorized attempt:', incomingKey);
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    // 1. Fetch webhook secret from dynamic settings (sepay_config) or fallback to env
+    let webhookSecret = process.env.SEPAY_WEBHOOK_SECRET || '';
+    if (supabaseUrl && supabaseServiceKey) {
+      try {
+        const { data, error } = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('key', 'sepay_config')
+          .maybeSingle();
+
+        if (!error && data && data.value) {
+          const config = data.value;
+          if (config.webhookSecret) {
+            webhookSecret = config.webhookSecret;
+          }
+        }
+      } catch (dbErr) {
+        console.error('[SePay Webhook] Failed to fetch config from Supabase:', dbErr);
+      }
+    }
+
+    // SePay gửi webhook với header Authorization: Apikey API_KEY_CUA_BAN
+    const incomingKey = ((req.headers['authorization'] as string) || (req.headers['apikey'] as string) || '').trim();
+
+    if (webhookSecret) {
+      let authorized = false;
+      if (incomingKey === webhookSecret) {
+        authorized = true;
+      } else {
+        const parts = incomingKey.split(' ');
+        if (parts.length === 2 && parts[0].toLowerCase() === 'apikey') {
+          if (parts[1] === webhookSecret) {
+            authorized = true;
+          }
+        }
+      }
+
+      if (!authorized) {
+        console.warn('[SePay Webhook] Unauthorized attempt:', incomingKey);
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+    } else {
+      console.warn('[SePay Webhook] Warning: webhookSecret is not configured. Request processed without authentication.');
     }
 
     const payload = req.body;
     console.log('[SePay Webhook] Received payload:', JSON.stringify(payload));
-
-    /*
-     * SePay Webhook payload format:
-     * {
-     *   id: number,                    // ID giao dịch SePay
-     *   gateway: string,               // Ngân hàng
-     *   transactionDate: string,       // Thời gian GD (YYYY-MM-DD HH:mm:ss)
-     *   accountNumber: string,         // Số TK thụ hưởng
-     *   code: string | null,           // Mã thanh toán tự động SePay
-     *   content: string,               // Nội dung chuyển khoản
-     *   transferType: 'in' | 'out',    // Loại GD
-     *   transferAmount: number,        // Số tiền
-     *   accumulated: number,           // Số dư sau GD
-     *   subAccount: string | null,     // Tài khoản phụ
-     *   referenceCode: string,         // Mã tham chiếu ngân hàng
-     *   description: string,           // Mô tả giao dịch
-     * }
-     */
 
     const {
       id: sepayId,
@@ -67,8 +87,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Tìm attendee khớp nội dung chuyển khoản
     // Nội dung CK format: "NGUYEN VAN A 0901234567 DONG PHI THAM DU VSAPS 2026"
     // hoặc chứa attendee ID: "VSAPS2026-123456"
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     const contentUpper = (content as string).toUpperCase().trim();
 
     // Tìm theo ID đại biểu trong nội dung (nếu có)
