@@ -17,6 +17,9 @@ export default function NotificationSystem() {
   // Form edit fields
   const [subject, setSubject] = useState(templates[0]?.subject || '');
   const [content, setContent] = useState(templates[0]?.content || '');
+  const [znsTemplateId, setZnsTemplateId] = useState(templates[0]?.znsTemplateId || '');
+  const [status, setStatus] = useState(templates[0]?.status || 'pending');
+  const [znsType, setZnsType] = useState(templates[0]?.znsType || 'transaction');
 
   // Rich Text Editor & Preview States
   const [editorMode, setEditorMode] = useState<'visual' | 'code'>('visual');
@@ -31,6 +34,9 @@ export default function NotificationSystem() {
       if (lastLoadedTemplateId.current !== selectedTemplate.id) {
         setContent(selectedTemplate.content);
         setSubject(selectedTemplate.subject || '');
+        setZnsTemplateId(selectedTemplate.znsTemplateId || '');
+        setStatus(selectedTemplate.status || 'pending');
+        setZnsType(selectedTemplate.znsType || 'transaction');
         lastLoadedTemplateId.current = selectedTemplate.id;
         setEditTab('edit'); // Reset to edit tab
         if (editorRef.current && selectedTemplate.channel === 'email' && editorMode === 'visual') {
@@ -210,6 +216,9 @@ export default function NotificationSystem() {
     setSelectedTemplate(tmpl);
     setSubject(tmpl.subject || '');
     setContent(tmpl.content);
+    setZnsTemplateId(tmpl.znsTemplateId || '');
+    setStatus(tmpl.status || 'pending');
+    setZnsType(tmpl.znsType || 'transaction');
   };
 
   const handleSaveTemplate = (e: React.FormEvent) => {
@@ -220,6 +229,9 @@ export default function NotificationSystem() {
       ...selectedTemplate,
       subject: selectedTemplate.channel === 'email' ? subject : undefined,
       content,
+      znsTemplateId: ['zalo', 'whatsapp'].includes(selectedTemplate.channel) ? znsTemplateId : undefined,
+      status: ['zalo', 'whatsapp'].includes(selectedTemplate.channel) ? status : undefined,
+      znsType: ['zalo', 'whatsapp'].includes(selectedTemplate.channel) ? znsType : undefined,
     };
 
     store.saveTemplate(updated);
@@ -398,6 +410,48 @@ export default function NotificationSystem() {
                     onChange={(e) => setSubject(e.target.value)}
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl font-bold focus:ring-1 focus:ring-teal-500 focus:outline-none"
                   />
+                </div>
+              )}
+
+              {/* Zalo ZNS / WhatsApp Template config */}
+              {(selectedTemplate.channel === 'zalo' || selectedTemplate.channel === 'whatsapp') && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                      {selectedTemplate.channel === 'zalo' ? 'Mã mẫu tin Zalo ZNS (Template ID) *' : 'Meta Template Name *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={znsTemplateId}
+                      onChange={(e) => setZnsTemplateId(e.target.value)}
+                      placeholder={selectedTemplate.channel === 'zalo' ? 'Ví dụ: 298516' : 'Ví dụ: vsaps_registration_success'}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl font-bold focus:ring-1 focus:ring-teal-500 focus:outline-none bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Loại Mẫu Tin (Type)</label>
+                    <select
+                      value={znsType}
+                      onChange={(e) => setZnsType(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-teal-500 focus:outline-none font-semibold bg-white"
+                    >
+                      <option value="transaction">Tin Giao dịch (transaction)</option>
+                      <option value="promotion">Tin Truyền thông (promotion)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Trạng thái duyệt Zalo</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-teal-500 focus:outline-none font-semibold bg-white"
+                    >
+                      <option value="approved">Đã duyệt (Approved)</option>
+                      <option value="pending">Chờ phê duyệt (Pending)</option>
+                      <option value="rejected">Bị từ chối (Rejected)</option>
+                    </select>
+                  </div>
                 </div>
               )}
 
