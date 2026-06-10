@@ -11,6 +11,30 @@ import { SpeakerRegistration } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { useFormLabel } from '../hooks/useFormLabel';
 
+const getTrackDisplayName = (name: string, isEn: boolean) => {
+  if (!isEn) return name;
+  const dict: Record<string, string> = {
+    'Ngoại Lồng Ngực & Tim Mạch': 'Thoracic & Cardiovascular Surgery',
+    'Phẫu thuật Thẩm mỹ': 'Aesthetic Plastic Surgery',
+    'Phẫu thuật Tạo hình Thẩm mỹ': 'Aesthetic Plastic Surgery',
+    'Thẩm mỹ Nội khoa': 'Non-Surgical Aesthetics',
+    'Laser & Thiết bị năng lượng': 'Laser & Energy-Based Devices',
+    'Tế bào gốc & Chống lão hóa': 'Stem Cells & Anti-Aging',
+    'Tế bào gốc & Y học tái tạo': 'Stem Cells & Regenerative Medicine',
+    'Da liễu': 'Dermatology',
+    'Chăm sóc da': 'Skincare',
+    'Laser & Công nghệ cao': 'Laser & High Tech',
+    'Gây mê hồi sức': 'Anesthesia & Resuscitation',
+    'Ngoại khoa': 'Surgical Track',
+    'Nội khoa': 'Non-Surgical Track',
+    'Hội nghị': 'Conference',
+    'Live Surgery': 'Live Surgery',
+    'Hands-on': 'Hands-on',
+    'Master Class': 'Master Class',
+  };
+  return dict[name] || name;
+};
+
 interface PublicSpeakerRegisterProps {
   onNavigate: (view: string) => void;
 }
@@ -185,7 +209,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">{L.t('Chuyên mục:', 'Category:')}</span>
-                  <p className="font-semibold text-slate-800 mt-0.5 bg-indigo-50 inline-block px-2 py-0.5 rounded text-[11px]">{createdSpeaker.presentationTrack}</p>
+                  <p className="font-semibold text-slate-800 mt-0.5 bg-indigo-50 inline-block px-2 py-0.5 rounded text-[11px]">{getTrackDisplayName(createdSpeaker.presentationTrack, nationality === 'foreign')}</p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">{L.t('Tài liệu đính kèm:', 'Attached Document:')}</span>
@@ -482,7 +506,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                   >
                     {store.getSpecialtyTracks().map((track) => (
                       <option key={track.id} value={track.name}>
-                        {track.name}
+                        {getTrackDisplayName(track.name, nationality === 'foreign')}
                       </option>
                     ))}
                   </select>
