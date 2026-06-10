@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { Role } from './types';
@@ -13,24 +13,26 @@ import { Bell, X, Check, Info, AlertTriangle, AlertCircle, Wifi, Megaphone, BarC
 import { motion, AnimatePresence } from 'motion/react';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthProvider, useAuth } from './components/AuthProvider';
-import LoginPage from './views/LoginPage';
+
+// Dynamic imports for views
+const LoginPage = lazy(() => import('./views/LoginPage'));
 
 // Admin views
-import DashboardOverview from './views/DashboardOverview';
-import AttendeeManagement from './views/AttendeeManagement';
-import SpeakerManagement from './views/SpeakerManagement';
-import ScheduleManagement from './views/ScheduleManagement';
-import InternalTasks from './views/InternalTasks';
-import FinanceReconciliation from './views/FinanceReconciliation';
-import SponsorManagement from './views/SponsorManagement';
-import NotificationSystem from './views/NotificationSystem';
-import SettingsPanel from './views/SettingsPanel';
+const DashboardOverview = lazy(() => import('./views/DashboardOverview'));
+const AttendeeManagement = lazy(() => import('./views/AttendeeManagement'));
+const SpeakerManagement = lazy(() => import('./views/SpeakerManagement'));
+const ScheduleManagement = lazy(() => import('./views/ScheduleManagement'));
+const InternalTasks = lazy(() => import('./views/InternalTasks'));
+const FinanceReconciliation = lazy(() => import('./views/FinanceReconciliation'));
+const SponsorManagement = lazy(() => import('./views/SponsorManagement'));
+const NotificationSystem = lazy(() => import('./views/NotificationSystem'));
+const SettingsPanel = lazy(() => import('./views/SettingsPanel'));
 
 // Public views
-import PublicEventDetails from './views/PublicEventDetails';
-import PublicDelegateRegister from './views/PublicDelegateRegister';
-import PublicSpeakerRegister from './views/PublicSpeakerRegister';
-import PublicSponsorRegister from './views/PublicSponsorRegister';
+const PublicEventDetails = lazy(() => import('./views/PublicEventDetails'));
+const PublicDelegateRegister = lazy(() => import('./views/PublicDelegateRegister'));
+const PublicSpeakerRegister = lazy(() => import('./views/PublicSpeakerRegister'));
+const PublicSponsorRegister = lazy(() => import('./views/PublicSponsorRegister'));
 
 // Middleware permission mapping for views
 const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
@@ -330,14 +332,20 @@ function AppContent() {
   }
 
   if (!user && !isPublicView) {
-    return <LoginPage />;
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-950"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>}>
+        <LoginPage />
+      </Suspense>
+    );
   }
 
   if (isPublicView) {
     // Render public layout standing alone
     return (
       <div className="bg-slate-50 min-h-screen pt-[env(safe-area-inset-top,0px)]">
-        {renderActiveView()}
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>}>
+          {renderActiveView()}
+        </Suspense>
       </div>
     );
   }
@@ -380,7 +388,9 @@ function AppContent() {
         {/* Inner page content container layout */}
         <main className="flex-1 overflow-y-auto p-4 pb-28 md:p-6 bg-slate-50/70">
           <div className="max-w-7xl mx-auto" key={currentView}>
-            {renderActiveView()}
+            <Suspense fallback={<div className="flex h-[50vh] items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>}>
+              {renderActiveView()}
+            </Suspense>
           </div>
         </main>
 
