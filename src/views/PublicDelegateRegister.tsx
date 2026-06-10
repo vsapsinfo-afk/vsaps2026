@@ -111,7 +111,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const containerRef = useRef<HTMLDivElement>(null);
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.delegateFormConfig;
-  const L = useFormLabel(formCfg);
 
   // Auto-height postMessage for iframe embedding in WordPress
   useEffect(() => {
@@ -142,6 +141,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [address, setAddress] = useState('');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [period, setPeriod] = useState<'pre_10_11' | 'post_10_11'>('pre_10_11');
+  
+  const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   
   // CME states
   const [cmeRequired, setCmeRequired] = useState(false);
@@ -779,6 +780,33 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   </h3>
                 </div>
 
+                {/* Language Selector */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+                  <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
+                    {L.t('Chọn ngôn ngữ *', 'Select Language *')}
+                  </label>
+                  <div className="flex bg-slate-200/50 rounded-lg p-1 gap-2 max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setNationality('vietname')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                        nationality === 'vietname' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {L.t('Việt Nam', 'Vietnamese')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNationality('foreign')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                        nationality === 'foreign' ? 'bg-teal-900 text-amber-400 shadow-md' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {L.t('Quốc tế', 'International')}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Avatar & Doctor Proof row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Avatar Section */}
@@ -997,9 +1025,9 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   </div>
                 </div>
 
-                {/* Address & Nationality */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                  <div className="md:col-span-8">
+                {/* Address */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="col-span-1">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       {L.t('Địa chỉ liên hệ *', 'Contact Address *')}
                     </label>
@@ -1011,32 +1039,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                       placeholder={L.p('ví dụ: Phường Thảo Điền, Thành phố Thủ Đức, Hồ Chí Minh', 'e.g. Thao Dien, Thu Duc City, Ho Chi Minh City')}
                       className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
                     />
-                  </div>
-
-                  <div className="md:col-span-4">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {L.t('Quốc tịch *', 'Nationality *')}
-                    </label>
-                    <div className="flex bg-slate-55 border border-slate-200 rounded-xl p-1 gap-1.5 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setNationality('vietname')}
-                        className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                          nationality === 'vietname' ? 'bg-teal-900 text-amber-400 shadow' : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        {L.t('Việt Nam', 'Vietnam')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setNationality('foreign')}
-                        className={`flex-1 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                          nationality === 'foreign' ? 'bg-teal-900 text-amber-400 shadow' : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        {L.t('Nước Ngoài', 'International')}
-                      </button>
-                    </div>
                   </div>
                 </div>
 

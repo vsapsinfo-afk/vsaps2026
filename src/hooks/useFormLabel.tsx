@@ -28,8 +28,8 @@ export interface FormLabelHelper {
 
 import React from 'react';
 
-export function useFormLabel(formCfg?: PublicFormConfig): FormLabelHelper {
-  const lang: LangMode = (formCfg?.language as LangMode) || 'vi';
+export function useFormLabel(formCfg?: PublicFormConfig, overrideLang?: LangMode): FormLabelHelper {
+  const lang: LangMode = overrideLang || (formCfg?.language as LangMode) || 'vi';
   const showVi = lang === 'vi' || lang === 'both';
   const showEn = lang === 'en' || lang === 'both';
   const isBoth = lang === 'both';
