@@ -13,6 +13,7 @@ import {
   RegistrationPackage,
   ZaloConfig,
   EmailConfig,
+  ResendConfig,
   NotificationTemplate,
   SupabaseConfig,
   SentNotificationLog,
@@ -75,6 +76,12 @@ const DEFAULT_EMAIL_CONFIG: EmailConfig = {
   senderEmail: '',
   isConfigured: false,
   testEmail: '',
+};
+
+const DEFAULT_RESEND_CONFIG: ResendConfig = {
+  apiKey: '',
+  senderEmail: '',
+  isConfigured: false,
 };
 
 const DEFAULT_WHATSAPP_CONFIG: WhatsappConfig = {
@@ -220,6 +227,7 @@ export class DataStore {
   private static KEY_PACKAGES = 'vsaps_packages';
   private static KEY_ZALO = 'vsaps_config_zalo';
   private static KEY_EMAIL = 'vsaps_config_email';
+  private static KEY_RESEND = 'vsaps_config_resend';
   private static KEY_TEMPLATES = 'vsaps_templates';
   private static KEY_SUPABASE = 'vsaps_supabase';
   private static KEY_NOTIFICATION_LOGS = 'vsaps_notification_logs';
@@ -245,6 +253,7 @@ export class DataStore {
   private packages: RegistrationPackage[] = [];
   private zaloConfig: ZaloConfig = DEFAULT_ZALO_CONFIG;
   private emailConfig: EmailConfig = DEFAULT_EMAIL_CONFIG;
+  private resendConfig: ResendConfig = DEFAULT_RESEND_CONFIG;
   private whatsappConfig: WhatsappConfig = DEFAULT_WHATSAPP_CONFIG;
   private templates: NotificationTemplate[] = [];
   private supabaseConfig: SupabaseConfig = { url: '', anonKey: '', isConnected: false };
@@ -291,6 +300,7 @@ export class DataStore {
     
     this.zaloConfig = this.getLocalStorage(DataStore.KEY_ZALO, DEFAULT_ZALO_CONFIG);
     this.emailConfig = this.getLocalStorage(DataStore.KEY_EMAIL, DEFAULT_EMAIL_CONFIG);
+    this.resendConfig = this.getLocalStorage(DataStore.KEY_RESEND, DEFAULT_RESEND_CONFIG);
     this.templates = this.getLocalStorage(DataStore.KEY_TEMPLATES, INITIAL_TEMPLATES);
     this.supabaseConfig = this.getLocalStorage(DataStore.KEY_SUPABASE, { url: '', anonKey: '', isConnected: false });
     this.notificationLogs = this.getLocalStorage(DataStore.KEY_NOTIFICATION_LOGS, []);
@@ -479,6 +489,11 @@ export class DataStore {
         if (email) {
           this.emailConfig = email.value;
           this.saveToLocalStorage(DataStore.KEY_EMAIL, this.emailConfig);
+        }
+        const resend = configs.find(c => c.key === 'resend_config');
+        if (resend) {
+          this.resendConfig = resend.value;
+          this.saveToLocalStorage(DataStore.KEY_RESEND, this.resendConfig);
         }
         const whatsapp = configs.find(c => c.key === 'whatsapp_config');
         if (whatsapp) {
@@ -1522,6 +1537,19 @@ export class DataStore {
     if (isSupabaseConfigured()) {
       supabase.from('system_config').upsert({ key: 'email_config', value: config }).then(({ error }) => {
         if (error) console.error('Error saving Email config to Supabase:', error);
+      });
+    }
+    return config;
+  }
+
+  getResendConfig() { return this.resendConfig; }
+  saveResendConfig(config: ResendConfig) {
+    this.resendConfig = config;
+    this.saveToLocalStorage(DataStore.KEY_RESEND, config);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('system_config').upsert({ key: 'resend_config', value: config }).then(({ error }) => {
+        if (error) console.error('Error saving Resend config to Supabase:', error);
       });
     }
     return config;

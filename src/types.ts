@@ -200,6 +200,12 @@ export interface EmailConfig {
   testEmail: string;
 }
 
+export interface ResendConfig {
+  apiKey: string;
+  senderEmail: string;
+  isConfigured: boolean;
+}
+
 export interface WhatsappConfig {
   accessToken: string;
   phoneNumberId: string;

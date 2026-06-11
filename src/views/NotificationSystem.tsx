@@ -4,15 +4,288 @@
  */
 
 import React, { useState } from 'react';
-import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette } from 'lucide-react';
+import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { NotificationTemplate, SentNotificationLog } from '../types';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 export default function NotificationSystem() {
   const [templates, setTemplates] = useState<NotificationTemplate[]>(store.getTemplates());
   const [selectedTemplate, setSelectedTemplate] = useState<NotificationTemplate | null>(templates[0]);
   const [logs, setLogs] = useState<SentNotificationLog[]>(store.getNotificationLogs());
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'templates' | 'bulk'>('templates');
+
+  // Bulk sending state
+  const [bulkChannel, setBulkChannel] = useState<'email' | 'zalo'>('email');
+  const [resendConfig, setResendConfigState] = useState(() => store.getResendConfig());
+  const [excelData, setExcelData] = useState<any[]>([]);
+  const [excelFileName, setExcelFileName] = useState('');
+  const [bulkSubject, setBulkSubject] = useState('Thư xác nhận tham dự Hội nghị Khoa học Thẩm mỹ VSAPS 2026');
+  const [bulkBody, setBulkBody] = useState('<p>Kính gửi anh/chị <strong>{{Tên}}</strong>,</p>\n<p>Ban tổ chức Hội nghị Khoa học Thẩm mỹ Quốc tế Thường niên VSAPS 2026 trân trọng xác nhận thông tin đăng ký của anh/chị.</p>\n<p>Thông tin chi tiết:</p>\n<ul>\n<li>Hộp thư: {{Email}}</li>\n<li>Điện thoại: {{Số điện thoại}}</li>\n</ul>\n<p>Hệ thống tự động đã kích hoạt vé tham dự của anh/chị. Vui lòng mang theo email này để quét mã QR check-in tại sảnh chính.</p>\n<p>Trân trọng,<br>Ban tổ chức VSAPS 2026</p>');
+
+  // Zalo bulk templates
+  const [zaloTemplates, setZaloTemplates] = useState<NotificationTemplate[]>(() =>
+    store.getTemplates().filter(t => t.channel === 'zalo')
+  );
+  const [selectedZaloTemplate, setSelectedZaloTemplate] = useState<NotificationTemplate | null>(zaloTemplates[0] || null);
+
+  // Queue states
+  const [sendingIndex, setSendingIndex] = useState(-1);
+  const [isBulkSending, setIsBulkSending] = useState(false);
+  const [isBulkPaused, setIsBulkPaused] = useState(false);
+  const [bulkLogs, setBulkLogs] = useState<any[]>([]);
+  const isBulkSendingRef = React.useRef(false);
+  const isBulkPausedRef = React.useRef(false);
+
+  // React to template reload
+  React.useEffect(() => {
+    setZaloTemplates(store.getTemplates().filter(t => t.channel === 'zalo'));
+  }, [templates]);
+
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setExcelFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+
+        if (jsonData.length === 0) {
+          alert('Tập tin trống hoặc không hợp lệ.');
+          return;
+        }
+
+        const headers = jsonData[0].map(h => String(h || '').trim());
+
+        // Find indices for Tên, Email, Số điện thoại
+        const nameIdx = headers.findIndex(h => /tên|name|họ tên/i.test(h));
+        const emailIdx = headers.findIndex(h => /email|thư/i.test(h));
+        const phoneIdx = headers.findIndex(h => /điện thoại|phone|sđt|sđt|sdt/i.test(h));
+
+        if (nameIdx === -1 && emailIdx === -1 && phoneIdx === -1) {
+          alert('Không tìm thấy các cột Tên, Email hoặc Số điện thoại trong file. Vui lòng kiểm tra lại dòng tiêu đề (dòng 1).');
+          return;
+        }
+
+        const records = jsonData.slice(1)
+          .filter(row => row.some(cell => cell !== null && cell !== ''))
+          .map((row, index) => {
+            const name = nameIdx !== -1 ? String(row[nameIdx] || '').trim() : '';
+            const email = emailIdx !== -1 ? String(row[emailIdx] || '').trim() : '';
+            const phone = phoneIdx !== -1 ? String(row[phoneIdx] || '').trim() : '';
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const cleanPhone = phone.replace(/[^0-9]/g, '');
+            const isEmailValid = emailRegex.test(email);
+            const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
+
+            return {
+              id: index + 1,
+              name,
+              email,
+              phone,
+              isEmailValid,
+              isPhoneValid,
+              status: 'pending' as 'pending' | 'sending' | 'success' | 'failed',
+              error: ''
+            };
+          });
+
+        setExcelData(records);
+        setBulkLogs([]);
+        setSendingIndex(-1);
+      } catch (err: any) {
+        alert('Lỗi đọc file Excel: ' + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const startBulkSending = async () => {
+    if (excelData.length === 0) {
+      alert('Vui lòng tải lên danh sách người nhận từ Excel trước.');
+      return;
+    }
+
+    if (bulkChannel === 'email') {
+      if (!resendConfig.apiKey || !resendConfig.senderEmail) {
+        alert('Vui lòng cấu hình đầy đủ API Key và Email gửi của Resend.');
+        return;
+      }
+      store.saveResendConfig(resendConfig);
+    } else {
+      const zConfig = store.getZaloConfig();
+      const isRealZalo = (zConfig.accessToken && zConfig.accessToken !== 'zalo-oa-token-active-2026-ready-vsaps') || isSupabaseConfigured();
+      if (!isRealZalo) {
+        alert('Zalo OA chưa được cấu hình. Vui lòng thiết lập cấu hình Zalo OA trong mục Cài Đặt Hệ Thống.');
+        return;
+      }
+    }
+
+    setIsBulkSending(true);
+    setIsBulkPaused(false);
+    isBulkSendingRef.current = true;
+    isBulkPausedRef.current = false;
+
+    let startIndex = sendingIndex === -1 || sendingIndex >= excelData.length ? 0 : sendingIndex;
+
+    for (let i = startIndex; i < excelData.length; i++) {
+      if (!isBulkSendingRef.current) break;
+
+      while (isBulkPausedRef.current) {
+        await new Promise(r => setTimeout(r, 500));
+        if (!isBulkSendingRef.current) break;
+      }
+
+      if (!isBulkSendingRef.current) break;
+
+      setSendingIndex(i);
+      setExcelData(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'sending' } : item));
+
+      const recipient = excelData[i];
+      let success = false;
+      let errorMsg = '';
+
+      if (bulkChannel === 'email') {
+        if (!recipient.isEmailValid) {
+          errorMsg = 'Email không hợp lệ';
+        } else {
+          try {
+            const compiledBody = bulkBody
+              .replace(/\{\{Tên\}\}/g, recipient.name)
+              .replace(/\{\{Email\}\}/g, recipient.email)
+              .replace(/\{\{Số điện thoại\}\}/g, recipient.phone);
+
+            const compiledSubject = bulkSubject
+              .replace(/\{\{Tên\}\}/g, recipient.name);
+
+            const res = await fetch('/api/email/send-resend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                apiKey: resendConfig.apiKey,
+                from: resendConfig.senderEmail,
+                to: recipient.email,
+                subject: compiledSubject,
+                html: compiledBody
+              })
+            });
+
+            const resData = await res.json();
+            if (resData.success) {
+              success = true;
+            } else {
+              errorMsg = resData.error || 'Lỗi gửi email qua Resend';
+            }
+          } catch (err: any) {
+            errorMsg = err.message || 'Lỗi kết nối API Resend';
+          }
+        }
+      } else {
+        if (!recipient.isPhoneValid) {
+          errorMsg = 'Số điện thoại không hợp lệ';
+        } else {
+          try {
+            let formattedPhone = recipient.phone.replace(/[^0-9]/g, '');
+            if (formattedPhone.startsWith('0')) {
+              formattedPhone = '84' + formattedPhone.substring(1);
+            }
+
+            const znsData: any = {
+              title: 'Đại biểu',
+              fullname: recipient.name,
+              phone: recipient.phone,
+              email: recipient.email,
+              code: 'ATT-' + Math.floor(Math.random() * 9000 + 1000),
+              payment_status: 'Đã thanh toán',
+              organization: 'Cá nhân',
+              qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent('VSAPS-BULK-' + formattedPhone)}`
+            };
+
+            const znsTemplateId = selectedZaloTemplate?.znsTemplateId || selectedZaloTemplate?.id || 'tmpl-reg-zalo';
+
+            const response = await fetch('/api/zalo/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                config: store.getZaloConfig(),
+                payload: {
+                  recipient: { phone: formattedPhone },
+                  template_id: znsTemplateId,
+                  template_data: znsData
+                }
+              })
+            });
+
+            const resData = await response.json();
+            if (resData.success && (!resData.data || resData.data.error === 0)) {
+              success = true;
+            } else {
+              errorMsg = resData.error || (resData.data && resData.data.message) || 'Lỗi gửi Zalo ZNS';
+            }
+          } catch (err: any) {
+            errorMsg = err.message || 'Lỗi kết nối API Zalo';
+          }
+        }
+      }
+
+      setExcelData(prev => prev.map((item, idx) => idx === i ? {
+        ...item,
+        status: success ? 'success' : 'failed',
+        error: errorMsg
+      } : item));
+
+      const timeStr = new Date().toLocaleTimeString();
+      const logEntry = `[${timeStr}] Gửi tới ${recipient.name} (${bulkChannel === 'email' ? recipient.email : recipient.phone}): ${success ? 'Thành công' : 'Thất bại - ' + errorMsg}`;
+      setBulkLogs(prev => [logEntry, ...prev]);
+
+      const storeLog: SentNotificationLog = {
+        id: 'NTF-' + Math.floor(Math.random() * 90000 + 10000),
+        recipient: bulkChannel === 'email' ? recipient.email : recipient.phone,
+        type: bulkChannel,
+        templateId: bulkChannel === 'email' ? 'resend-bulk' : (selectedZaloTemplate?.id || 'zalo-bulk'),
+        templateName: bulkChannel === 'email' ? 'Gửi Email Hàng Loạt qua Resend' : (selectedZaloTemplate?.name || 'Gửi Zalo OA Hàng Loạt'),
+        sender: bulkChannel === 'email' ? resendConfig.senderEmail : (store.getZaloConfig().oaId || 'Zalo OA'),
+        sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+        status: success ? 'success' : 'failed',
+        payload: { name: recipient.name, email: recipient.email, phone: recipient.phone },
+        response: { success, error: errorMsg }
+      };
+      store.addNotificationLog(storeLog);
+
+      await new Promise(r => setTimeout(r, 800));
+    }
+
+    setIsBulkSending(false);
+    isBulkSendingRef.current = false;
+  };
+
+  const pauseBulkSending = () => {
+    setIsBulkPaused(true);
+    isBulkPausedRef.current = true;
+  };
+
+  const resumeBulkSending = () => {
+    setIsBulkPaused(false);
+    isBulkPausedRef.current = false;
+  };
+
+  const stopBulkSending = () => {
+    setIsBulkSending(false);
+    isBulkSendingRef.current = false;
+    setIsBulkPaused(false);
+    isBulkPausedRef.current = false;
+  };
 
   // Form edit fields
   const [subject, setSubject] = useState(templates[0]?.subject || '');
@@ -352,8 +625,34 @@ export default function NotificationSystem() {
           margin-bottom: 0.75rem !important;
         }
       `}} />
-      {/* Grid notification layouts split */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      {/* Tabs navigation */}
+      <div className="flex border-b border-slate-200 select-none">
+        <button
+          onClick={() => setActiveTab('templates')}
+          className={`px-5 py-3 font-bold text-xs border-b-2 transition-all cursor-pointer bg-transparent ${
+            activeTab === 'templates'
+              ? 'border-indigo-650 text-indigo-650'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          ⚙️ Mẫu Tin Nhắn &amp; Gửi Thử
+        </button>
+        <button
+          onClick={() => setActiveTab('bulk')}
+          className={`px-5 py-3 font-bold text-xs border-b-2 transition-all cursor-pointer bg-transparent ${
+            activeTab === 'bulk'
+              ? 'border-indigo-650 text-indigo-650'
+              : 'border-transparent text-slate-400 hover:text-slate-700'
+          }`}
+        >
+          📬 Gửi Tin Hàng Loạt (Excel Upload)
+        </button>
+      </div>
+
+      {activeTab === 'templates' && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Side: Templates list */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -1096,6 +1395,316 @@ export default function NotificationSystem() {
           </table>
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'bulk' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Panel: Excel Uploader & Channel config */}
+          <div className="space-y-6 lg:col-span-1">
+            {/* File upload card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
+                1. Nạp danh sách Excel / CSV
+              </span>
+              <p className="text-[11px] text-slate-400 leading-normal">
+                Tải lên tập tin Excel (.xlsx, .xls) hoặc CSV. Hệ thống tự động so khớp cột chứa <strong>Tên, Email, Số điện thoại</strong>.
+              </p>
+              
+              <div className="relative border-2 border-dashed border-slate-200 hover:border-indigo-455 rounded-xl p-6 transition-all text-center group bg-slate-50/50 hover:bg-white">
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleExcelUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    <Upload className="w-5 h-5" />
+                  </div>
+                  <div className="text-xs font-bold text-slate-700">
+                    {excelFileName ? excelFileName : 'Chọn tệp Excel hoặc kéo thả vào đây'}
+                  </div>
+                  <div className="text-[10px] text-slate-400">Hỗ trợ .xlsx, .xls, .csv</div>
+                </div>
+              </div>
+
+              {excelData.length > 0 && (
+                <div className="bg-emerald-50 text-emerald-800 p-3.5 rounded-xl text-xs font-medium border border-emerald-100 flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    Đã nạp <strong>{excelData.length}</strong> dòng từ Excel. Trong đó có <strong>{excelData.filter(d => d.isEmailValid || d.isPhoneValid).length}</strong> bản ghi hợp lệ.
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Config sending channel */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
+                2. Thiết lập cổng truyền tin
+              </span>
+              
+              <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+                <button
+                  onClick={() => setBulkChannel('email')}
+                  className={`py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border-none ${
+                    bulkChannel === 'email' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  Gửi Mail Resend
+                </button>
+                <button
+                  onClick={() => setBulkChannel('zalo')}
+                  className={`py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all border-none ${
+                    bulkChannel === 'zalo' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  Gửi Zalo OA ZNS
+                </button>
+              </div>
+
+              {bulkChannel === 'email' ? (
+                <div className="space-y-3 pt-2 text-xs">
+                  <div className="bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-100 leading-relaxed text-[10.5px]">
+                    ⚠️ <strong>Lưu ý về Resend</strong>: Gửi qua Resend giúp giảm thiểu bị block email. Bạn cần nhập API Key và email gửi (đã được cấu hình/xác thực tên miền trong tài khoản Resend của bạn).
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">RESEND API KEY *</label>
+                    <input
+                      type="password"
+                      value={resendConfig.apiKey}
+                      onChange={(e) => setResendConfigState({ ...resendConfig, apiKey: e.target.value })}
+                      placeholder="re_xxxxxxxxxxxxxx"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">EMAIL SENDER (GỬI ĐI) *</label>
+                    <input
+                      type="text"
+                      value={resendConfig.senderEmail}
+                      onChange={(e) => setResendConfigState({ ...resendConfig, senderEmail: e.target.value })}
+                      placeholder="onboarding@resend.dev hoặc email tên miền của bạn"
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2 text-xs">
+                  <div className="bg-teal-50 text-teal-800 p-3 rounded-xl border border-teal-100 leading-relaxed text-[10.5px]">
+                    📢 <strong>Gửi Zalo OA qua ZNS (Zalo Notification Service)</strong>: Hệ thống sử dụng token Zalo OA đã được liên kết. Phải cấu hình các tham số truyền tin khớp với ZNS Template duyệt.
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Chọn mẫu tin nhắn Zalo OA *</label>
+                    <select
+                      value={selectedZaloTemplate?.id || ''}
+                      onChange={(e) => {
+                        const tmpl = zaloTemplates.find(t => t.id === e.target.value);
+                        setSelectedZaloTemplate(tmpl || null);
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none font-semibold"
+                    >
+                      {zaloTemplates.map(t => (
+                        <option key={t.id} value={t.id}>{t.name} (ZNS ID: {t.znsTemplateId || t.id})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedZaloTemplate && (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <span className="text-[9.5px] font-black text-slate-400 block uppercase">Nội dung mẫu Zalo:</span>
+                      <p className="text-[10.5px] text-slate-600 mt-1 leading-relaxed whitespace-pre-wrap">{selectedZaloTemplate.content}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Middle & Right Panel: Composer, Preview & Progress */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Composer Card (Only for Email since Zalo uses pre-defined templates) */}
+            {bulkChannel === 'email' && (
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
+                  3. Soạn thảo thư hàng loạt (Email Template)
+                </span>
+                
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Tiêu đề thư (Email Subject)</label>
+                    <input
+                      type="text"
+                      value={bulkSubject}
+                      onChange={(e) => setBulkSubject(e.target.value)}
+                      placeholder="Nhập tiêu đề..."
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl font-bold focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Nội dung (HTML body)</label>
+                    <textarea
+                      rows={8}
+                      value={bulkBody}
+                      onChange={(e) => setBulkBody(e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none text-[11px]"
+                    />
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-start gap-2 text-[10px] text-slate-650">
+                    <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      Có thể sử dụng các từ khoá thay thế tương ứng với cột Excel:
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        <span className="bg-white px-1.5 py-0.5 border border-slate-300 rounded font-mono font-bold">{"{{Tên}}"}</span>
+                        <span className="bg-white px-1.5 py-0.5 border border-slate-300 rounded font-mono font-bold">{"{{Email}}"}</span>
+                        <span className="bg-white px-1.5 py-0.5 border border-slate-300 rounded font-mono font-bold">{"{{Số điện thoại}}"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Controller & Progress Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
+                Bảng điều khiển &amp; Tiến trình gửi
+              </span>
+
+              <div className="flex flex-wrap gap-2 items-center justify-between">
+                <div className="flex gap-2">
+                  {!isBulkSending ? (
+                    <button
+                      onClick={startBulkSending}
+                      className="px-4 py-2 rounded-xl bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      Bắt Đầu Gửi Hàng Loạt
+                    </button>
+                  ) : (
+                    <>
+                      {isBulkPaused ? (
+                        <button
+                          onClick={resumeBulkSending}
+                          className="px-4 py-2 rounded-xl bg-emerald-650 hover:bg-emerald-750 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          Tiếp Tục
+                        </button>
+                      ) : (
+                        <button
+                          onClick={pauseBulkSending}
+                          className="px-4 py-2 rounded-xl bg-amber-650 hover:bg-amber-750 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                        >
+                          <Pause className="w-3.5 h-3.5" />
+                          Tạm Dừng
+                        </button>
+                      )}
+                      <button
+                        onClick={stopBulkSending}
+                        className="px-4 py-2 rounded-xl bg-rose-650 hover:bg-rose-750 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                      >
+                        <Square className="w-3.5 h-3.5" />
+                        Dừng Hẳn
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {sendingIndex !== -1 && (
+                  <div className="text-xs text-slate-500 font-bold">
+                    Tiến độ: {sendingIndex + 1} / {excelData.length} ({Math.round(((sendingIndex + 1) / excelData.length) * 100)}%)
+                  </div>
+                )}
+              </div>
+
+              {/* Progress bar */}
+              {isBulkSending && (
+                <div className="w-full bg-slate-100 rounded-full h-3.5 overflow-hidden border border-slate-200">
+                  <div
+                    className="bg-indigo-600 h-full transition-all duration-300"
+                    style={{ width: `${((sendingIndex + 1) / excelData.length) * 100}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Recipient preview and sending states table */}
+              {excelData.length > 0 && (
+                <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-96 overflow-y-auto">
+                  <table className="w-full border-collapse text-[11px] text-left">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 font-bold uppercase tracking-wider text-slate-500 text-[9.5px]">
+                        <th className="px-4 py-2.5">STT</th>
+                        <th className="px-4 py-2.5">Tên</th>
+                        <th className="px-4 py-2.5">Email / Số điện thoại</th>
+                        <th className="px-4 py-2.5 text-center">Kiểm tra</th>
+                        <th className="px-4 py-2.5 text-center">Trạng thái</th>
+                        <th className="px-4 py-2.5">Chi tiết/Lỗi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {excelData.map((item, idx) => {
+                        const contact = bulkChannel === 'email' ? item.email : item.phone;
+                        const isContactValid = bulkChannel === 'email' ? item.isEmailValid : item.isPhoneValid;
+                        return (
+                          <tr key={item.id} className={`hover:bg-slate-50/50 ${idx === sendingIndex ? 'bg-indigo-50/40 font-bold' : ''}`}>
+                            <td className="px-4 py-2 font-mono text-slate-400">{item.id}</td>
+                            <td className="px-4 py-2 font-bold text-slate-700">{item.name}</td>
+                            <td className="px-4 py-2 text-slate-600">{contact || <span className="text-red-500 italic">Trống</span>}</td>
+                            <td className="px-4 py-2 text-center">
+                              <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold ${
+                                isContactValid ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                              }`}>
+                                {isContactValid ? 'Hợp lệ' : 'Lỗi định dạng'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-bold text-[8.5px] ${
+                                item.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'failed' ? 'bg-rose-50 text-rose-700' :
+                                item.status === 'sending' ? 'bg-indigo-100 text-indigo-800 animate-pulse' :
+                                'bg-slate-100 text-slate-550'
+                              }`}>
+                                {item.status === 'success' ? 'Thành công' :
+                                 item.status === 'failed' ? 'Thất bại' :
+                                 item.status === 'sending' ? 'Đang gửi...' : 'Chờ gửi'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 font-medium text-slate-500 max-w-xs truncate" title={item.error}>{item.error || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Live activity log */}
+              {bulkLogs.length > 0 && (
+                <div className="bg-slate-950 p-4 rounded-xl border border-slate-900 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-900 pb-2.5">
+                    <span className="text-[9px] font-mono font-black text-indigo-400 tracking-wider">NHẬT KÝ ĐƯỜNG TRUYỀN PHÁT HÀNG LOẠT LOGS</span>
+                    <span className="text-[8px] font-mono text-slate-500">LIVE FEED</span>
+                  </div>
+                  <div className="font-mono text-[10px] text-slate-300 max-h-32 overflow-y-auto space-y-1">
+                    {bulkLogs.map((log, idx) => (
+                      <div key={idx} className={log.includes('Thất bại') ? 'text-rose-455' : 'text-emerald-400'}>
+                        {log}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
