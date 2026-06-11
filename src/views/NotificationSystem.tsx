@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare } from 'lucide-react';
+import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Plus, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
@@ -23,6 +23,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'templates' | 'bulk'>(defaultTab);
+  const [isCreating, setIsCreating] = useState(false);
 
   React.useEffect(() => {
     setActiveTab(defaultTab);
@@ -617,7 +618,57 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     return matchSearch && matchType;
   });
 
+  const handleAddNewTemplateClick = () => {
+    setIsCreating(true);
+    setSelectedTemplate({
+      id: '',
+      name: '',
+      channel: 'email',
+      type: 'registration_success',
+      content: ''
+    });
+    setSubject('');
+    setContent('');
+    setZnsTemplateId('');
+    setStatus('pending');
+    setZnsType('transaction');
+  };
+
+  const handleCancelCreate = () => {
+    setIsCreating(false);
+    const existing = store.getTemplates();
+    if (existing.length > 0) {
+      setSelectedTemplate(existing[0]);
+      handleSelectTemplate(existing[0]);
+    } else {
+      setSelectedTemplate(null);
+    }
+  };
+
+  const handleDeleteTemplateClick = (id: string) => {
+    if (!confirm(`Bạn có chắc chắn muốn xóa mẫu tin "${id}" này không? Thao tác này không thể hoàn tác.`)) {
+      return;
+    }
+    try {
+      store.deleteTemplate(id);
+      setIsCreating(false);
+      loadAll();
+      alert('Đã xóa mẫu tin nhắn thành công!');
+      
+      const remaining = store.getTemplates();
+      if (remaining.length > 0) {
+        handleSelectTemplate(remaining[0]);
+      } else {
+        setSelectedTemplate(null);
+      }
+    } catch (err) {
+      console.error('Lỗi khi xóa mẫu tin:', err);
+      alert('Không thể xóa mẫu tin này.');
+    }
+  };
+
   const handleSelectTemplate = (tmpl: NotificationTemplate) => {
+    setIsCreating(false);
     setSelectedTemplate(tmpl);
     setSubject(tmpl.subject || '');
     setContent(tmpl.content);
@@ -630,6 +681,20 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     e.preventDefault();
     if (!selectedTemplate) return;
 
+    if (isCreating) {
+      if (!selectedTemplate.id.trim() || !selectedTemplate.name.trim()) {
+        alert('Vui lòng nhập đầy đủ Mã số mẫu (ID) và Tên mẫu tin.');
+        return;
+      }
+      
+      // Check for duplicate ID
+      const existing = store.getTemplates().find(t => t.id === selectedTemplate.id);
+      if (existing) {
+        alert(`Mã số mẫu (ID) "${selectedTemplate.id}" đã tồn tại. Vui lòng chọn ID khác.`);
+        return;
+      }
+    }
+
     const updated: NotificationTemplate = {
       ...selectedTemplate,
       subject: selectedTemplate.channel === 'email' ? subject : undefined,
@@ -640,8 +705,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     };
 
     store.saveTemplate(updated);
+    setIsCreating(false);
     loadAll();
-    alert('Đã chỉnh sửa và lưu trữ Mẫu tin nhắn sự kiện thành công!');
+    alert(isCreating ? 'Đã tạo mẫu tin mới thành công!' : 'Đã chỉnh sửa và lưu trữ Mẫu tin nhắn sự kiện thành công!');
+    
+    // Select the newly created template
+    handleSelectTemplate(updated);
   };
 
   // Automated SMTP / Zalo OA simulated connection logger
@@ -790,7 +859,17 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
         
         {/* Left Side: Templates list */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">Các Mẫu Thông Tin Tự Động</span>
+          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Các Mẫu Thông Tin Tự Động</span>
+            <button
+              type="button"
+              onClick={handleAddNewTemplateClick}
+              className="px-2.5 py-1 text-[10px] bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg border-none cursor-pointer flex items-center gap-1 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Thêm mới
+            </button>
+          </div>
           
           <div className="space-y-3">
             {templates.map(tmpl => (
@@ -833,6 +912,64 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
           {selectedTemplate ? (
             <form onSubmit={handleSaveTemplate} className="space-y-4 text-xs">
+              {isCreating && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-205 mb-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Mã số mẫu (ID) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: tmpl-reg-zalo-v2"
+                      value={selectedTemplate.id}
+                      onChange={(e) => setSelectedTemplate({ ...selectedTemplate, id: e.target.value.trim() })}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none bg-white font-bold text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên mẫu tin *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ví dụ: Đăng ký thành công (Mẫu mới)"
+                      value={selectedTemplate.name}
+                      onChange={(e) => setSelectedTemplate({ ...selectedTemplate, name: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500 focus:outline-none bg-white font-bold text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Kênh truyền phát (Channel) *</label>
+                    <select
+                      value={selectedTemplate.channel}
+                      onChange={(e) => {
+                        const newChan = e.target.value as 'email' | 'zalo' | 'whatsapp';
+                        setSelectedTemplate({ ...selectedTemplate, channel: newChan });
+                      }}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500 focus:outline-none bg-white font-semibold text-xs cursor-pointer"
+                    >
+                      <option value="email">Email 📧</option>
+                      <option value="zalo">Zalo ZNS 💬</option>
+                      <option value="whatsapp">WhatsApp 🟢</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Loại sự kiện (Type) *</label>
+                    <select
+                      value={selectedTemplate.type}
+                      onChange={(e) => {
+                        const newType = e.target.value as any;
+                        setSelectedTemplate({ ...selectedTemplate, type: newType });
+                      }}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-teal-500 focus:outline-none bg-white font-semibold text-xs cursor-pointer"
+                    >
+                      <option value="registration_success">Đăng ký thành công (registration_success)</option>
+                      <option value="payment_confirmed">Xác nhận thanh toán (payment_confirmed)</option>
+                      <option value="abstract_approved">Duyệt bài báo cáo (abstract_approved)</option>
+                      <option value="reminder_event">Nhắc nhở sự kiện (reminder_event)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
               {selectedTemplate.channel === 'email' && (
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 block mb-1">Tiêu đề Gửi Thư (Email Subject) *</label>
@@ -1158,14 +1295,38 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-150">
-                <button
-                  id="btn-save"
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold"
-                >
-                  Lưu Trữ Mẫu Thiết Đặt
-                </button>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-150">
+                <div>
+                  {!isCreating && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTemplateClick(selectedTemplate.id)}
+                      className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-205 font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Xóa mẫu này
+                    </button>
+                  )}
+                </div>
+                
+                <div className="flex gap-2">
+                  {isCreating && (
+                    <button
+                      type="button"
+                      onClick={handleCancelCreate}
+                      className="px-4 py-2 rounded-xl bg-slate-150 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer transition-all border-none"
+                    >
+                      Hủy bỏ
+                    </button>
+                  )}
+                  <button
+                    id="btn-save"
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold cursor-pointer transition-all border-none shadow-sm"
+                  >
+                    {isCreating ? 'Tạo Mẫu Mới ✨' : 'Lưu Trữ Mẫu Thiết Đặt'}
+                  </button>
+                </div>
               </div>
             </form>
           ) : (
