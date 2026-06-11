@@ -25,6 +25,7 @@ import {
   ConferenceShift,
   VirtualSection,
   OneSignalConfig,
+  Contact,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -40,7 +41,8 @@ import {
   mapNotifLogToDb, mapDbToNotifLog,
   mapTrackToDb, mapDbToTrack,
   mapBusinessConfigToDb, mapDbToBusinessConfig,
-  mapEmbedScriptToDb, mapDbToEmbedScript
+  mapEmbedScriptToDb, mapDbToEmbedScript,
+  mapContactToDb, mapDbToContact,
 } from './lib/mappers';
 
 // Empty fallbacks to remove mock data from source code
@@ -241,6 +243,7 @@ export class DataStore {
   private static KEY_SHIFTS = 'vsaps_schedule_shifts';
   private static KEY_SECTIONS = 'vsaps_schedule_sections';
   private static KEY_ONESIGNAL = 'vsaps_config_onesignal';
+  private static KEY_CONTACTS = 'vsaps_contacts';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -268,6 +271,7 @@ export class DataStore {
   private dates: string[] = [];
   private shifts: ConferenceShift[] = [];
   private virtualSections: VirtualSection[] = [];
+  private contacts: Contact[] = [];
 
   constructor() {
     this.loadLocalStorage();
@@ -332,6 +336,7 @@ export class DataStore {
     this.sepayConfig = this.getLocalStorage(DataStore.KEY_SEPAY, DEFAULT_SEPAY_CONFIG);
     this.whatsappConfig = this.getLocalStorage(DataStore.KEY_WHATSAPP, DEFAULT_WHATSAPP_CONFIG);
     this.oneSignalConfig = this.getLocalStorage(DataStore.KEY_ONESIGNAL, DEFAULT_ONESIGNAL_CONFIG);
+    this.contacts = this.getLocalStorage(DataStore.KEY_CONTACTS, []);
   }
 
   /**
@@ -372,6 +377,7 @@ export class DataStore {
         { data: dbDates },
         { data: dbShifts },
         { data: dbSections },
+        { data: dbContacts },
       ] = await Promise.all([
         supabase.from('packages').select('*'),
         supabase.from('specialty_tracks').select('*'),
@@ -391,6 +397,7 @@ export class DataStore {
         Promise.resolve(supabase.from('schedule_dates').select('*')).catch(() => ({ data: null })),
         Promise.resolve(supabase.from('shifts').select('*')).catch(() => ({ data: null })),
         Promise.resolve(supabase.from('virtual_sections').select('*')).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from('contacts').select('*')).catch(() => ({ data: null })),
       ]);
 
       if (pkgs) {
@@ -528,6 +535,10 @@ export class DataStore {
         this.virtualSections = dbSections.map(mapDbToVirtualSection);
         this.saveToLocalStorage(DataStore.KEY_SECTIONS, this.virtualSections);
       }
+      if (dbContacts) {
+        this.contacts = dbContacts.map(mapDbToContact);
+        this.saveToLocalStorage(DataStore.KEY_CONTACTS, this.contacts);
+      }
 
       console.log('✅ Supabase cache synchronization complete!');
       window.dispatchEvent(new CustomEvent('store-loaded'));
@@ -624,6 +635,23 @@ export class DataStore {
         }
         this.saveToLocalStorage(DataStore.KEY_PACKAGES, this.packages);
         window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'packages' } }));
+      })
+      .subscribe();
+
+    // Listen to contacts table updates
+    supabase.channel('db-contacts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, (payload) => {
+        const { eventType, new: newRow, old: oldRow } = payload;
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          const contact = mapDbToContact(newRow);
+          const idx = this.contacts.findIndex(c => c.id === contact.id);
+          if (idx >= 0) this.contacts[idx] = contact;
+          else this.contacts.push(contact);
+        } else if (eventType === 'DELETE') {
+          this.contacts = this.contacts.filter(c => c.id !== oldRow.id);
+        }
+        this.saveToLocalStorage(DataStore.KEY_CONTACTS, this.contacts);
+        window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'contacts' } }));
       })
       .subscribe();
   }
@@ -1351,8 +1379,14 @@ export class DataStore {
           
           // Trigger notifications
           try {
-            this.sendZaloZNS(attendee);
-            this.sendEmail(attendee);
+            const zTmpl = this.templates.find(t => t.channel === 'zalo' && t.type === 'payment_confirmed');
+            this.sendZaloZNS(attendee, zTmpl?.id || 'payment_confirmed');
+
+            const eTmpl = this.templates.find(t => t.channel === 'email' && t.type === 'payment_confirmed');
+            this.sendEmail(attendee, undefined, undefined, eTmpl?.id || 'payment_confirmed');
+
+            const wTmpl = this.templates.find(t => t.channel === 'whatsapp' && t.type === 'payment_confirmed');
+            this.sendWhatsapp(attendee, wTmpl?.id || 'payment_confirmed');
           } catch (err) {
             console.error('Failed to trigger auto notifications:', err);
           }
@@ -1539,6 +1573,7 @@ export class DataStore {
         if (error) console.error('Error saving Email config to Supabase:', error);
       });
     }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'system_config', key: 'email_config' } }));
     return config;
   }
 
@@ -1552,7 +1587,64 @@ export class DataStore {
         if (error) console.error('Error saving Resend config to Supabase:', error);
       });
     }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'system_config', key: 'resend_config' } }));
     return config;
+  }
+
+  getContacts() { return this.contacts; }
+
+  async saveContact(contact: Contact): Promise<Contact> {
+    const idx = this.contacts.findIndex(c => c.id === contact.id);
+    const isNew = idx < 0;
+    if (!isNew) {
+      this.contacts[idx] = contact;
+    } else {
+      this.contacts.push(contact);
+    }
+    this.saveToLocalStorage(DataStore.KEY_CONTACTS, this.contacts);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const dbRecord = mapContactToDb(contact);
+        const query = isNew
+          ? supabase.from('contacts').insert(dbRecord)
+          : supabase.from('contacts').upsert(dbRecord);
+        const { error } = await query;
+        if (error) {
+          console.error('Error saving contact to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error during background upload/sync of contact:', err);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'contacts' } }));
+    return contact;
+  }
+
+  async saveContacts(contacts: Contact[]): Promise<Contact[]> {
+    for (const contact of contacts) {
+      const idx = this.contacts.findIndex(c => c.id === contact.id);
+      if (idx >= 0) {
+        this.contacts[idx] = contact;
+      } else {
+        this.contacts.push(contact);
+      }
+    }
+    this.saveToLocalStorage(DataStore.KEY_CONTACTS, this.contacts);
+
+    if (isSupabaseConfigured() && contacts.length > 0) {
+      try {
+        const dbRecords = contacts.map(mapContactToDb);
+        const { error } = await supabase.from('contacts').upsert(dbRecords);
+        if (error) {
+          console.error('Error upserting contacts to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error during batch contacts sync:', err);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'contacts' } }));
+    return contacts;
   }
 
   getWhatsappConfig() { return this.whatsappConfig; }
@@ -1680,9 +1772,24 @@ export class DataStore {
       console.error("Zalo auto token refresh check failed:", e);
     }
 
-    const template: NotificationTemplate = (templateId ? this.templates.find(t => t.id === templateId) : null)
-      || this.templates.find(t => t.channel === 'zalo' && t.type === 'registration_success')
-      || { id: 'tmpl-reg-zalo', name: 'Đăng Ký Đại Biểu Thành Công (Zalo ZNS)', type: 'registration_success', channel: 'zalo', content: 'Xin chào {{title}} {{fullname}}...' };
+    let template = templateId ? this.templates.find(t => t.id === templateId) : null;
+    if (!template && templateId === 'payment_confirmed') {
+      template = this.templates.find(t => t.channel === 'zalo' && t.type === 'payment_confirmed');
+    }
+    if (!template) {
+      if (templateId === 'payment_confirmed') {
+        template = {
+          id: 'tmpl-payment-zalo',
+          name: 'Xác Nhận Thanh Toán Thành Công (Zalo ZNS)',
+          type: 'payment_confirmed',
+          channel: 'zalo',
+          content: 'Xin chào {{title}} {{fullname}}. Chúng tôi xác nhận bạn đã thanh toán thành công phí tham dự Hội nghị VSAPS 2026 cho gói {{package}}. Trạng thái: {{payment_status}}.'
+        };
+      } else {
+        template = this.templates.find(t => t.channel === 'zalo' && t.type === 'registration_success')
+          || { id: 'tmpl-reg-zalo', name: 'Đăng Ký Đại Biểu Thành Công (Zalo ZNS)', type: 'registration_success', channel: 'zalo', content: 'Xin chào {{title}} {{fullname}}...' };
+      }
+    }
 
     let formattedPhone = attendee.phone.replace(/[^0-9]/g, '');
     if (formattedPhone.startsWith('0')) {
@@ -1772,9 +1879,26 @@ export class DataStore {
     return log;
   }
 
-  async sendEmail(attendee: Attendee, customSubject?: string, customBody?: string): Promise<SentNotificationLog> {
-    const template: NotificationTemplate = this.templates.find(t => t.channel === 'email' && t.type === 'registration_success')
-      || { id: 'tmpl-reg-email', name: 'Đăng Ký Đại Biểu Thành Công (Email)', type: 'registration_success', channel: 'email', subject: '🎯 Xác nhận bảo mẫu đăng ký thành công VSAPS 2026', content: 'Xin chào {{title}} {{fullname}}...' };
+  async sendEmail(attendee: Attendee, customSubject?: string, customBody?: string, templateId?: string): Promise<SentNotificationLog> {
+    let template = templateId ? this.templates.find(t => t.id === templateId) : null;
+    if (!template && templateId === 'payment_confirmed') {
+      template = this.templates.find(t => t.channel === 'email' && t.type === 'payment_confirmed');
+    }
+    if (!template) {
+      if (templateId === 'payment_confirmed') {
+        template = {
+          id: 'tmpl-payment-email',
+          name: 'Xác Nhận Thanh Toán Thành Công (Email)',
+          type: 'payment_confirmed',
+          channel: 'email',
+          subject: '🎯 Xác nhận thanh toán thành công VSAPS 2026',
+          content: 'Xin chào {{title}} {{fullname}}.\n\nChúng tôi xin xác nhận đã nhận được thanh toán phí tham dự Hội nghị Khoa học VSAPS 2026 của bạn cho gói {{package}}.\n- Mã đại biểu: {{code}}\n- Trạng thái đóng phí: {{payment_status}}\n\nTrân trọng cảm ơn!'
+        };
+      } else {
+        template = this.templates.find(t => t.channel === 'email' && t.type === 'registration_success')
+          || { id: 'tmpl-reg-email', name: 'Đăng Ký Đại Biểu Thành Công (Email)', type: 'registration_success', channel: 'email', subject: '🎯 Xác nhận bảo mẫu đăng ký thành công VSAPS 2026', content: 'Xin chào {{title}} {{fullname}}...' };
+      }
+    }
 
     const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chở Đối Soát' : 'Chưa Thanh Toán';
     const content = customBody || template.content
@@ -1891,16 +2015,32 @@ export class DataStore {
   }
 
   async sendWhatsapp(attendee: Attendee, templateId?: string): Promise<SentNotificationLog> {
-    const template: NotificationTemplate = (templateId ? this.templates.find(t => t.id === templateId) : null)
-      || this.templates.find(t => t.channel === 'whatsapp' && t.type === 'registration_success')
-      || { 
-           id: 'tmpl-reg-wa', 
-           name: 'Đăng Ký Đại Biểu Thành Công (WhatsApp)', 
-           type: 'registration_success', 
-           channel: 'whatsapp', 
-           znsTemplateId: 'vsaps_registration_success',
-           content: '[VSAPS 2026] ĐĂNG KÝ THÀNH CÔNG\nXin chào {{title}} {{fullname}}. Bạn đã đăng ký thành công tham dự Hội nghị Khoa học VSAPS 2026.\n- Gói: {{package}}\n- Mã Đại biểu: {{code}}\n- Trạng thái: {{payment_status}}\nVui lòng quét mã QR vé để check-in. Trân trọng!'
-         };
+    let template = templateId ? this.templates.find(t => t.id === templateId) : null;
+    if (!template && templateId === 'payment_confirmed') {
+      template = this.templates.find(t => t.channel === 'whatsapp' && t.type === 'payment_confirmed');
+    }
+    if (!template) {
+      if (templateId === 'payment_confirmed') {
+        template = {
+          id: 'tmpl-payment-wa',
+          name: 'Xác Nhận Thanh Toán Thành Công (WhatsApp)',
+          type: 'payment_confirmed',
+          channel: 'whatsapp',
+          znsTemplateId: 'vsaps_payment_confirmed',
+          content: '[VSAPS 2026] THANH TOÁN THÀNH CÔNG\nXin chào {{title}} {{fullname}}. Bạn đã thanh toán thành công phí tham dự Hội nghị Khoa học VSAPS 2026.\n- Gói: {{package}}\n- Mã Đại biểu: {{code}}\n- Trạng thái: {{payment_status}}.'
+        };
+      } else {
+        template = this.templates.find(t => t.channel === 'whatsapp' && t.type === 'registration_success')
+          || { 
+               id: 'tmpl-reg-wa', 
+               name: 'Đăng Ký Đại Biểu Thành Công (WhatsApp)', 
+               type: 'registration_success', 
+               channel: 'whatsapp', 
+               znsTemplateId: 'vsaps_registration_success',
+               content: '[VSAPS 2026] ĐĂNG KÝ THÀNH CÔNG\nXin chào {{title}} {{fullname}}. Bạn đã đăng ký thành công tham dự Hội nghị Khoa học VSAPS 2026.\n- Gói: {{package}}\n- Mã Đại biểu: {{code}}\n- Trạng thái: {{payment_status}}\nVui lòng quét mã QR vé để check-in. Trân trọng!'
+             };
+      }
+    }
 
     let formattedPhone = attendee.phone.replace(/[^0-9]/g, '');
     if (formattedPhone.startsWith('0')) {

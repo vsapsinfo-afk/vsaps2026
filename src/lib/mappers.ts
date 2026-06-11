@@ -6,7 +6,7 @@ import type {
   Attendee, SpeakerRegistration, Sponsor, ConferenceSession,
   InternalTask, FinanceTransaction, RegistrationPackage, UserAccount,
   NotificationTemplate, SentNotificationLog, SpecialtyTrack,
-  BusinessConfig, EmbedScript, ZaloConfig, EmailConfig
+  BusinessConfig, EmbedScript, ZaloConfig, EmailConfig, Contact
 } from '../types';
 
 // ============================================================
@@ -506,4 +506,28 @@ export function mapZaloConfigToDb(c: ZaloConfig): Record<string, any> {
 
 export function mapEmailConfigToDb(c: EmailConfig): Record<string, any> {
   return { key: 'email_config', value: c };
+}
+
+// ============================================================
+// CONTACTS (Excel Upload List preservation)
+// ============================================================
+export function mapContactToDb(c: Contact): Record<string, any> {
+  return {
+    id: c.id,
+    name: c.name,
+    email: c.email || null,
+    phone: c.phone || null,
+    group_name: c.groupName || 'Mặc định',
+  };
+}
+
+export function mapDbToContact(row: any): Contact {
+  return {
+    id: row.id,
+    name: row.name || '',
+    email: row.email || '',
+    phone: row.phone || '',
+    groupName: row.group_name || 'Mặc định',
+    createdAt: row.created_at || undefined,
+  };
 }

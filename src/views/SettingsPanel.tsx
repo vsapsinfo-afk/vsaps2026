@@ -43,6 +43,7 @@ import {
   RegistrationPackage, 
   ZaloConfig, 
   EmailConfig, 
+  ResendConfig,
   WhatsappConfig,
   SupabaseConfig, 
   Role, 
@@ -96,6 +97,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Credentials integration state
   const [zaloConfig, setZaloConfig] = useState<ZaloConfig>(store.getZaloConfig());
   const [emailConfig, setEmailConfig] = useState<EmailConfig>(store.getEmailConfig());
+  const [resendConfig, setResendConfig] = useState<ResendConfig>(store.getResendConfig());
   const [whatsappConfig, setWhatsappConfig] = useState<WhatsappConfig>(store.getWhatsappConfig());
   const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig>(store.getSupabaseConfig());
   const [copiedSchema, setCopiedSchema] = useState(false);
@@ -107,6 +109,9 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   const [smtpTestResult, setSmtpTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [emailSendingTest, setEmailSendingTest] = useState(false);
   const [emailSendingResult, setEmailSendingResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [resendSendingTest, setResendSendingTest] = useState(false);
+  const [resendSendingResult, setResendSendingResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [resendTestEmail, setResendTestEmail] = useState('');
   const [waTesting, setWaTesting] = useState(false);
   const [waTestResult, setWaTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -595,6 +600,70 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
       });
     } finally {
       setEmailSendingTest(false);
+    }
+  };
+
+  const handleSaveResendSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    store.saveResendConfig(resendConfig);
+    alert('Đã lưu cấu hình Cổng Mail Resend!');
+  };
+
+  const handleSendTestResendMail = async () => {
+    if (!resendTestEmail) {
+      alert('Vui lòng điền Email nhận test trước!');
+      return;
+    }
+    if (!resendConfig.apiKey || !resendConfig.senderEmail) {
+      alert('Vui lòng điền API Key và Email gửi đi trước!');
+      return;
+    }
+    setResendSendingTest(true);
+    setResendSendingResult(null);
+    try {
+      const testContentHtml = `
+        <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+          <h2 style="color: #4f46e5; text-transform: uppercase;">Cổng Truyền Tin Resend Kích Hoạt Thành Công</h2>
+          <p>Kính gửi Quý đại diện quản trị,</p>
+          <p>Thư này xác nhận cổng gửi Email Outcoming qua hình thức API của Resend đã cấu hình thành công.</p>
+          <div style="background-color: #f8fafc; padding: 15px; border-radius: 10px; font-family: monospace; font-size: 13px; border-left: 4px solid #4f46e5; margin: 20px 0;">
+            • Cổng API: Resend Bulk Service<br/>
+            • Email nguồn: ${resendConfig.senderEmail}<br/>
+            • Thời gian: ${new Date().toLocaleString()}
+          </div>
+          <p style="font-size: 11px; color: #94a3b8;">Email tự động phục vụ đo lường cổng gửi tin hàng loạt.</p>
+        </div>
+      `;
+      const response = await fetch('/api/email/send-resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: resendConfig.apiKey,
+          from: resendConfig.senderEmail,
+          to: resendTestEmail,
+          subject: `[RESEND SUCCESS] Email kiểm định kết nối cổng truyền tin Resend`,
+          html: testContentHtml
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResendSendingResult({
+          success: true,
+          message: `Thư xác thực đã bắn thành công tới ${resendTestEmail}! Kiểm tra cả hòm thư Spam.`
+        });
+      } else {
+        setResendSendingResult({
+          success: false,
+          message: `Lỗi truyền phát Resend: ${data.error || 'Chi tiết gửi lỗi máy chủ.'}`
+        });
+      }
+    } catch (err: any) {
+      setResendSendingResult({
+        success: false,
+        message: `Lỗi kết nối API: ${err.message}`
+      });
+    } finally {
+      setResendSendingTest(false);
     }
   };
 
@@ -1734,11 +1803,11 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Cấu hình liên kết cổng tích hợp API</h3>
-                <p className="text-[11px] text-slate-450 mt-0.5">Quản lý định biên truyền phát Email SMTP Server, Zalo OA Gateway và Supabase Cloud Database.</p>
+                <p className="text-[11px] text-slate-450 mt-0.5">Quản lý định biên truyền phát Email SMTP/Resend Server, Zalo OA Gateway và Supabase Cloud Database.</p>
               </div>
 
               {/* Left & Right layout: columns for form config and verification test tools */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* 1. Zalo OA Connection settings card */}
                 <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -1976,6 +2045,70 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                       }`}>
                         <span className="font-extrabold block mb-0.5">SMTP Transmission:</span>
                         <p>{emailSendingResult.message}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2b. Resend Outcoming Mail Server settings card */}
+                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                  <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
+                    📧 CỔNG GỬI MAIL HÀNG LOẠT (RESEND)
+                  </span>
+                  <form onSubmit={handleSaveResendSubmit} className="space-y-3">
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 block mb-1">RESEND API KEY</label>
+                      <input
+                        type="password"
+                        placeholder="re_xxxxxxxxxxxxxx"
+                        value={resendConfig.apiKey}
+                        onChange={(e) => setResendConfig({ ...resendConfig, apiKey: e.target.value })}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-slate-400 block mb-1">EMAIL SENDER (EMAIL GỬI ĐI)</label>
+                      <input
+                        type="text"
+                        placeholder="onboarding@resend.dev hoặc email tên miền của bạn"
+                        value={resendConfig.senderEmail}
+                        onChange={(e) => setResendConfig({ ...resendConfig, senderEmail: e.target.value })}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono"
+                      />
+                    </div>
+                    <button type="submit" className="w-full py-2 bg-slate-800 hover:bg-slate-900 border-none text-white text-[10px] font-black uppercase tracking-wider rounded-lg cursor-pointer font-bold">
+                      Đồng bộ thông số Mail Resend
+                    </button>
+                  </form>
+
+                  <div className="border-t border-slate-250 pt-3 space-y-2.5 mt-4">
+                    <span className="text-[9px] font-black text-indigo-700 block">⚡ KIỂM TRA CỔNG BẮN THƯ RESEND:</span>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          placeholder="Email nhận test..."
+                          value={resendTestEmail}
+                          onChange={(e) => setResendTestEmail(e.target.value)}
+                          className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-mono flex-1 min-w-[120px]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSendTestResendMail}
+                          disabled={resendSendingTest}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-750 border border-blue-200 hover:bg-blue-100 rounded-lg text-[10px] font-bold cursor-pointer whitespace-nowrap"
+                        >
+                          {resendSendingTest ? 'Đang gửi...' : 'Gửi mail test'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {resendSendingResult && (
+                      <div className={`p-3 rounded-lg border text-[10px] font-mono leading-normal ${
+                        resendSendingResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}>
+                        <span className="font-extrabold block mb-0.5">Resend Transmission:</span>
+                        <p>{resendSendingResult.message}</p>
                       </div>
                     )}
                   </div>

@@ -44,6 +44,7 @@ const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
   finances: ['admin', 'btc'],
   sponsors: ['admin', 'btc'],
   notifications: ['admin', 'btc'],
+  'bulk-send': ['admin', 'btc'],
   settings: ['admin', 'btc'],
 };
 
@@ -54,7 +55,7 @@ function AppContent() {
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get('view');
       const validViews = [
-        'overview', 'attendees', 'speakers', 'schedule', 'tasks', 'finances', 'sponsors', 'notifications', 'settings',
+        'overview', 'attendees', 'speakers', 'schedule', 'tasks', 'finances', 'sponsors', 'notifications', 'bulk-send', 'settings',
         'event-details', 'register-delegate', 'register-speaker', 'register-sponsor'
       ];
       if (viewParam && validViews.includes(viewParam)) {
@@ -301,7 +302,9 @@ function AppContent() {
       case 'sponsors':
         return <SponsorManagement role={role} onNavigate={handleNavigate} />;
       case 'notifications':
-        return <NotificationSystem />;
+        return <NotificationSystem defaultTab="templates" hideTabs={true} />;
+      case 'bulk-send':
+        return <NotificationSystem defaultTab="bulk" hideTabs={true} />;
       case 'settings':
         return (
           <SettingsPanel role={role} />

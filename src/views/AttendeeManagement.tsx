@@ -731,8 +731,25 @@ Ban Thư ký Hội nghị VSAPS 2026`
     const attendeesList = store.getAttendees();
     const found = attendeesList.find(a => a.id === id);
     if (found) {
+      const oldStatus = found.paymentStatus;
       found.paymentStatus = newStatus;
       store.saveAttendee(found);
+      
+      if (oldStatus !== 'paid' && newStatus === 'paid') {
+        try {
+          const templates = store.getTemplates();
+          const zTmpl = templates.find(t => t.channel === 'zalo' && t.type === 'payment_confirmed');
+          const eTmpl = templates.find(t => t.channel === 'email' && t.type === 'payment_confirmed');
+          const wTmpl = templates.find(t => t.channel === 'whatsapp' && t.type === 'payment_confirmed');
+
+          store.sendZaloZNS(found, zTmpl?.id || 'payment_confirmed');
+          store.sendEmail(found, undefined, undefined, eTmpl?.id || 'payment_confirmed');
+          store.sendWhatsapp(found, wTmpl?.id || 'payment_confirmed');
+        } catch (err) {
+          console.error('Lỗi gửi tin nhắn khi cập nhật trạng thái thanh toán:', err);
+        }
+      }
+      
       loadAll();
     }
   };
@@ -846,6 +863,28 @@ Ban Thư ký Hội nghị VSAPS 2026`
     };
 
     store.saveAttendee(manualDelegate);
+    
+    // Auto-trigger notifications
+    try {
+      store.sendZaloZNS(manualDelegate);
+      store.sendEmail(manualDelegate);
+      store.sendWhatsapp(manualDelegate);
+
+      // If the manual delegate is created with payment status 'paid', trigger payment confirmation notifications
+      if (manualDelegate.paymentStatus === 'paid') {
+        const templates = store.getTemplates();
+        const zTmpl = templates.find(t => t.channel === 'zalo' && t.type === 'payment_confirmed');
+        const eTmpl = templates.find(t => t.channel === 'email' && t.type === 'payment_confirmed');
+        const wTmpl = templates.find(t => t.channel === 'whatsapp' && t.type === 'payment_confirmed');
+
+        store.sendZaloZNS(manualDelegate, zTmpl?.id || 'payment_confirmed');
+        store.sendEmail(manualDelegate, undefined, undefined, eTmpl?.id || 'payment_confirmed');
+        store.sendWhatsapp(manualDelegate, wTmpl?.id || 'payment_confirmed');
+      }
+    } catch (err) {
+      console.error('Failed to trigger manual delegate auto notifications:', err);
+    }
+
     setShowAddForm(false);
     
     // reset form fields
@@ -2600,8 +2639,29 @@ Ban Thư ký Hội nghị VSAPS 2026`
                               alert('Họ tên, SĐT và Email là bắt buộc!');
                               return;
                             }
+                            // Check if payment status transitioned to 'paid'
+                            const list = store.getAttendees();
+                            const orig = list.find(a => a.id === detailEditForm.id);
+                            const wasPaid = orig ? orig.paymentStatus === 'paid' : false;
+
                             // Save modifications
                             store.saveAttendee(detailEditForm);
+                            
+                            if (!wasPaid && detailEditForm.paymentStatus === 'paid') {
+                              try {
+                                const templates = store.getTemplates();
+                                const zTmpl = templates.find(t => t.channel === 'zalo' && t.type === 'payment_confirmed');
+                                const eTmpl = templates.find(t => t.channel === 'email' && t.type === 'payment_confirmed');
+                                const wTmpl = templates.find(t => t.channel === 'whatsapp' && t.type === 'payment_confirmed');
+
+                                store.sendZaloZNS(detailEditForm, zTmpl?.id || 'payment_confirmed');
+                                store.sendEmail(detailEditForm, undefined, undefined, eTmpl?.id || 'payment_confirmed');
+                                store.sendWhatsapp(detailEditForm, wTmpl?.id || 'payment_confirmed');
+                              } catch (err) {
+                                console.error('Lỗi gửi tin nhắn khi lưu sửa đổi và xác nhận thanh toán:', err);
+                              }
+                            }
+
                             setViewDetailAttendee(detailEditForm);
                             setIsEditingDetail(false);
                             loadAll();

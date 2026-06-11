@@ -8,16 +8,25 @@ import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCir
 import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
-import { NotificationTemplate, SentNotificationLog } from '../types';
+import { NotificationTemplate, SentNotificationLog, Contact } from '../types';
 import { isSupabaseConfigured } from '../lib/supabase';
 
-export default function NotificationSystem() {
+interface NotificationSystemProps {
+  defaultTab?: 'templates' | 'bulk';
+  hideTabs?: boolean;
+}
+
+export default function NotificationSystem({ defaultTab = 'templates', hideTabs = true }: NotificationSystemProps) {
   const [templates, setTemplates] = useState<NotificationTemplate[]>(store.getTemplates());
   const [selectedTemplate, setSelectedTemplate] = useState<NotificationTemplate | null>(templates[0]);
   const [logs, setLogs] = useState<SentNotificationLog[]>(store.getNotificationLogs());
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'templates' | 'bulk'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'bulk'>(defaultTab);
+
+  React.useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   // Bulk sending state
   const [bulkChannel, setBulkChannel] = useState<'email' | 'zalo'>('email');
@@ -41,16 +50,122 @@ export default function NotificationSystem() {
   const isBulkSendingRef = React.useRef(false);
   const isBulkPausedRef = React.useRef(false);
 
+  // Contacts integration states
+  const [contacts, setContacts] = useState<Contact[]>(() => store.getContacts());
+  const [listSource, setListSource] = useState<'file' | 'saved'>('file');
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [saveToContacts, setSaveToContacts] = useState<boolean>(true);
+  const [contactGroupName, setContactGroupName] = useState<string>('');
+  const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    const handleStoreUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.table === 'contacts') {
+        setContacts(store.getContacts());
+      }
+      if (detail && detail.table === 'system_config') {
+        setResendConfigState(store.getResendConfig());
+      }
+    };
+    window.addEventListener('store-updated', handleStoreUpdate);
+    return () => {
+      window.removeEventListener('store-updated', handleStoreUpdate);
+    };
+  }, []);
+
   // React to template reload
   React.useEffect(() => {
     setZaloTemplates(store.getTemplates().filter(t => t.channel === 'zalo'));
   }, [templates]);
+
+  const generateContactId = (groupName: string, name: string, email: string, phone: string): string => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    const cleanName = (name || '').trim();
+    const rawStr = `${groupName.trim()}_${cleanName}_${cleanEmail}_${cleanPhone}`;
+    
+    let hash = 0;
+    for (let i = 0; i < rawStr.length; i++) {
+      const char = rawStr.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    const hashPart = Math.abs(hash).toString(36).toUpperCase();
+    
+    let hash2 = 17;
+    for (let i = 0; i < rawStr.length; i++) {
+      hash2 = (hash2 * 31) + rawStr.charCodeAt(i);
+      hash2 |= 0;
+    }
+    const hashPart2 = Math.abs(hash2).toString(36).toUpperCase();
+    
+    return `CON-${hashPart}-${hashPart2}`;
+  };
+
+  const handleSaveToContacts = async () => {
+    if (excelData.length === 0) {
+      alert('Không có dữ liệu để lưu.');
+      return;
+    }
+    const groupName = (contactGroupName || excelFileName || 'Nhóm mặc định').replace(/\.[^/.]+$/, "").trim();
+    
+    const contactsToSave: Contact[] = excelData.map(d => ({
+      id: generateContactId(groupName, d.name, d.email, d.phone),
+      name: d.name,
+      email: d.email,
+      phone: d.phone,
+      groupName: groupName
+    }));
+
+    try {
+      await store.saveContacts(contactsToSave);
+      setIsSavedSuccessfully(true);
+      setTimeout(() => setIsSavedSuccessfully(false), 3000);
+      alert(`Đã lưu thành công ${contactsToSave.length} liên hệ vào nhóm danh bạ "${groupName}"!`);
+    } catch (err: any) {
+      alert('Lỗi lưu liên hệ: ' + err.message);
+    }
+  };
+
+  const loadSavedGroup = (groupName: string) => {
+    if (!groupName) {
+      setExcelData([]);
+      setExcelFileName('');
+      return;
+    }
+    const groupContacts = contacts.filter(c => c.groupName === groupName);
+    const records = groupContacts.map((c, index) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const cleanPhone = (c.phone || '').replace(/[^0-9]/g, '');
+      const isEmailValid = emailRegex.test(c.email || '');
+      const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
+      return {
+        id: index + 1,
+        name: c.name,
+        email: c.email || '',
+        phone: c.phone || '',
+        isEmailValid,
+        isPhoneValid,
+        status: 'pending' as const,
+        error: ''
+      };
+    });
+    setExcelData(records);
+    setExcelFileName(`Danh bạ: ${groupName}`);
+    setContactGroupName(groupName);
+    setSendingIndex(-1);
+    setBulkLogs([]);
+  };
 
   const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setExcelFileName(file.name);
+    const defaultGroupName = file.name.replace(/\.[^/.]+$/, "");
+    setContactGroupName(defaultGroupName);
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -118,17 +233,34 @@ export default function NotificationSystem() {
     }
 
     if (bulkChannel === 'email') {
-      if (!resendConfig.apiKey || !resendConfig.senderEmail) {
-        alert('Vui lòng cấu hình đầy đủ API Key và Email gửi của Resend.');
+      const currentResend = store.getResendConfig();
+      if (!currentResend.apiKey || !currentResend.senderEmail) {
+        alert('Vui lòng vào mục "Cài đặt hệ thống" để cấu hình Resend API Key và Email gửi đi trước khi bắt đầu.');
         return;
       }
-      store.saveResendConfig(resendConfig);
     } else {
       const zConfig = store.getZaloConfig();
       const isRealZalo = (zConfig.accessToken && zConfig.accessToken !== 'zalo-oa-token-active-2026-ready-vsaps') || isSupabaseConfigured();
       if (!isRealZalo) {
         alert('Zalo OA chưa được cấu hình. Vui lòng thiết lập cấu hình Zalo OA trong mục Cài Đặt Hệ Thống.');
         return;
+      }
+    }
+
+    // Auto-save to contacts if enabled and source is file upload
+    if (listSource === 'file' && saveToContacts && excelData.length > 0) {
+      const groupName = (contactGroupName || excelFileName || 'Nhóm mặc định').replace(/\.[^/.]+$/, "").trim();
+      const contactsToSave: Contact[] = excelData.map(d => ({
+        id: generateContactId(groupName, d.name, d.email, d.phone),
+        name: d.name,
+        email: d.email,
+        phone: d.phone,
+        groupName: groupName
+      }));
+      try {
+        await store.saveContacts(contactsToSave);
+      } catch (err) {
+        console.error('Lỗi tự động lưu danh bạ:', err);
       }
     }
 
@@ -627,28 +759,30 @@ export default function NotificationSystem() {
       `}} />
 
       {/* Tabs navigation */}
-      <div className="flex border-b border-slate-200 select-none">
-        <button
-          onClick={() => setActiveTab('templates')}
-          className={`px-5 py-3 font-bold text-xs border-b-2 transition-all cursor-pointer bg-transparent ${
-            activeTab === 'templates'
-              ? 'border-indigo-650 text-indigo-650'
-              : 'border-transparent text-slate-400 hover:text-slate-700'
-          }`}
-        >
-          ⚙️ Mẫu Tin Nhắn &amp; Gửi Thử
-        </button>
-        <button
-          onClick={() => setActiveTab('bulk')}
-          className={`px-5 py-3 font-bold text-xs border-b-2 transition-all cursor-pointer bg-transparent ${
-            activeTab === 'bulk'
-              ? 'border-indigo-650 text-indigo-650'
-              : 'border-transparent text-slate-400 hover:text-slate-700'
-          }`}
-        >
-          📬 Gửi Tin Hàng Loạt (Excel Upload)
-        </button>
-      </div>
+      {!hideTabs && (
+        <div className="flex border-b border-slate-200 select-none">
+          <button
+            onClick={() => setActiveTab('templates')}
+            className={`px-5 py-3 font-bold text-xs border-b-2 transition-all cursor-pointer bg-transparent ${
+              activeTab === 'templates'
+                ? 'border-indigo-650 text-indigo-650'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            ⚙️ Mẫu Tin Nhắn &amp; Gửi Thử
+          </button>
+          <button
+            onClick={() => setActiveTab('bulk')}
+            className={`px-5 py-3 font-bold text-xs border-b-2 transition-all cursor-pointer bg-transparent ${
+              activeTab === 'bulk'
+                ? 'border-indigo-650 text-indigo-650'
+                : 'border-transparent text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            📬 Gửi Tin Hàng Loạt (Excel Upload)
+          </button>
+        </div>
+      )}
 
       {activeTab === 'templates' && (
         <>
@@ -1405,35 +1539,135 @@ export default function NotificationSystem() {
             {/* File upload card */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
-                1. Nạp danh sách Excel / CSV
+                1. Nạp danh sách liên hệ
               </span>
-              <p className="text-[11px] text-slate-400 leading-normal">
-                Tải lên tập tin Excel (.xlsx, .xls) hoặc CSV. Hệ thống tự động so khớp cột chứa <strong>Tên, Email, Số điện thoại</strong>.
-              </p>
               
-              <div className="relative border-2 border-dashed border-slate-200 hover:border-indigo-455 rounded-xl p-6 transition-all text-center group bg-slate-50/50 hover:bg-white">
-                <input
-                  type="file"
-                  accept=".xlsx, .xls, .csv"
-                  onChange={handleExcelUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <div className="text-xs font-bold text-slate-700">
-                    {excelFileName ? excelFileName : 'Chọn tệp Excel hoặc kéo thả vào đây'}
-                  </div>
-                  <div className="text-[10px] text-slate-400">Hỗ trợ .xlsx, .xls, .csv</div>
-                </div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold text-slate-500 block">Nguồn danh sách</label>
+                <select
+                  value={listSource}
+                  onChange={(e) => {
+                    const src = e.target.value as 'file' | 'saved';
+                    setListSource(src);
+                    setExcelData([]);
+                    setExcelFileName('');
+                    setSelectedGroup('');
+                    setContactGroupName('');
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
+                >
+                  <option value="file">📁 Tải file Excel/CSV mới</option>
+                  <option value="saved">👥 Chọn từ danh bạ đã lưu ({Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).length} nhóm)</option>
+                </select>
               </div>
 
-              {excelData.length > 0 && (
-                <div className="bg-emerald-50 text-emerald-800 p-3.5 rounded-xl text-xs font-medium border border-emerald-100 flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <div>
-                    Đã nạp <strong>{excelData.length}</strong> dòng từ Excel. Trong đó có <strong>{excelData.filter(d => d.isEmailValid || d.isPhoneValid).length}</strong> bản ghi hợp lệ.
+              {listSource === 'file' ? (
+                <>
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Tải lên tập tin Excel (.xlsx, .xls) hoặc CSV. Hệ thống tự động so khớp cột chứa <strong>Tên, Email, Số điện thoại</strong>.
+                  </p>
+                  
+                  <div className="relative border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-xl p-6 transition-all text-center group bg-slate-50/50 hover:bg-white">
+                    <input
+                      type="file"
+                      accept=".xlsx, .xls, .csv"
+                      onChange={handleExcelUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="space-y-2">
+                      <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <div className="text-xs font-bold text-slate-700">
+                        {excelFileName ? excelFileName : 'Chọn tệp Excel hoặc kéo thả vào đây'}
+                      </div>
+                      <div className="text-[10px] text-slate-400">Hỗ trợ .xlsx, .xls, .csv</div>
+                    </div>
+                  </div>
+
+                  {excelData.length > 0 && (
+                    <div className="space-y-3 pt-2 border-t border-slate-100">
+                      <div className="bg-emerald-50 text-emerald-800 p-3.5 rounded-xl text-xs font-medium border border-emerald-100 flex items-center gap-2">
+                        <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          Đã nạp <strong>{excelData.length}</strong> dòng từ Excel. Trong đó có <strong>{excelData.filter(d => d.isEmailValid || d.isPhoneValid).length}</strong> bản ghi hợp lệ.
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={saveToContacts}
+                            onChange={(e) => setSaveToContacts(e.target.checked)}
+                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                          />
+                          Lưu vào danh bạ để tái sử dụng
+                        </label>
+                        
+                        {saveToContacts && (
+                          <div className="space-y-2 pt-1.5">
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-400 block uppercase mb-1">Tên nhóm danh bạ</label>
+                              <input
+                                type="text"
+                                value={contactGroupName}
+                                onChange={(e) => setContactGroupName(e.target.value)}
+                                placeholder="Ví dụ: Hội viên khu vực miền Nam"
+                                className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleSaveToContacts}
+                              className="w-full py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors border-none cursor-pointer"
+                            >
+                              {isSavedSuccessfully ? '✓ Đã lưu thành công' : '💾 Lưu ngay vào danh bạ'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Chọn một nhóm danh bạ đã được lưu từ các đợt tải file trước đó để nạp trực tiếp danh sách người nhận.
+                  </p>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Nhóm danh bạ đã lưu *</label>
+                      <select
+                        value={selectedGroup}
+                        onChange={(e) => {
+                          setSelectedGroup(e.target.value);
+                          loadSavedGroup(e.target.value);
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-bold text-slate-700"
+                      >
+                        <option value="">-- Chọn nhóm danh bạ --</option>
+                        {Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).map(g => (
+                          <option key={g} value={g}>{g} ({contacts.filter(c => c.groupName === g).length} liên hệ)</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedGroup && excelData.length > 0 && (
+                      <div className="bg-indigo-50 text-indigo-800 p-3.5 rounded-xl text-xs font-medium border border-indigo-100 flex items-center gap-2">
+                        <Users className="w-4 h-4 text-indigo-650 shrink-0" />
+                        <div>
+                          Đã nạp <strong>{excelData.length}</strong> liên hệ từ nhóm <strong>{selectedGroup}</strong>.
+                        </div>
+                      </div>
+                    )}
+
+                    {Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).length === 0 && (
+                      <div className="bg-amber-50 text-amber-800 p-3 rounded-xl text-xs leading-relaxed border border-amber-100">
+                        Chưa có nhóm danh bạ nào được lưu. Hãy chuyển sang phần <strong>Tải file Excel mới</strong> và tích chọn <strong>Lưu vào danh bạ</strong> để bắt đầu tích luỹ liên hệ.
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1468,28 +1702,20 @@ export default function NotificationSystem() {
 
               {bulkChannel === 'email' ? (
                 <div className="space-y-3 pt-2 text-xs">
-                  <div className="bg-amber-50 text-amber-800 p-3 rounded-xl border border-amber-100 leading-relaxed text-[10.5px]">
-                    ⚠️ <strong>Lưu ý về Resend</strong>: Gửi qua Resend giúp giảm thiểu bị block email. Bạn cần nhập API Key và email gửi (đã được cấu hình/xác thực tên miền trong tài khoản Resend của bạn).
+                  <div className="bg-indigo-50 text-indigo-800 p-3 rounded-xl border border-indigo-100 leading-relaxed text-[10.5px]">
+                    📧 <strong>Cổng gửi Email Resend</strong>: Hệ thống sẽ sử dụng thông số cấu hình API Key và Email gửi đi của **Resend** được thiết lập trong mục <strong>Cài đặt hệ thống</strong>.
                   </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">RESEND API KEY *</label>
-                    <input
-                      type="password"
-                      value={resendConfig.apiKey}
-                      onChange={(e) => setResendConfigState({ ...resendConfig, apiKey: e.target.value })}
-                      placeholder="re_xxxxxxxxxxxxxx"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">EMAIL SENDER (GỬI ĐI) *</label>
-                    <input
-                      type="text"
-                      value={resendConfig.senderEmail}
-                      onChange={(e) => setResendConfigState({ ...resendConfig, senderEmail: e.target.value })}
-                      placeholder="onboarding@resend.dev hoặc email tên miền của bạn"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                    />
+                  <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-slate-450 font-bold">Email gửi đi:</span>
+                      <span className="font-mono text-slate-700 font-extrabold">{resendConfig.senderEmail || '(Chưa cấu hình)'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-450 font-bold">Trạng thái API Key:</span>
+                      <span className="font-bold text-slate-750">
+                        {resendConfig.apiKey ? '🟢 Đã cấu hình' : '🔴 Chưa cấu hình'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ) : (

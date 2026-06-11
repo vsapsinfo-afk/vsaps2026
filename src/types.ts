@@ -344,3 +344,12 @@ export interface EmbedScript {
   createdAt: string;
 }
 
+export interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  groupName: string;
+  createdAt?: string;
+}
+
