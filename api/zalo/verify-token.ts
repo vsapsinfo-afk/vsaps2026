@@ -22,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const apiBase = process.env.ZALO_API_BASE_URL || "https://openapi.zalo.me";
-    const zaloUrl = `${apiBase}/v2.0/oa/getprofile`;
+    const zaloUrl = `${apiBase}/v2.0/oa/getoa`;
 
     const fetchOptions: any = {
       method: "GET",

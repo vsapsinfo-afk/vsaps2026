@@ -280,7 +280,7 @@ export default function NotificationSystem() {
       addLog(`Tiến hành biên dịch placeholders: {{title}} => "${testAttendee.title}", {{fullname}} => "${testAttendee.fullName}"...`, 900);
       
       try {
-        const res = await store.sendEmail(testAttendee);
+        const res = await store.sendEmail(testAttendee, subject, content);
         addLog(`Kết nạp thông số và ký chữ ký số đại biểu thành công!`, 1200);
         addLog(`[SUCCESS 200] Đã chuyển tiếp Email thành công tới: ${testReceiver}`, 1500);
         addLog(`Message ID: ${res.response?.message_id || 'N/A'}. Lịch sử đã lưu!`, 1800);
@@ -293,7 +293,7 @@ export default function NotificationSystem() {
       addLog(`Biên dịch payload cấu trúc ZNS: SĐT=${testReceiver}, Mẫu=${selectedTemplate?.id || 'tmpl-reg-zalo'}...`, 800);
       
       try {
-        const res = await store.sendZaloZNS(testAttendee);
+        const res = await store.sendZaloZNS(testAttendee, selectedTemplate?.id);
         addLog(`Tiến hành gọi thủ tục HTTP POST trực tiếp đến Zalo Open API...`, 1100);
         if (res.status === 'success') {
           addLog(`[ZALO API SUCCESS] Bắn tin Zalo Official Account (ZNS) thành công!`, 1400);
@@ -310,7 +310,7 @@ export default function NotificationSystem() {
       addLog(`Biên dịch payload cấu trúc WhatsApp: SĐT=${testReceiver}, Mẫu=${selectedTemplate?.znsTemplateId || 'vsaps_registration_success'}...`, 800);
       
       try {
-        const res = await store.sendWhatsapp(testAttendee);
+        const res = await store.sendWhatsapp(testAttendee, selectedTemplate?.id);
         addLog(`Tiến hành gọi thủ tục HTTP POST trực tiếp đến Meta Graph API...`, 1100);
         if (res.status === 'success') {
           addLog(`[WHATSAPP API SUCCESS] Bắn tin WhatsApp Template thành công!`, 1400);

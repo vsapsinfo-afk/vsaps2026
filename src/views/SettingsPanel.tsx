@@ -422,6 +422,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
       if (phoneWithPrefix.startsWith('0')) {
         phoneWithPrefix = '84' + phoneWithPrefix.substring(1);
       }
+      const targetTemplate = store.getTemplates().find(t => t.id === 'tmpl-reg-zalo');
       const response = await fetch('/api/zalo/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -429,7 +430,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           config: zaloConfig,
           payload: {
             recipient: { phone: phoneWithPrefix },
-            template_id: 'tmpl-reg-zalo',
+            template_id: targetTemplate?.znsTemplateId || 'tmpl-reg-zalo',
             template_data: {
               title: 'BS.',
               fullname: 'Khách mời Thử nghiệm',

@@ -1,5 +1,9 @@
 // Import OneSignal SDK Service Worker
-importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+try {
+  importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
+} catch (error) {
+  console.error('[SW] OneSignal SDK import failed:', error);
+}
 
 // VSAPS 2026 - Service Worker
 // Strategy: Cache First for static assets, Network First for API/Supabase
@@ -141,7 +145,7 @@ self.addEventListener('fetch', (event) => {
  */
 async function cacheFirst(request) {
   try {
-    const cachedResponse = await caches.match(request);
+    const cachedResponse = await caches.match(request, { ignoreSearch: true });
     if (cachedResponse) {
       // Return cached version, but also update cache in background
       refreshCache(request);
@@ -158,12 +162,16 @@ async function cacheFirst(request) {
   } catch (error) {
     console.error('[SW] Cache First failed:', error);
     // Try to return cached version as last resort
-    const cachedResponse = await caches.match(request);
+    const cachedResponse = await caches.match(request, { ignoreSearch: true });
     if (cachedResponse) return cachedResponse;
 
     // For navigation requests, show offline page
     if (request.mode === 'navigate') {
-      return caches.match('/offline.html');
+      const appShellResponse = await caches.match('/index.html');
+      if (appShellResponse) return appShellResponse;
+
+      const offlinePage = await caches.match('/offline.html');
+      if (offlinePage) return offlinePage;
     }
 
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
@@ -176,16 +184,27 @@ async function cacheFirst(request) {
  * Best for: API calls, dynamic content, HTML pages
  */
 async function networkFirst(request) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
+
   try {
-    let fetchRequest = request;
+    let fetchRequest;
     if (request.mode === 'navigate') {
       fetchRequest = new Request(request.url, {
         method: 'GET',
         headers: request.headers,
-        cache: 'no-store' // Bypass HTTP cache to always get fresh index.html
+        cache: 'no-store', // Bypass HTTP cache to always get fresh index.html
+        signal: controller.signal
+      });
+    } else {
+      fetchRequest = new Request(request.url, {
+        method: 'GET',
+        headers: request.headers,
+        signal: controller.signal
       });
     }
     const networkResponse = await fetch(fetchRequest);
+    clearTimeout(timeoutId);
 
     // Cache successful responses for offline use
     if (networkResponse.ok && request.method === 'GET') {
@@ -195,15 +214,22 @@ async function networkFirst(request) {
 
     return networkResponse;
   } catch (error) {
-    console.log('[SW] Network failed, trying cache for:', request.url);
+    clearTimeout(timeoutId);
+    console.log('[SW] Network failed or timed out, trying cache for:', request.url);
 
-    const cachedResponse = await caches.match(request);
+    const cachedResponse = await caches.match(request, { ignoreSearch: true });
     if (cachedResponse) {
       return cachedResponse;
     }
 
-    // For navigation requests, show offline page
+    // For navigation requests, show offline page or SPA shell
     if (request.mode === 'navigate') {
+      const appShellResponse = await caches.match('/index.html');
+      if (appShellResponse) return appShellResponse;
+
+      const homeResponse = await caches.match('/');
+      if (homeResponse) return homeResponse;
+
       const offlinePage = await caches.match('/offline.html');
       if (offlinePage) return offlinePage;
     }
@@ -239,7 +265,12 @@ async function refreshCache(request) {
 // ============================================================
 
 function isStaticAsset(url) {
-  return STATIC_ASSET_PATTERNS.some((pattern) => pattern.test(url));
+  try {
+    const pathname = new URL(url).pathname;
+    return STATIC_ASSET_PATTERNS.some((pattern) => pattern.test(pathname));
+  } catch (e) {
+    return STATIC_ASSET_PATTERNS.some((pattern) => pattern.test(url));
+  }
 }
 
 // ============================================================

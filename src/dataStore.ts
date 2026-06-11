@@ -1672,13 +1672,14 @@ export class DataStore {
 
     const payload = {
       recipient: { phone: formattedPhone },
-      template_id: template.id,
+      template_id: template.znsTemplateId || template.id,
       template_data: {
         title: attendee.title || '',
         fullname: attendee.fullName || '',
         package: attendee.packageName || '',
         code: attendee.id || '',
         payment_status: payStatusText,
+        organization: attendee.organization || '',
         qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(attendee.qrCodeValue)}`
       },
       raw_text_sent: content
@@ -1698,7 +1699,7 @@ export class DataStore {
             config: this.zaloConfig,
             payload: {
               recipient: { phone: formattedPhone },
-              template_id: template.id,
+              template_id: template.znsTemplateId || template.id,
               template_data: payload.template_data
             }
           })
