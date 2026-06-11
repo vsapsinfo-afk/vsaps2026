@@ -1,9 +1,5 @@
 // Import OneSignal SDK Service Worker
-try {
-  importScripts('https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js');
-} catch (error) {
-  console.error('[SW] OneSignal SDK import failed:', error);
-}
+importScripts('OneSignalSDK.sw.js');
 
 // VSAPS 2026 - Service Worker
 // Strategy: Cache First for static assets, Network First for API/Supabase
@@ -417,7 +413,9 @@ self.addEventListener('message', (event) => {
       break;
 
     default:
-      console.log('[SW] Unknown message type:', type);
+      // Silently ignore unrecognized message types to avoid spamming the console
+      // (e.g. messages from OneSignal or other third-party SDKs)
+      break;
   }
 });
 
