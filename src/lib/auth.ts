@@ -55,9 +55,31 @@ export async function getSession(): Promise<Session | null> {
  * Lấy user hiện tại
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-  return fetchUserProfile(user.id, user.email || '');
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) {
+      console.warn('Supabase getUser returned error, trying local session:', error);
+      // Fallback to local session user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        return fetchUserProfile(session.user.id, session.user.email || '');
+      }
+      return null;
+    }
+    if (!user) return null;
+    return fetchUserProfile(user.id, user.email || '');
+  } catch (err) {
+    console.error('Error in getCurrentUser, falling back to local session:', err);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        return fetchUserProfile(session.user.id, session.user.email || '');
+      }
+    } catch (sessionErr) {
+      console.error('Error getting local session:', sessionErr);
+    }
+    return null;
+  }
 }
 
 /**
@@ -89,6 +111,19 @@ async function fetchUserProfile(authId: string, email: string): Promise<AuthUser
       .single();
 
     if (error || !data) {
+      // Try to load cached profile from localStorage
+      const cached = localStorage.getItem('vsaps_supabase_user_profile');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.email === email) {
+            return parsed;
+          }
+        } catch (e) {
+          console.error('Error parsing cached user profile:', e);
+        }
+      }
+
       // Fallback: tạo user profile mặc định với role 'ctv' nếu chưa có
       return {
         id: authId,
@@ -99,14 +134,32 @@ async function fetchUserProfile(authId: string, email: string): Promise<AuthUser
       };
     }
 
-    return {
+    const profile: AuthUser = {
       id: data.id,
       email: data.email,
       name: data.name,
       role: data.role as Role,
       status: data.status || 'active',
     };
+
+    // Cache the profile
+    localStorage.setItem('vsaps_supabase_user_profile', JSON.stringify(profile));
+
+    return profile;
   } catch {
+    // Try to load cached profile from localStorage
+    const cached = localStorage.getItem('vsaps_supabase_user_profile');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.email === email) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Error parsing cached user profile:', e);
+      }
+    }
+
     return {
       id: authId,
       email,

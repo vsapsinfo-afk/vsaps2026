@@ -29,23 +29,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    getCurrentUser().then(currUser => {
-      setUser(currUser);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const currUser = await getCurrentUser();
+    getCurrentUser()
+      .then(currUser => {
         setUser(currUser);
-      } else {
-        setUser(null);
-      }
+      })
+      .catch(err => {
+        console.error('Error getting initial user in AuthProvider:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    let subscriptionObj: any = null;
+    try {
+      const { data } = onAuthStateChange(async (event, session) => {
+        try {
+          if (session?.user) {
+            const currUser = await getCurrentUser();
+            setUser(currUser);
+          } else {
+            setUser(null);
+          }
+        } catch (err) {
+          console.error('Error in auth state change callback in AuthProvider:', err);
+        } finally {
+          setLoading(false);
+        }
+      });
+      subscriptionObj = data?.subscription;
+    } catch (err) {
+      console.error('Error setting up auth state listener in AuthProvider:', err);
       setLoading(false);
-    });
+    }
 
     return () => {
-      subscription.unsubscribe();
+      if (subscriptionObj) {
+        subscriptionObj.unsubscribe();
+      }
     };
   }, []);
 
