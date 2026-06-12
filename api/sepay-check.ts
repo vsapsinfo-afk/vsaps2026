@@ -64,47 +64,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Thiếu API Token để thực hiện kết nối.' });
     }
 
-    // Auto-detect sandbox tokens (typically starting with 'apikeysb_')
-    const isSandbox = activeToken.trim().startsWith('apikeysb_');
-    const apiBase = isSandbox ? 'https://userapi-sandbox.sepay.vn' : 'https://userapi.sepay.vn';
+    // Helper to request from a specific API host
+    const tryFetch = async (apiBase: string) => {
+      const url = isTest
+        ? `${apiBase}/v2/transactions?limit=1`
+        : `${apiBase}/v2/transactions?q=${encodeURIComponent(transferContentStr?.substring(0, 50) || '')}&limit=20`;
 
-    if (isTest) {
-      // Test connection check
-      const url = `${apiBase}/v2/transactions?limit=1`;
-      const fetchRes = await fetch(url, {
+      return await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${activeToken}`,
           'Content-Type': 'application/json',
         },
       });
+    };
 
-      if (!fetchRes.ok) {
-        const errText = await fetchRes.text();
-        return res.status(fetchRes.status).json({ error: `SePay API báo lỗi (${fetchRes.status}): ${errText}` });
-      }
+    // 1. Try calling the Production endpoint first
+    let fetchRes = await tryFetch('https://userapi.sepay.vn');
 
-      const resData = await fetchRes.json();
-      const transactions = resData?.transactions || resData?.data || [];
-      return res.json({ success: true, count: transactions.length });
+    // 2. If it returns 401, automatically fall back to the Sandbox endpoint
+    if (fetchRes.status === 401) {
+      console.log('[SePay Check] Production API returned 401, attempting Sandbox API fallback...');
+      fetchRes = await tryFetch('https://userapi-sandbox.sepay.vn');
     }
-
-    // Normal check transaction
-    if (!transferContentStr) {
-      return res.status(400).json({ error: 'Thiếu thông tin nội dung chuyển khoản (transferContent)' });
-    }
-
-    const amount = expectedAmountStr ? Number(expectedAmountStr) : 0;
-    const q = encodeURIComponent(transferContentStr.substring(0, 50));
-    const url = `${apiBase}/v2/transactions?q=${q}&limit=20`;
-
-    const fetchRes = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${activeToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
 
     if (!fetchRes.ok) {
       const errText = await fetchRes.text();
@@ -112,6 +94,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const resData = await fetchRes.json();
+
+    if (isTest) {
+      const transactions = resData?.transactions || resData?.data || [];
+      return res.json({ success: true, count: transactions.length });
+    }
+
+    // Normal check transaction matching logic
+    if (!transferContentStr) {
+      return res.status(400).json({ error: 'Thiếu thông tin nội dung chuyển khoản (transferContent)' });
+    }
+
+    const amount = expectedAmountStr ? Number(expectedAmountStr) : 0;
     const transactions: any[] = resData?.transactions || resData?.data || [];
 
     // Tìm giao dịch khớp số tiền (chênh lệch ≤ 1000đ để bù phí)
