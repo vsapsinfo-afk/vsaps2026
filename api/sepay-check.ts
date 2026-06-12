@@ -18,50 +18,86 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { transferContent, expectedAmount } = req.query;
+  const { transferContent, expectedAmount, test, apiToken } = req.query;
 
   const transferContentStr = Array.isArray(transferContent) ? transferContent[0] : transferContent;
   const expectedAmountStr = Array.isArray(expectedAmount) ? expectedAmount[0] : expectedAmount;
+  const testStr = Array.isArray(test) ? test[0] : test;
+  const apiTokenStr = Array.isArray(apiToken) ? apiToken[0] : apiToken;
 
-  if (!transferContentStr) {
-    return res.status(400).json({ error: 'Thiếu thông tin nội dung chuyển khoản (transferContent)' });
-  }
-
-  const amount = expectedAmountStr ? Number(expectedAmountStr) : 0;
+  const isTest = testStr === 'true';
 
   try {
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return res.status(500).json({ error: 'Chưa cấu hình Supabase URL hoặc Service Role Key trên backend.' });
+    let activeToken = apiTokenStr || '';
+
+    // If token not passed, or we need configuration, fetch it from Supabase
+    if (!activeToken) {
+      if (!supabaseUrl || !supabaseServiceKey) {
+        return res.status(500).json({ error: 'Chưa cấu hình Supabase URL hoặc Service Role Key trên backend.' });
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const { data, error: dbErr } = await supabase
+        .from('system_config')
+        .select('*')
+        .eq('key', 'sepay_config')
+        .maybeSingle();
+
+      if (dbErr) {
+        console.error('[SePay Check] Supabase error:', dbErr);
+        return res.status(500).json({ error: 'Không thể lấy cấu hình SePay từ cơ sở dữ liệu' });
+      }
+
+      if (!data || !data.value) {
+        return res.status(400).json({ error: 'Không tìm thấy cấu hình SePay (sepay_config) trong cơ sở dữ liệu' });
+      }
+
+      const cfg = data.value;
+      if (!isTest && !cfg.isEnabled) {
+        return res.status(400).json({ error: 'SePay chưa được bật trong hệ thống.' });
+      }
+
+      activeToken = cfg.apiToken;
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { data, error: dbErr } = await supabase
-      .from('system_config')
-      .select('*')
-      .eq('key', 'sepay_config')
-      .maybeSingle();
-
-    if (dbErr) {
-      console.error('[SePay Check] Supabase error:', dbErr);
-      return res.status(500).json({ error: 'Không thể lấy cấu hình SePay từ cơ sở dữ liệu' });
+    if (!activeToken) {
+      return res.status(400).json({ error: 'Thiếu API Token để thực hiện kết nối.' });
     }
 
-    if (!data || !data.value) {
-      return res.status(400).json({ error: 'Không tìm thấy cấu hình SePay (sepay_config) trong cơ sở dữ liệu' });
+    if (isTest) {
+      // Test connection check
+      const url = `https://userapi.sepay.vn/v2/transactions?limit=1`;
+      const fetchRes = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${activeToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!fetchRes.ok) {
+        const errText = await fetchRes.text();
+        return res.status(fetchRes.status).json({ error: `SePay API báo lỗi (${fetchRes.status}): ${errText}` });
+      }
+
+      const resData = await fetchRes.json();
+      const transactions = resData?.transactions || resData?.data || [];
+      return res.json({ success: true, count: transactions.length });
     }
 
-    const cfg = data.value;
-    if (!cfg.isEnabled || !cfg.apiToken) {
-      return res.status(400).json({ error: 'SePay chưa được cấu hình hoặc chưa bật trong hệ thống.' });
+    // Normal check transaction
+    if (!transferContentStr) {
+      return res.status(400).json({ error: 'Thiếu thông tin nội dung chuyển khoản (transferContent)' });
     }
 
+    const amount = expectedAmountStr ? Number(expectedAmountStr) : 0;
     const q = encodeURIComponent(transferContentStr.substring(0, 50));
     const url = `https://userapi.sepay.vn/v2/transactions?q=${q}&limit=20`;
 
     const fetchRes = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${cfg.apiToken}`,
+        'Authorization': `Bearer ${activeToken}`,
         'Content-Type': 'application/json',
       },
     });

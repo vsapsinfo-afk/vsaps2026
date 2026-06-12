@@ -2932,17 +2932,19 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                       setIsSepayTesting(true);
                       setSepayTestResult(null);
                       try {
-                        const res = await fetch('https://userapi.sepay.vn/v2/transactions?limit=1', {
-                          headers: { 'Authorization': `Bearer ${sepayConfig.apiToken}`, 'Content-Type': 'application/json' },
+                        const url = `/api/sepay-check?test=true&apiToken=${encodeURIComponent(sepayConfig.apiToken)}`;
+                        const res = await fetch(url, {
+                          headers: { 'Content-Type': 'application/json' },
                         });
                         if (res.ok) {
                           const data = await res.json();
-                          setSepayTestResult({ success: true, message: `✅ Kết nối thành công! Tìm thấy ${data?.transactions?.length ?? 0} giao dịch gần nhất.` });
+                          setSepayTestResult({ success: true, message: `✅ Kết nối thành công! Tìm thấy ${data?.count ?? 0} giao dịch gần nhất.` });
                         } else {
-                          setSepayTestResult({ success: false, message: `❌ SePay trả về lỗi ${res.status}. Kiểm tra lại API Token.` });
+                          const errData = await res.json().catch(() => ({ error: '' }));
+                          setSepayTestResult({ success: false, message: `❌ SePay trả về lỗi ${res.status}: ${errData.error || 'Kiểm tra lại API Token.'}` });
                         }
                       } catch (err: any) {
-                        setSepayTestResult({ success: false, message: `❌ Lỗi kết nối: ${err.message} (CORS - cần gọi qua API backend)` });
+                        setSepayTestResult({ success: false, message: `❌ Lỗi kết nối: ${err.message}` });
                       } finally {
                         setIsSepayTesting(false);
                       }
