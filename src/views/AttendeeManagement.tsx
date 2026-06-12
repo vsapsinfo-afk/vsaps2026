@@ -6,6 +6,7 @@
 import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck, Cloud, X } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { Attendee, Role } from '../types';
 
@@ -331,81 +332,150 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
   const handleFileUpload = (file: File) => {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (!text) return;
-      
-      const lines = text.split(/\r?\n/);
-      const outputLines: string[] = [];
-      let skippedHeader = false;
-      let parsedCount = 0;
-      
-      lines.forEach((line, index) => {
-        const trimmed = line.trim();
-        if (!trimmed) return;
-        
-        // Auto-detect delimiter: pipe, semicolon, tab, or comma
-        let delimiter = '|';
-        if (trimmed.includes('|')) {
-          delimiter = '|';
-        } else if (trimmed.includes(';')) {
-          delimiter = ';';
-        } else if (trimmed.includes('\t')) {
-          delimiter = '\t';
-        } else if (trimmed.includes(',')) {
-          delimiter = ',';
-        }
-        
-        const parts = trimmed.split(delimiter).map(p => {
-          let s = p.trim();
-          if (s.startsWith('"') && s.endsWith('"')) {
-            s = s.substring(1, s.length - 1).trim();
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Get all rows as array of arrays
+          const rows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+          
+          const outputLines: string[] = [];
+          let skippedHeader = false;
+          let parsedCount = 0;
+          
+          rows.forEach((parts, index) => {
+            if (!parts || parts.length === 0) return;
+            
+            // Check if first line is a header
+            const rowStr = parts.map(p => p !== null && p !== undefined ? String(p) : '').join(' ').toLowerCase();
+            if (index === 0 && (
+              rowStr.includes('học vị') || 
+              rowStr.includes('fullname') || 
+              rowStr.includes('họ và tên') || 
+              rowStr.includes('điện thoại') || 
+              rowStr.includes('email') || 
+              rowStr.includes('cccd') ||
+              rowStr.includes('title') ||
+              rowStr.includes('phone') ||
+              rowStr.includes('cơ quan')
+            )) {
+              skippedHeader = true;
+              return; // skip header
+            }
+            
+            if (parts.length >= 2) {
+              const title = parts[0] !== null && parts[0] !== undefined ? String(parts[0]).trim() : 'BS.';
+              const name = parts[1] !== null && parts[1] !== undefined ? String(parts[1]).trim() : '';
+              const phone = parts[2] !== null && parts[2] !== undefined ? String(parts[2]).trim() : '';
+              const email = parts[3] !== null && parts[3] !== undefined ? String(parts[3]).trim() : '';
+              const org = parts[4] !== null && parts[4] !== undefined ? String(parts[4]).trim() : '';
+              const yob = parts[5] !== null && parts[5] !== undefined ? String(parts[5]).trim() : '';
+              const cccd = parts[6] !== null && parts[6] !== undefined ? String(parts[6]).trim() : '';
+              
+              if (name) {
+                outputLines.push(`${title} | ${name} | ${phone} | ${email} | ${org} | ${yob} | ${cccd}`);
+                parsedCount++;
+              }
+            }
+          });
+          
+          if (parsedCount > 0) {
+            setBulkInputText(outputLines.join('\n'));
+            setUploadFeedback(`📥 Tải file Excel thành công! Đã trích xuất ${parsedCount} đại biểu từ tệp "${file.name}" ${skippedHeader ? '(bỏ dòng tiêu đề)' : ''}.`);
+            playSoundSound('success');
+          } else {
+            alert('Không tìm thấy dữ liệu hợp lệ trong tệp Excel. Hãy chắc chắn tệp chứa ít nhất 2 cột (Học vị và Họ tên)');
           }
-          return s;
+        } catch (error) {
+          console.error(error);
+          alert('Có lỗi xảy ra khi đọc tệp Excel. Vui lòng kiểm tra lại định dạng tệp.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        if (!text) return;
+        
+        const lines = text.split(/\r?\n/);
+        const outputLines: string[] = [];
+        let skippedHeader = false;
+        let parsedCount = 0;
+        
+        lines.forEach((line, index) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+          
+          // Auto-detect delimiter: pipe, semicolon, tab, or comma
+          let delimiter = '|';
+          if (trimmed.includes('|')) {
+            delimiter = '|';
+          } else if (trimmed.includes(';')) {
+            delimiter = ';';
+          } else if (trimmed.includes('\t')) {
+            delimiter = '\t';
+          } else if (trimmed.includes(',')) {
+            delimiter = ',';
+          }
+          
+          const parts = trimmed.split(delimiter).map(p => {
+            let s = p.trim();
+            if (s.startsWith('"') && s.endsWith('"')) {
+              s = s.substring(1, s.length - 1).trim();
+            }
+            return s;
+          });
+          
+          // Check if first line is a header
+          if (index === 0 && (
+            trimmed.toLowerCase().includes('học vị') || 
+            trimmed.toLowerCase().includes('fullname') || 
+            trimmed.toLowerCase().includes('họ và tên') || 
+            trimmed.toLowerCase().includes('điện thoại') || 
+            trimmed.toLowerCase().includes('email') || 
+            trimmed.toLowerCase().includes('cccd') ||
+            trimmed.toLowerCase().includes('title') ||
+            trimmed.toLowerCase().includes('phone') ||
+            trimmed.toLowerCase().includes('cơ quan')
+          )) {
+            skippedHeader = true;
+            return; // skip parsing header line
+          }
+          
+          if (parts.length >= 2) {
+            const title = parts[0] || 'BS.';
+            const name = parts[1] || '';
+            const phone = parts[2] || '';
+            const email = parts[3] || '';
+            const org = parts[4] || '';
+            const yob = parts[5] || '';
+            const cccd = parts[6] || '';
+            
+            if (name) {
+              outputLines.push(`${title} | ${name} | ${phone} | ${email} | ${org} | ${yob} | ${cccd}`);
+              parsedCount++;
+            }
+          }
         });
         
-        // Check if first line is a header
-        if (index === 0 && (
-          trimmed.toLowerCase().includes('học vị') || 
-          trimmed.toLowerCase().includes('fullname') || 
-          trimmed.toLowerCase().includes('họ và tên') || 
-          trimmed.toLowerCase().includes('điện thoại') || 
-          trimmed.toLowerCase().includes('email') || 
-          trimmed.toLowerCase().includes('cccd') ||
-          trimmed.toLowerCase().includes('title') ||
-          trimmed.toLowerCase().includes('phone') ||
-          trimmed.toLowerCase().includes('cơ quan')
-        )) {
-          skippedHeader = true;
-          return; // skip parsing header line
+        if (parsedCount > 0) {
+          setBulkInputText(outputLines.join('\n'));
+          setUploadFeedback(`📥 Tải file thành công! Đã trích xuất ${parsedCount} đại biểu từ tệp "${file.name}" ${skippedHeader ? '(bỏ dòng tiêu đề)' : ''}.`);
+          playSoundSound('success');
+        } else {
+          alert('Không tìm thấy dữ liệu hợp lệ trong tệp. Hãy chắc chắn tệp CSV/TXT chứa ít nhất 2 cột (Học vị và Họ tên)');
         }
-        
-        if (parts.length >= 2) {
-          const title = parts[0] || 'BS.';
-          const name = parts[1] || '';
-          const phone = parts[2] || '';
-          const email = parts[3] || '';
-          const org = parts[4] || '';
-          const yob = parts[5] || '';
-          const cccd = parts[6] || '';
-          
-          if (name) {
-            outputLines.push(`${title} | ${name} | ${phone} | ${email} | ${org} | ${yob} | ${cccd}`);
-            parsedCount++;
-          }
-        }
-      });
-      
-      if (parsedCount > 0) {
-        setBulkInputText(outputLines.join('\n'));
-        setUploadFeedback(`📥 Tải file thành công! Đã trích xuất ${parsedCount} đại biểu từ tệp "${file.name}" ${skippedHeader ? '(bỏ dòng tiêu đề)' : ''}.`);
-        playSoundSound('success');
-      } else {
-        alert('Không tìm thấy dữ liệu hợp lệ trong tệp. Hãy chắc chắn tệp CSV/TXT chứa ít nhất 2 cột (Học vị và Họ tên)');
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    }
   };
 
   const [showCmeDeclarationModal, setShowCmeDeclarationModal] = useState(false);
@@ -3568,7 +3638,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                   type="file" 
                   id="bulk-file-input"
                   onChange={handleFileChange}
-                  accept=".csv,.txt"
+                  accept=".xlsx,.xls,.csv,.txt"
                   className="hidden"
                 />
                 <label htmlFor="bulk-file-input" className="cursor-pointer block space-y-2">
@@ -3576,7 +3646,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-slate-705">Kéo & Thả tệp tin Excel (CSV / TXT) tại đây</p>
+                    <p className="text-xs font-black text-slate-705">Kéo & Thả tệp tin Excel (.xlsx, .xls, .csv, .txt) tại đây</p>
                     <p className="text-[10px] text-slate-400 mt-1">Hoặc nhấp chuột để chọn tệp tin từ máy tính</p>
                   </div>
                 </label>
