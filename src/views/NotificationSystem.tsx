@@ -53,7 +53,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
   // Contacts integration states
   const [contacts, setContacts] = useState<Contact[]>(() => store.getContacts());
-  const [listSource, setListSource] = useState<'file' | 'saved'>('file');
+  const [listSource, setListSource] = useState<'file' | 'saved' | 'attendees' | 'speakers'>('file');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [saveToContacts, setSaveToContacts] = useState<boolean>(true);
   const [contactGroupName, setContactGroupName] = useState<string>('');
@@ -155,6 +155,72 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     setExcelData(records);
     setExcelFileName(`Danh bạ: ${groupName}`);
     setContactGroupName(groupName);
+    setSendingIndex(-1);
+    setBulkLogs([]);
+  };
+
+  const loadAttendeesList = () => {
+    const list = store.getAttendees();
+    const records = list.map((a, index) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const cleanPhone = (a.phone || '').replace(/[^0-9]/g, '');
+      const isEmailValid = emailRegex.test(a.email || '');
+      const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
+      const payStatusText = a.paymentStatus === 'paid' ? 'Đã Thanh Toán' : a.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
+      return {
+        id: index + 1,
+        name: a.fullName,
+        email: a.email || '',
+        phone: a.phone || '',
+        isEmailValid,
+        isPhoneValid,
+        status: 'pending' as const,
+        error: '',
+        // Extra properties for placeholders
+        title: a.title || '',
+        fullname: a.fullName || '',
+        package: a.packageName || '',
+        code: a.id || '',
+        payment_status: payStatusText,
+        package_fee: a.packageFee ? new Intl.NumberFormat('vi-VN').format(a.packageFee) : '0',
+        organization: a.organization || '',
+        qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(a.qrCodeValue)}`
+      };
+    });
+    setExcelData(records);
+    setExcelFileName(`Danh sách Đại biểu (${list.length} người)`);
+    setContactGroupName('Đại biểu');
+    setSendingIndex(-1);
+    setBulkLogs([]);
+  };
+
+  const loadSpeakersList = () => {
+    const list = store.getSpeakers();
+    const records = list.map((s, index) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const cleanPhone = (s.phone || '').replace(/[^0-9]/g, '');
+      const isEmailValid = emailRegex.test(s.email || '');
+      const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
+      return {
+        id: index + 1,
+        name: s.fullName,
+        email: s.email || '',
+        phone: s.phone || '',
+        isEmailValid,
+        isPhoneValid,
+        status: 'pending' as const,
+        error: '',
+        // Extra properties for placeholders
+        title: s.title || '',
+        fullname: s.fullName || '',
+        presentation_title: s.presentationTitle || '',
+        track: s.presentationTrack || '',
+        organization: s.organization || ''
+      };
+    });
+    setExcelData(records);
+    setExcelFileName(`Danh sách Báo cáo viên (${list.length} người)`);
+    setContactGroupName('Báo cáo viên');
     setSendingIndex(-1);
     setBulkLogs([]);
   };
@@ -294,13 +360,23 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           errorMsg = 'Email không hợp lệ';
         } else {
           try {
-            const compiledBody = bulkBody
-              .replace(/\{\{Tên\}\}/g, recipient.name)
-              .replace(/\{\{Email\}\}/g, recipient.email)
-              .replace(/\{\{Số điện thoại\}\}/g, recipient.phone);
+            let compiledBody = bulkBody
+              .replace(/\{\{Tên\}\}/g, recipient.name || '')
+              .replace(/\{\{Email\}\}/g, recipient.email || '')
+              .replace(/\{\{Số điện thoại\}\}/g, recipient.phone || '');
 
-            const compiledSubject = bulkSubject
-              .replace(/\{\{Tên\}\}/g, recipient.name);
+            let compiledSubject = bulkSubject
+              .replace(/\{\{Tên\}\}/g, recipient.name || '');
+
+            // Support dynamic placeholder replacements for database columns (e.g. {{fullname}}, {{code}}, {{package}}, etc.)
+            Object.keys(recipient).forEach(key => {
+              const val = recipient[key];
+              if (val !== undefined && val !== null && typeof val !== 'object') {
+                const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+                compiledBody = compiledBody.replace(regex, String(val));
+                compiledSubject = compiledSubject.replace(regex, String(val));
+              }
+            });
 
             const res = await fetch('/api/email/send-resend', {
               method: 'POST',
@@ -335,14 +411,18 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             }
 
             const znsData: any = {
-              title: 'Đại biểu',
-              fullname: recipient.name,
-              phone: recipient.phone,
-              email: recipient.email,
-              code: 'ATT-' + Math.floor(Math.random() * 9000 + 1000),
-              payment_status: 'Đã thanh toán',
-              organization: 'Cá nhân',
-              qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent('VSAPS-BULK-' + formattedPhone)}`
+              title: recipient.title || 'Đại biểu',
+              fullname: recipient.fullname || recipient.name || '',
+              phone: recipient.phone || '',
+              email: recipient.email || '',
+              code: recipient.code || ('ATT-' + Math.floor(Math.random() * 9000 + 1000)),
+              package: recipient.package || 'Tiêu chuẩn',
+              payment_status: recipient.payment_status || 'Đã thanh toán',
+              package_fee: recipient.package_fee || '0',
+              organization: recipient.organization || 'Cá nhân',
+              presentation_title: recipient.presentation_title || '',
+              track: recipient.track || '',
+              qr_url: recipient.qr_url || `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(recipient.code || ('VSAPS-BULK-' + formattedPhone))}`
             };
 
             const znsTemplateId = selectedZaloTemplate?.znsTemplateId || selectedZaloTemplate?.id || 'tmpl-reg-zalo';
@@ -1708,21 +1788,29 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 <select
                   value={listSource}
                   onChange={(e) => {
-                    const src = e.target.value as 'file' | 'saved';
+                    const src = e.target.value as 'file' | 'saved' | 'attendees' | 'speakers';
                     setListSource(src);
                     setExcelData([]);
                     setExcelFileName('');
                     setSelectedGroup('');
                     setContactGroupName('');
+                    
+                    if (src === 'attendees') {
+                      loadAttendeesList();
+                    } else if (src === 'speakers') {
+                      loadSpeakersList();
+                    }
                   }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
                 >
                   <option value="file">📁 Tải file Excel/CSV mới</option>
                   <option value="saved">👥 Chọn từ danh bạ đã lưu ({Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).length} nhóm)</option>
+                  <option value="attendees">🎓 Tất cả Đại biểu đã đăng ký ({store.getAttendees().length} người)</option>
+                  <option value="speakers">🎙️ Tất cả Báo cáo viên đã đăng ký ({store.getSpeakers().length} người)</option>
                 </select>
               </div>
 
-              {listSource === 'file' ? (
+              {listSource === 'file' && (
                 <>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     Tải lên tập tin Excel (.xlsx, .xls) hoặc CSV. Hệ thống tự động so khớp cột chứa <strong>Tên, Email, Số điện thoại</strong>.
@@ -1791,7 +1879,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     </div>
                   )}
                 </>
-              ) : (
+              )}
+
+              {listSource === 'saved' && (
                 <div className="space-y-4">
                   <p className="text-[11px] text-slate-400 leading-normal">
                     Chọn một nhóm danh bạ đã được lưu từ các đợt tải file trước đó để nạp trực tiếp danh sách người nhận.
@@ -1830,6 +1920,48 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {listSource === 'attendees' && (
+                <div className="space-y-4">
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Nguồn này sẽ tự động nạp toàn bộ danh sách <strong>Đại biểu đã đăng ký</strong> từ cơ sở dữ liệu hệ thống sự kiện.
+                  </p>
+                  
+                  {excelData.length > 0 ? (
+                    <div className="bg-emerald-50 text-emerald-800 p-3.5 rounded-xl text-xs font-medium border border-emerald-100 flex items-center gap-2">
+                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        Đã nạp <strong>{excelData.length}</strong> đại biểu. Có <strong>{excelData.filter(d => d.isEmailValid || d.isPhoneValid).length}</strong> bản ghi có thông tin liên hệ hợp lệ.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 text-amber-800 p-3.5 rounded-xl text-xs leading-relaxed border border-amber-100">
+                      Chưa có đại biểu nào đăng ký trong hệ thống sự kiện.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {listSource === 'speakers' && (
+                <div className="space-y-4">
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Nguồn này sẽ tự động nạp toàn bộ danh sách <strong>Báo cáo viên đăng ký đề tài</strong> từ cơ sở dữ liệu hệ thống sự kiện.
+                  </p>
+                  
+                  {excelData.length > 0 ? (
+                    <div className="bg-emerald-50 text-emerald-800 p-3.5 rounded-xl text-xs font-medium border border-emerald-100 flex items-center gap-2">
+                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        Đã nạp <strong>{excelData.length}</strong> báo cáo viên. Có <strong>{excelData.filter(d => d.isEmailValid || d.isPhoneValid).length}</strong> bản ghi có thông tin liên hệ hợp lệ.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50 text-amber-800 p-3.5 rounded-xl text-xs leading-relaxed border border-amber-100">
+                      Chưa có báo cáo viên nào đăng ký đề tài trong hệ thống sự kiện.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
