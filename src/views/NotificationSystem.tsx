@@ -606,7 +606,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       packageFee: 3000000,
       paymentStatus: 'paid',
       organization: 'Bệnh viện Trung ương Quân đội 108',
-      qrCodeValue: 'VSAPS2026-ATT-2026-SON'
+      qrCodeValue: 'VSAPS2026-ATT-2026-SON',
+      email: 'xuanson.nguyen@hospital108.vn',
+      phone: '0987654321'
     };
 
     const payStatusText = 'Đã Thanh Toán';
@@ -621,7 +623,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       .replace(/\{\{code\}\}/g, mockAttendee.id)
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, mockAttendee.organization)
-      .replace(/\{\{presentation_title\}\}/g, 'Báo cáo đột phá trong Công nghệ phẫu thuật thẩm mỹ sọ mặt');
+      .replace(/\{\{presentation_title\}\}/g, 'Báo cáo đột phá trong Công nghệ phẫu thuật thẩm mỹ sọ mặt')
+      .replace(/\{\{email\}\}/g, mockAttendee.email)
+      .replace(/\{\{phone\}\}/g, mockAttendee.phone);
 
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; text-align: left; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
@@ -1170,7 +1174,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       { code: 'package', label: 'Gói đăng ký' },
                       { code: 'payment_status', label: 'Trạng thái thanh toán' },
                       { code: 'organization', label: 'Đơn vị công tác' },
-                      { code: 'presentation_title', label: 'Đề tài báo cáo' }
+                      { code: 'presentation_title', label: 'Đề tài báo cáo' },
+                      { code: 'email', label: 'Email đại biểu' },
+                      { code: 'phone', label: 'Số điện thoại' }
                     ].map(ph => (
                       <button
                         key={ph.code}
@@ -1371,7 +1377,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 <AlertCircle className="w-4 h-4 text-slate-450 shrink-0 mt-0.5" />
                 <div className="text-[10px] text-slate-600 leading-normal">
                   <span className="font-bold text-slate-800 block">Danh mục Placeholder đính được:</span>
-                  <span>{"{{title}}"} (Danh xưng Bác sĩ), {"{{fullname}}"} (Tên), {"{{code}}"} (Mã ATT-ID), {"{{package}}"} (Tên gói đăng ký), {"{{payment_status}}"} (Nộp phí), {"{{presentation_title}}"} (Tên đề tài).</span>
+                  <span>{"{{title}}"} (Danh xưng Bác sĩ), {"{{fullname}}"} (Tên), {"{{code}}"} (Mã ATT-ID), {"{{package}}"} (Tên gói đăng ký), {"{{payment_status}}"} (Nộp phí), {"{{presentation_title}}"} (Tên đề tài), {"{{email}}"} (Email), {"{{phone}}"} (Số điện thoại).</span>
                 </div>
               </div>
 

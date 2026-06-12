@@ -1803,7 +1803,9 @@ export class DataStore {
       .replace(/\{\{package\}\}/g, attendee.packageName || '')
       .replace(/\{\{code\}\}/g, attendee.id || '')
       .replace(/\{\{payment_status\}\}/g, payStatusText)
-      .replace(/\{\{organization\}\}/g, attendee.organization || '');
+      .replace(/\{\{organization\}\}/g, attendee.organization || '')
+      .replace(/\{\{email\}\}/g, attendee.email || '')
+      .replace(/\{\{phone\}\}/g, attendee.phone || '');
 
     const payload = {
       recipient: { phone: formattedPhone },
@@ -1815,6 +1817,8 @@ export class DataStore {
         code: attendee.id || '',
         payment_status: payStatusText,
         organization: attendee.organization || '',
+        email: attendee.email || '',
+        phone: attendee.phone || '',
         qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(attendee.qrCodeValue)}`
       },
       raw_text_sent: content
@@ -1907,7 +1911,9 @@ export class DataStore {
       .replace(/\{\{package\}\}/g, attendee.packageName || '')
       .replace(/\{\{code\}\}/g, attendee.id || '')
       .replace(/\{\{payment_status\}\}/g, payStatusText)
-      .replace(/\{\{organization\}\}/g, attendee.organization || '');
+      .replace(/\{\{organization\}\}/g, attendee.organization || '')
+      .replace(/\{\{email\}\}/g, attendee.email || '')
+      .replace(/\{\{phone\}\}/g, attendee.phone || '');
 
     const finalSubject = customSubject || (template.subject || "Xác nhận đăng ký VSAPS 2026")
       .replace(/\{\{title\}\}/g, attendee.title || '')
@@ -2054,7 +2060,9 @@ export class DataStore {
       .replace(/\{\{package\}\}/g, attendee.packageName || '')
       .replace(/\{\{code\}\}/g, attendee.id || '')
       .replace(/\{\{payment_status\}\}/g, payStatusText)
-      .replace(/\{\{organization\}\}/g, attendee.organization || '');
+      .replace(/\{\{organization\}\}/g, attendee.organization || '')
+      .replace(/\{\{email\}\}/g, attendee.email || '')
+      .replace(/\{\{phone\}\}/g, attendee.phone || '');
 
     const isRealWhatsapp = (this.whatsappConfig.accessToken && this.whatsappConfig.phoneNumberId) || isSupabaseConfigured();
 
