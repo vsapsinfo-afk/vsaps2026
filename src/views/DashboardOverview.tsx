@@ -168,13 +168,13 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           </div>
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <h3 className="text-2xl font-black text-slate-900 font-mono">{(netFunding).toLocaleString()}đ</h3>
+              <h3 className="text-2xl font-black text-slate-900">{(netFunding).toLocaleString()}đ</h3>
               <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 mt-0.5">
                 <ArrowUpRight className="w-3 h-3" />
                 Tổng thu: {(totalIncome).toLocaleString()}đ
               </p>
             </div>
-            <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded uppercase font-mono tracking-wider">REAL-TIME</span>
+            <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-wider">REAL-TIME</span>
           </div>
         </div>
 
@@ -188,7 +188,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           </div>
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <h3 className="text-2xl font-black text-slate-900 font-mono">{totalAttendees} Người</h3>
+              <h3 className="text-2xl font-black text-slate-900">{totalAttendees} Người</h3>
               <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                 Đã duyệt phí: <strong className="text-slate-700 font-bold">{verifiedPaidAttendees}</strong>
               </p>
@@ -207,7 +207,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           </div>
           <div className="mt-4 flex items-end justify-between">
             <div>
-              <h3 className="text-2xl font-black text-slate-900 font-mono">{totalSpeakers} Đề Tài</h3>
+              <h3 className="text-2xl font-black text-slate-900">{totalSpeakers} Đề Tài</h3>
               <p className="text-[10px] text-indigo-500 font-semibold mt-0.5">
                 Đã duyệt: {approvedSpeakers} / {totalSpeakers}
               </p>
@@ -226,12 +226,12 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           </div>
           <div className="mt-4 flex items-end justify-between">
             <div className="flex-1 mr-4">
-              <h3 className="text-2xl font-black text-slate-900 font-mono">{taskProgressPct}%</h3>
+              <h3 className="text-2xl font-black text-slate-900">{taskProgressPct}%</h3>
               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-1.5">
                 <div className="h-full bg-amber-400" style={{ width: `${taskProgressPct}%` }} />
               </div>
             </div>
-            <span className="text-[10px] text-slate-500 font-semibold font-mono shrink-0">{tasksDone}/{totalTasksCount} DONE</span>
+            <span className="text-[10px] text-slate-500 font-semibold shrink-0">{tasksDone}/{totalTasksCount} DONE</span>
           </div>
         </div>
 
@@ -264,7 +264,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
                 <span>Khoản Thu lũy kế (Phí đại biểu & Nhà tài trợ đóng góp)</span>
-                <span className="font-mono text-indigo-600">{(totalIncome).toLocaleString()}đ</span>
+                <span className="text-indigo-650 font-bold">{(totalIncome).toLocaleString()}đ</span>
               </div>
               <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden flex">
                 <div className="bg-indigo-600 h-full hover:opacity-90 transition-all" style={{ width: `${delegateIncomePct}%` }} title="Phí đăng ký đại biểu" />
@@ -279,7 +279,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
             <div>
               <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
                 <span>Khoản Chi lũy kế (Sảnh họp, gala dinner, in ấn ấn phẩm, teabreak)</span>
-                <span className="font-mono text-slate-600">{(totalExpense).toLocaleString()}đ</span>
+                <span className="text-slate-605 font-bold">{(totalExpense).toLocaleString()}đ</span>
               </div>
               <div className="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden flex">
                 <div className="bg-slate-500 h-full hover:opacity-90 transition-all" style={{ width: `${setupExpensePct}%` }} title="Hạ tầng & Tiệc Gala" />
@@ -300,24 +300,24 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                 </div>
 
                 <div className="flex flex-col items-center gap-1.5 relative z-10 w-16">
-                  <span className="font-mono text-[9px] text-indigo-650 font-bold">{period1} ĐB</span>
+                  <span className="text-[9px] text-indigo-650 font-bold">{period1} ĐB</span>
                   <div className="w-8 bg-indigo-500/20 border-t-2 border-indigo-500 rounded-t hover:bg-indigo-500 transition-all" style={{ height: `${h1}px` }} />
-                  <span className="font-mono text-[9px] text-slate-400">1-10/5</span>
+                  <span className="text-[9px] text-slate-400">1-10/5</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 relative z-10 w-16">
-                  <span className="font-mono text-[9px] text-indigo-650 font-bold">{period2} ĐB</span>
+                  <span className="text-[9px] text-indigo-650 font-bold">{period2} ĐB</span>
                   <div className="w-8 bg-indigo-500/20 border-t-2 border-indigo-500 rounded-t hover:bg-indigo-500 transition-all" style={{ height: `${h2}px` }} />
-                  <span className="font-mono text-[9px] text-slate-400">11-20/5</span>
+                  <span className="text-[9px] text-slate-400">11-20/5</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 relative z-10 w-16">
-                  <span className="font-mono text-[9px] text-indigo-650 font-bold">{period3} ĐB</span>
+                  <span className="text-[9px] text-indigo-650 font-bold">{period3} ĐB</span>
                   <div className="w-8 bg-indigo-500/20 border-t-2 border-indigo-500 rounded-t hover:bg-indigo-500 transition-all" style={{ height: `${h3}px` }} />
-                  <span className="font-mono text-[9px] text-slate-400">21-31/5</span>
+                  <span className="text-[9px] text-slate-400">21-31/5</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 relative z-10 w-16">
-                  <span className="font-sans text-[9px] text-emerald-650 font-extrabold">{periodJune} ĐB</span>
+                  <span className="text-[9px] text-emerald-650 font-extrabold">{periodJune} ĐB</span>
                   <div className="w-8 bg-emerald-605 border-t-2 border-emerald-600 rounded-t shadow-sm animate-pulse" style={{ height: `${h4}px` }} />
-                  <span className="font-sans font-bold text-[9px] text-emerald-600">Hiện tại</span>
+                  <span className="font-bold text-[9px] text-emerald-600">Hiện tại</span>
                 </div>
               </div>
             </div>
@@ -336,7 +336,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
         <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col font-sans">
           <div className="p-5 border-b border-slate-100 bg-slate-50/50 rounded-t-xl flex items-center justify-between">
             <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Thông báo tự động</h4>
-            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[9.5px] font-bold uppercase tracking-wider">Hệ Thống Gần Để</span>
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[9.5px] font-bold uppercase tracking-wider">Hệ Thống Gần Đây</span>
           </div>
 
           <div className="flex-1 p-5 space-y-4 overflow-y-auto max-h-[420px]">
@@ -349,17 +349,17 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-850">Đăng ký thành công (Mẫu)</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-mono leading-relaxed">Gửi Zalo ZNS cho: BS. Hoàng Văn Minh (ATT-001)</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Gửi Zalo ZNS cho: BS. Hoàng Văn Minh (ATT-001)</p>
                     <span className="text-[9px] text-slate-355 block mt-1">Lịch sử hệ thống</span>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors opacity-80">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-mono font-bold text-xs">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-bold text-xs">
                     ✉
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-slate-850">Duyệt bài báo khoa học (Mẫu)</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-mono leading-relaxed">Gửi Email kèm tài liệu đến PGS.TS.BS. Trần Quốc Bảo</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Gửi Email kèm tài liệu đến PGS.TS.BS. Trần Quốc Bảo</p>
                     <span className="text-[9px] text-slate-355 block mt-1">Lịch sử hệ thống</span>
                   </div>
                 </div>
@@ -378,10 +378,10 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-800 truncate">{log.templateName}</p>
-                    <p className="text-[10px] text-slate-500 mt-0.5 font-mono truncate leading-normal">
+                    <p className="text-[10px] text-slate-505 mt-0.5 truncate leading-normal">
                       {log.type === 'zalo' ? 'Zalo ZNS' : 'Email'}: {log.recipient}
                     </p>
-                    <span className="text-[9px] text-slate-404 block mt-1 font-mono">{log.sentAt}</span>
+                    <span className="text-[9px] text-slate-404 block mt-1">{log.sentAt}</span>
                   </div>
                 </div>
               ))
@@ -401,15 +401,15 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-xs text-slate-200">Khao sảnh & Setup Booth</span>
-                <span className="text-[9px] font-bold bg-slate-800 text-indigo-300 px-2 py-0.5 rounded border border-slate-700 font-mono">CTV TEAM</span>
+                <span className="text-[9px] font-bold bg-slate-800 text-indigo-300 px-2 py-0.5 rounded border border-slate-700">CTV TEAM</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-xs text-slate-200">In ấn Thẻ đại biểu, Tài liệu</span>
-                <span className="text-[9px] font-bold bg-slate-800 text-amber-300 px-2 py-0.5 rounded border border-slate-700 font-mono">SẢN XUẤT</span>
+                <span className="text-[9px] font-bold bg-slate-800 text-amber-300 px-2 py-0.5 rounded border border-slate-700">SẢN XUẤT</span>
               </div>
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                 <span className="text-xs text-slate-200">Kiểm tra cổng API Zalo/Email</span>
-                <span className="text-[9px] font-bold bg-slate-800 text-emerald-300 px-2 py-0.5 rounded border border-slate-700 font-mono">ADMIN AD</span>
+                <span className="text-[9px] font-bold bg-slate-800 text-emerald-300 px-2 py-0.5 rounded border border-slate-700">ADMIN AD</span>
               </div>
             </div>
           </div>
@@ -428,11 +428,11 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
             <p className="text-xs text-indigo-100 mb-6 leading-relaxed">Đồng hành của doanh nghiệp dược phẩm, thiết bị y khoa hỗ trợ lớn nhất cho công tác tổ chức hội nghị.</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-indigo-500/60 p-3 rounded-lg border border-indigo-400/40 text-center shadow-sm">
-                <p className="text-sm font-bold font-mono">{(totalCommittedSponsor / 1000000).toFixed(0)}Mđ</p>
+                <p className="text-sm font-bold">{(totalCommittedSponsor / 1000000).toFixed(0)}Mđ</p>
                 <p className="text-[9px] opacity-80 mt-0.5">Cam kết tài trợ</p>
               </div>
               <div className="bg-indigo-500/60 p-3 rounded-lg border border-indigo-400/40 text-center shadow-sm">
-                <p className="text-sm font-bold font-mono">{(totalPaidSponsor / 1000000).toFixed(0)}Mđ</p>
+                <p className="text-sm font-bold">{(totalPaidSponsor / 1000000).toFixed(0)}Mđ</p>
                 <p className="text-[9px] opacity-80 mt-0.5">Đã giải ngân ({Math.round((totalPaidSponsor / Math.max(totalCommittedSponsor, 1)) * 100)}%)</p>
               </div>
             </div>
@@ -452,17 +452,17 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
               <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-rose-500" />
                 <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex-1">Ban Tổ Chức (BTC)</span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">{btcCount} Account</span>
+                <span className="text-[9px] text-slate-400 font-bold">{btcCount} Account</span>
               </div>
               <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-indigo-500" />
                 <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex-1">Cộng Tác Viên (CTV)</span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">{ctvCount} Account</span>
+                <span className="text-[9px] text-slate-400 font-bold">{ctvCount} Account</span>
               </div>
               <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded border border-slate-100">
                 <div className="w-2 h-2 rounded-full bg-teal-500" />
                 <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider flex-1">Tổng quản trị (Admin)</span>
-                <span className="text-[9px] text-slate-400 font-mono font-bold">{adminCount} Account</span>
+                <span className="text-[9px] text-slate-400 font-bold">{adminCount} Account</span>
               </div>
             </div>
           </div>
@@ -481,7 +481,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-slate-655">Phân khúc: GÓI ĐẠI BIỂU VIP</span>
-              <span className="font-mono text-slate-900 font-black">{vipCount} ({vipPct}%)</span>
+              <span className="text-slate-900 font-black">{vipCount} ({vipPct}%)</span>
             </div>
             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
               <div className="bg-amber-500 h-full rounded-full transition-all" style={{ width: `${vipPct}%` }} />
@@ -494,7 +494,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-slate-655">Phân khúc: GÓI TIÊU CHUẨN</span>
-              <span className="font-mono text-slate-900 font-black">{standardCount} ({standardPct}%)</span>
+              <span className="text-slate-900 font-black">{standardCount} ({standardPct}%)</span>
             </div>
             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
               <div className="bg-indigo-650 h-full rounded-full transition-all" style={{ width: `${standardPct}%` }} />
@@ -507,7 +507,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-slate-655">Phân khúc: GÓI TRỰC TUYẾN (ONLINE)</span>
-              <span className="font-mono text-slate-900 font-black">{onlineCount} ({onlinePct}%)</span>
+              <span className="text-slate-900 font-black">{onlineCount} ({onlinePct}%)</span>
             </div>
             <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
               <div className="bg-sky-500 h-full rounded-full transition-all" style={{ width: `${onlinePct}%` }} />
@@ -524,7 +524,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left text-slate-500">
-            <thead className="text-[9px] text-slate-400 bg-slate-50 uppercase tracking-widest font-mono">
+            <thead className="text-[9px] text-slate-400 bg-slate-50 uppercase tracking-widest">
               <tr>
                 <th className="px-5 py-3">Mốc Thời Gian</th>
                 <th className="px-5 py-3">Đối Tượng</th>
@@ -543,7 +543,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
               ) : (
                 recentRegistrations.map((reg) => (
                   <tr key={reg.id} className="hover:bg-slate-50/40 transition-colors">
-                    <td className="px-5 py-3.5 font-mono text-slate-400">{reg.date}</td>
+                    <td className="px-5 py-3.5 text-slate-400">{reg.date}</td>
                     <td className="px-5 py-3.5 font-bold text-slate-900">{reg.name}</td>
                     <td className="px-5 py-3.5 text-slate-600 font-semibold">{reg.org}</td>
                     <td className="px-5 py-3.5">
