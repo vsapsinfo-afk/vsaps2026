@@ -6,7 +6,8 @@
 import React from 'react';
 import { 
   Users, Award, Calendar, CheckSquare, Coins, Megaphone, Settings, 
-  BarChart2, Globe, Shield, User, FileText, RefreshCw, LogOut, Send
+  BarChart2, Globe, Shield, User, FileText, RefreshCw, LogOut, Send,
+  HelpCircle
 } from 'lucide-react';
 import { Role } from '../types';
 import { useAuth } from './AuthProvider';
@@ -15,12 +16,11 @@ interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
   currentRole: Role;
-  onResetData: () => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function Sidebar({ currentView, onNavigate, currentRole, onResetData, isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ currentView, onNavigate, currentRole, isOpen, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
   const menuItems = [
     { id: 'overview', name: 'Tổng Quan', icon: BarChart2, roles: ['admin', 'btc', 'ctv'] },
@@ -33,6 +33,7 @@ export default function Sidebar({ currentView, onNavigate, currentRole, onResetD
     { id: 'notifications', name: 'Thông Báo Tự Động', icon: Megaphone, roles: ['admin', 'btc'] },
     { id: 'bulk-send', name: 'Gửi Tin Hàng Loạt', icon: Send, roles: ['admin', 'btc'] },
     { id: 'settings', name: 'Cài Đặt Hệ Thống', icon: Settings, roles: ['admin', 'btc'] },
+    { id: 'user-guide', name: 'Hướng Dẫn Sử Dụng', icon: HelpCircle, roles: ['admin', 'btc', 'ctv'] },
   ];
 
   const publicLinks = [
@@ -136,19 +137,6 @@ export default function Sidebar({ currentView, onNavigate, currentRole, onResetD
  
       {/* Footer controls with subtle pink indicator */}
       <div className="p-4 border-t border-indigo-900/50 bg-indigo-950/40 text-[11px] space-y-3.5 shrink-0">
-
-        <button
-          onClick={() => {
-            if (window.confirm('Bạn có chắc chắn muốn khôi phục dữ liệu hệ thống mặc định? Mọi đăng ký mới sẽ bị xóa.')) {
-              onResetData();
-              window.location.reload();
-            }
-          }}
-          className="w-full py-2 rounded-xl bg-indigo-900/30 hover:bg-indigo-900/60 text-[10.5px] text-indigo-300 hover:text-white transition-all flex items-center justify-center gap-1.5 font-bold cursor-pointer border border-indigo-900"
-        >
-          <RefreshCw className="w-3 h-3 text-pink-400" />
-          Khôi Phục Dữ Liệu Gốc
-        </button>
 
         {user && (
           <button

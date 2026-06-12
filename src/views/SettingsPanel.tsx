@@ -35,12 +35,15 @@ import {
   Calendar,
   AlertTriangle,
   Printer,
-  Loader2
+  Loader2,
+  RefreshCw,
+  Award
 } from 'lucide-react';
 import { store } from '../dataStore';
 import { 
   UserAccount, 
   RegistrationPackage, 
+  SponsorPackage, 
   ZaloConfig, 
   EmailConfig, 
   ResendConfig,
@@ -60,7 +63,7 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal'>('business');
   const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
 
   // Printer config states (saved to localStorage for device-specific setup)
@@ -93,6 +96,20 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   const [formPkgIsActive, setFormPkgIsActive] = useState(true);
   const [formPkgIncludesCme, setFormPkgIncludesCme] = useState(true);
   const [formPkgIncludesGala, setFormPkgIncludesGala] = useState(false);
+
+  // Sponsor Packages state
+  const [sponsorPackages, setSponsorPackages] = useState<SponsorPackage[]>(store.getSponsorPackages ? store.getSponsorPackages() : []);
+  const [showSponsorPackageModal, setShowSponsorPackageModal] = useState(false);
+  const [isSponsorPackageEdit, setIsSponsorPackageEdit] = useState(false);
+  const [isSavingSponsorPackage, setIsSavingSponsorPackage] = useState(false);
+  const [formSponsorPkgId, setFormSponsorPkgId] = useState('');
+  const [formSponsorPkgName, setFormSponsorPkgName] = useState('');
+  const [formSponsorPkgNameEn, setFormSponsorPkgNameEn] = useState('');
+  const [formSponsorPkgFee, setFormSponsorPkgFee] = useState(0);
+  const [formSponsorPkgColor, setFormSponsorPkgColor] = useState('#6366f1');
+  const [formSponsorPkgBenefits, setFormSponsorPkgBenefits] = useState('');
+  const [formSponsorPkgBenefitsEn, setFormSponsorPkgBenefitsEn] = useState('');
+  const [formSponsorPkgIsActive, setFormSponsorPkgIsActive] = useState(true);
 
   // Credentials integration state
   const [zaloConfig, setZaloConfig] = useState<ZaloConfig>(store.getZaloConfig());
@@ -158,6 +175,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   const reloadData = () => {
     setUsers([...store.getUsers()]);
     setPackages([...store.getPackages()]);
+    setSponsorPackages([...(store.getSponsorPackages ? store.getSponsorPackages() : [])]);
     setEmbedScripts([...store.getEmbedScripts()]);
     setBusinessConfig(store.getBusinessConfig());
   };
@@ -323,6 +341,139 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
       alert(`Không thể xóa gói đăng ký: ${err.message || err}`);
     } finally {
       setIsSavingPackage(false);
+    }
+  };
+
+  // --- Handlers for Sponsor Packages ---
+  const handleOpenAddSponsorPackage = () => {
+    if (role !== 'admin') {
+      alert('Chỉ tài khoản tối cao Admin mới có quyền tạo thêm gói tài trợ!');
+      return;
+    }
+    setIsSponsorPackageEdit(false);
+    setFormSponsorPkgId('sponsor-' + Math.floor(Math.random() * 900 + 100));
+    setFormSponsorPkgName('');
+    setFormSponsorPkgNameEn('');
+    setFormSponsorPkgFee(50000000);
+    setFormSponsorPkgColor('#6366f1');
+    setFormSponsorPkgBenefits('');
+    setFormSponsorPkgBenefitsEn('');
+    setFormSponsorPkgIsActive(true);
+    setShowSponsorPackageModal(true);
+  };
+
+  const handleOpenEditSponsorPackage = (pkg: SponsorPackage) => {
+    if (role !== 'admin') {
+      alert('Chỉ tài khoản tối cao Admin mới có quyền sửa đổi thông tin gói tài trợ!');
+      return;
+    }
+    setIsSponsorPackageEdit(true);
+    setFormSponsorPkgId(pkg.id);
+    setFormSponsorPkgName(pkg.name);
+    setFormSponsorPkgNameEn(pkg.nameEn || '');
+    setFormSponsorPkgFee(pkg.fee);
+    setFormSponsorPkgColor(pkg.color || '#6366f1');
+    setFormSponsorPkgBenefits((pkg.benefits || []).join('\n'));
+    setFormSponsorPkgBenefitsEn((pkg.benefitsEn || []).join('\n'));
+    setFormSponsorPkgIsActive(pkg.isActive);
+    setShowSponsorPackageModal(true);
+  };
+
+  const handleSaveSponsorPackageSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (role !== 'admin') return;
+
+    if (!formSponsorPkgId || !formSponsorPkgName) {
+      alert('Vui lòng cung cấp mã ID và Tên gói tài trợ!');
+      return;
+    }
+
+    const benefitsArray = formSponsorPkgBenefits
+      .split('\n')
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
+
+    const benefitsEnArray = formSponsorPkgBenefitsEn
+      .split('\n')
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
+
+    const updatedPkg: SponsorPackage = {
+      id: formSponsorPkgId,
+      name: formSponsorPkgName,
+      nameEn: formSponsorPkgNameEn || undefined,
+      fee: Number(formSponsorPkgFee),
+      color: formSponsorPkgColor,
+      benefits: benefitsArray,
+      benefitsEn: benefitsEnArray.length > 0 ? benefitsEnArray : undefined,
+      isActive: formSponsorPkgIsActive
+    };
+
+    setIsSavingSponsorPackage(true);
+    try {
+      const config = { ...businessConfig };
+      if (!config.sponsorFormConfig) {
+        config.sponsorFormConfig = { isOpen: true, sponsorPackages: [] };
+      }
+      if (!config.sponsorFormConfig.sponsorPackages) {
+        config.sponsorFormConfig.sponsorPackages = [];
+      }
+
+      if (isSponsorPackageEdit) {
+        config.sponsorFormConfig.sponsorPackages = config.sponsorFormConfig.sponsorPackages.map(p => p.id === updatedPkg.id ? updatedPkg : p);
+      } else {
+        const exists = config.sponsorFormConfig.sponsorPackages.some(p => p.id === updatedPkg.id);
+        if (exists) {
+          alert('Mã ID gói tài trợ này đã tồn tại! Vui lòng nhập mã khác.');
+          setIsSavingSponsorPackage(false);
+          return;
+        }
+        config.sponsorFormConfig.sponsorPackages.push(updatedPkg);
+      }
+
+      await store.saveBusinessConfig(config);
+      setShowSponsorPackageModal(false);
+      reloadData();
+      alert('Đã lưu cấu hình gói tài trợ thành công!');
+    } catch (err: any) {
+      console.error('Lỗi khi lưu gói tài trợ:', err);
+      alert(`Không thể lưu gói tài trợ: ${err.message || err}`);
+    } finally {
+      setIsSavingSponsorPackage(false);
+    }
+  };
+
+  const handleDeleteSponsorPackage = async (id: string) => {
+    if (role !== 'admin') {
+      alert('Quyền hạn bị từ chối!');
+      return;
+    }
+
+    const connectedSponsors = store.getSponsors ? store.getSponsors().filter((s: any) => s.tier === id) : [];
+    if (connectedSponsors.length > 0) {
+      if (!window.confirm(`Hệ thống phát hiện ${connectedSponsors.length} Nhà tài trợ đã chọn gói này. Nếu xóa, thông tin của họ có thể hiển thị không chuẩn. Bạn có thực sự muốn xóa?`)) {
+        return;
+      }
+    } else {
+      if (!window.confirm('Chắc chắn muốn xóa bỏ gói tài trợ này vĩnh viễn?')) {
+        return;
+      }
+    }
+
+    setIsSavingSponsorPackage(true);
+    try {
+      const config = { ...businessConfig };
+      if (config.sponsorFormConfig && config.sponsorFormConfig.sponsorPackages) {
+        config.sponsorFormConfig.sponsorPackages = config.sponsorFormConfig.sponsorPackages.filter(p => p.id !== id);
+        await store.saveBusinessConfig(config);
+      }
+      reloadData();
+      alert('Đã xóa gói tài trợ thành công!');
+    } catch (err: any) {
+      console.error('Lỗi khi xóa gói tài trợ:', err);
+      alert(`Không thể xóa gói tài trợ: ${err.message || err}`);
+    } finally {
+      setIsSavingSponsorPackage(false);
     }
   };
 
@@ -1028,6 +1179,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           </button>
 
           <button
+            onClick={() => setActiveSubTab('sponsor-packages')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'sponsor-packages'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-150 hover:text-slate-900 bg-transparent'
+            }`}
+          >
+            <Award className="w-4 h-4 shrink-0" />
+            <span>💎 Gói Tài Trợ (Sponsor)</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('integrations')}
             className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
               activeSubTab === 'integrations'
@@ -1456,6 +1619,43 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                   </button>
                 </div>
               </form>
+
+              {/* Danger Zone (Khu vực nguy hiểm) */}
+              {(role === 'admin' || role === 'btc') && (
+                <div className="border border-rose-200 bg-rose-50/50 rounded-2xl p-5 mt-8 space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center flex-shrink-0 text-rose-600">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-rose-950 uppercase tracking-wide">Khu vực cảnh báo nguy hiểm</h4>
+                      <p className="text-[11px] text-rose-700 mt-1 leading-relaxed">
+                        Hành động khôi phục dữ liệu gốc sẽ xóa sạch toàn bộ cơ sở dữ liệu hiện tại (bao gồm danh sách đại biểu, báo cáo viên, lịch trình, nhà tài trợ, các giao dịch tài chính, lịch sử gửi tin...) và tải lại dữ liệu mẫu cấu hình mặc định ban đầu.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="border-t border-rose-150/60 pt-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <span className="text-xs font-bold text-rose-900 block">Khôi phục toàn bộ dữ liệu gốc (Factory Reset)</span>
+                      <span className="text-[10px] text-rose-600">Đồng bộ xóa sạch trên LocalStorage và Supabase Cloud</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('CẢNH BÁO CỰC KỲ QUAN TRỌNG: Bạn có chắc chắn muốn khôi phục dữ liệu hệ thống mặc định? Hành động này sẽ xóa sạch toàn bộ đại biểu, báo cáo viên, lịch trình, nhà tài trợ, cấu hình và không thể khôi phục lại. Bạn có chắc chắn tiếp tục không?')) {
+                          store.resetToDefaults();
+                          window.location.reload();
+                        }
+                      }}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-extrabold rounded-xl transition-all text-xs border-none cursor-pointer flex items-center gap-1.5 shadow-sm shadow-rose-600/10"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5 hover:animate-spin" />
+                      Khôi Phục Dữ Liệu Gốc
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1794,6 +1994,117 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     </div>
                   );
                 })()}
+              </div>
+            </div>
+          )}
+
+          {/* ================= SECTION 2B: SPONSOR PACKAGES CRUD ================= */}
+          {activeSubTab === 'sponsor-packages' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Quản lý gói đăng ký của nhà tài trợ</h3>
+                  <p className="text-[11px] text-slate-450 mt-0.5">Xác lập các mức đóng góp tài trợ sự kiện, quyền lợi và màu sắc nhận diện tương ứng.</p>
+                </div>
+                {role === 'admin' && (
+                  <button
+                    disabled={isSavingSponsorPackage}
+                    onClick={handleOpenAddSponsorPackage}
+                    className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Đăng ký gói mới
+                  </button>
+                )}
+              </div>
+
+              {/* Sponsor Package cards list container block */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {sponsorPackages.map(pkg => {
+                  const displayColor = pkg.color || '#6366f1';
+                  return (
+                    <div key={pkg.id} className="border border-slate-200 bg-white hover:border-slate-300 rounded-2xl p-5 relative transition-all shadow-sm space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <span 
+                            className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-md uppercase tracking-wider text-white"
+                            style={{ backgroundColor: displayColor }}
+                          >
+                            {pkg.id}
+                          </span>
+                          <h4 className="font-extrabold text-xs text-slate-900 mt-1">{pkg.name}</h4>
+                          {pkg.nameEn && <p className="text-[10px] text-slate-400 font-medium italic">{pkg.nameEn}</p>}
+                        </div>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          pkg.isActive ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' : 'text-slate-500 bg-slate-100 border border-slate-200'
+                        }`}>
+                          {pkg.isActive ? '● Đang mở nhận' : '○ Đang đóng'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-base font-black text-slate-850">
+                            {pkg.fee === 0 ? 'Tài Trợ Đồng Hành' : pkg.fee.toLocaleString()}
+                          </span>
+                          {pkg.fee > 0 && <span className="text-[9px] text-slate-450 font-bold">VNĐ / Nhà tài trợ</span>}
+                        </div>
+                      </div>
+
+                      {/* Benefits VI list */}
+                      {pkg.benefits && pkg.benefits.length > 0 && (
+                        <div className="border-t border-slate-150 pt-3 space-y-1.5">
+                          <span className="text-[9px] font-black text-slate-450 uppercase tracking-widest block">QUYỀN LỢI CHI TIẾT (VI):</span>
+                          <div className="flex flex-col gap-1">
+                            {pkg.benefits.map((b, i) => (
+                              <span key={i} className="text-[9.5px] font-bold text-slate-650 flex items-start gap-1.5 leading-relaxed">
+                                <Check className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                                <span>{b}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Benefits EN list */}
+                      {pkg.benefitsEn && pkg.benefitsEn.length > 0 && (
+                        <div className="border-t border-slate-100 pt-3 space-y-1.5">
+                          <span className="text-[9px] font-black text-slate-405 uppercase tracking-widest block">SPONSORSHIP BENEFITS (EN):</span>
+                          <div className="flex flex-col gap-1">
+                            {pkg.benefitsEn.map((b, i) => (
+                              <span key={i} className="text-[9.5px] font-medium text-slate-500 flex items-start gap-1.5 leading-relaxed italic">
+                                <Check className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                                <span>{b}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action buttons footer for package */}
+                      {role === 'admin' && (
+                        <div className="border-t border-slate-100 pt-3 flex justify-end gap-1 px-1">
+                          <button
+                            disabled={isSavingSponsorPackage}
+                            onClick={() => handleOpenEditSponsorPackage(pkg)}
+                            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-50 rounded-lg cursor-pointer border-none bg-transparent flex items-center gap-1 text-[10px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Chỉnh sửa</span>
+                          </button>
+                          <button
+                            disabled={isSavingSponsorPackage}
+                            onClick={() => handleDeleteSponsorPackage(pkg.id)}
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer border-none bg-transparent flex items-center gap-1 text-[10px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Trash className="w-3.5 h-3.5" />
+                            <span>Gỡ bỏ</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -3715,7 +4026,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     value={formPkgName}
                     onChange={(e) => setFormPkgName(e.target.value)}
                     placeholder="ví dụ: Gói Masterclass 1"
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-850 disabled:bg-slate-50 disabled:text-slate-400"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-855 disabled:bg-slate-50 disabled:text-slate-400"
                   />
                 </div>
               </div>
@@ -3820,6 +4131,165 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                 >
                   {isSavingPackage && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Lưu Gói Đăng Ký
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: SPONSOR PACKAGE MANAGER CRUD ================= */}
+      {showSponsorPackageModal && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full overflow-hidden border border-slate-150 shadow-2xl animate-fade-in text-slate-900 animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 p-4 border-b border-slate-950 flex justify-between items-center text-white">
+              <span className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-indigo-400" />
+                {isSponsorPackageEdit ? 'Chỉnh Sửa Gói Tài Trợ' : 'Thành Lập Gói Tài Trợ Mới'}
+              </span>
+              <button 
+                disabled={isSavingSponsorPackage}
+                onClick={() => setShowSponsorPackageModal(false)}
+                className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer border-none bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSponsorPackageSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10.5px] font-black text-slate-500 block mb-1">ID Gói *</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={isSponsorPackageEdit || isSavingSponsorPackage}
+                    value={formSponsorPkgId}
+                    onChange={(e) => setFormSponsorPkgId(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                    placeholder="sponsor-custom"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 disabled:bg-slate-50 disabled:text-slate-400"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10.5px] font-black text-slate-500 block mb-1">Tên Gói Tài Trợ *</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={isSavingSponsorPackage}
+                    value={formSponsorPkgName}
+                    onChange={(e) => setFormSponsorPkgName(e.target.value)}
+                    placeholder="ví dụ: Nhà Tài Trợ Vàng"
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-850 disabled:bg-slate-50 disabled:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10.5px] font-black text-slate-500 block mb-1">Tên Tiếng Anh</label>
+                <input
+                  type="text"
+                  disabled={isSavingSponsorPackage}
+                  value={formSponsorPkgNameEn}
+                  onChange={(e) => setFormSponsorPkgNameEn(e.target.value)}
+                  placeholder="ví dụ: Gold Sponsor"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-850 disabled:bg-slate-50 disabled:text-slate-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10.5px] font-black text-slate-500 block mb-1">Phí tài trợ (VNĐ) *</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      step={100000}
+                      disabled={isSavingSponsorPackage}
+                      value={formSponsorPkgFee}
+                      onChange={(e) => setFormSponsorPkgFee(Number(e.target.value))}
+                      className="w-full pl-3 pr-8 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-extrabold disabled:bg-slate-50 disabled:text-slate-400"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 font-bold font-mono text-slate-450 text-[9px]">VNĐ</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10.5px] font-black text-slate-500 block mb-1">Màu nhận diện *</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="color"
+                      disabled={isSavingSponsorPackage}
+                      value={formSponsorPkgColor}
+                      onChange={(e) => setFormSponsorPkgColor(e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer border border-slate-200 p-0 shrink-0"
+                    />
+                    <input
+                      type="text"
+                      disabled={isSavingSponsorPackage}
+                      value={formSponsorPkgColor}
+                      onChange={(e) => setFormSponsorPkgColor(e.target.value)}
+                      className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10.5px] font-black text-slate-500 block mb-1">Quyền lợi Tiếng Việt (mỗi dòng một quyền lợi)</label>
+                <textarea
+                  disabled={isSavingSponsorPackage}
+                  value={formSponsorPkgBenefits}
+                  onChange={(e) => setFormSponsorPkgBenefits(e.target.value)}
+                  placeholder="Gian hàng tiêu chuẩn: 1 gian&#10;Logo trên backdrop: Có&#10;Vé tham dự Gala Dinner: 5 vé..."
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-sans disabled:bg-slate-50 disabled:text-slate-400"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="text-[10.5px] font-black text-slate-500 block mb-1">Quyền lợi Tiếng Anh (mỗi dòng một quyền lợi)</label>
+                <textarea
+                  disabled={isSavingSponsorPackage}
+                  value={formSponsorPkgBenefitsEn}
+                  onChange={(e) => setFormSponsorPkgBenefitsEn(e.target.value)}
+                  placeholder="Standard booth: 1&#10;Logo on backdrop: Yes&#10;Gala Dinner tickets: 5..."
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-sans disabled:bg-slate-50 disabled:text-slate-400"
+                  rows={3}
+                />
+              </div>
+
+              {/* Toggle pkg is active */}
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <span className="text-[10.5px] font-bold text-slate-700">Trạng thái phát hành</span>
+                <button
+                  type="button"
+                  disabled={isSavingSponsorPackage}
+                  onClick={() => setFormSponsorPkgIsActive(!formSponsorPkgIsActive)}
+                  className={`px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase text-center cursor-pointer border disabled:opacity-50 disabled:cursor-not-allowed ${
+                    formSponsorPkgIsActive ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-100 border-slate-200 text-slate-500'
+                  }`}
+                >
+                  {formSponsorPkgIsActive ? 'Đang hoạt động' : 'Tạm Đóng'}
+                </button>
+              </div>
+
+              <div className="pt-3 border-t border-slate-150 flex justify-end gap-2 text-xs">
+                <button
+                  type="button"
+                  disabled={isSavingSponsorPackage}
+                  onClick={() => setShowSponsorPackageModal(false)}
+                  className="px-4 py-2 bg-slate-100 font-bold rounded-lg cursor-pointer hover:bg-slate-200 text-slate-600 transition-all border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSponsorPackage}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg cursor-pointer transition-all border-none shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                >
+                  {isSavingSponsorPackage && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Lưu Gói Tài Trợ
                 </button>
               </div>
             </form>

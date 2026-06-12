@@ -177,6 +177,7 @@ CREATE TABLE public.sponsors (
     contact_person TEXT,
     contact_email TEXT,
     contact_phone TEXT,
+    booth_location TEXT,
     benefits_signed TEXT[] DEFAULT '{}',
     notes TEXT,
     contract_no TEXT,
@@ -517,7 +518,213 @@ INSERT INTO public.business_config (
     "sectionLabels": {
       "sponsorProfile": { "vi": "THÔNG TIN DOANH NGHIỆP TÀI TRỢ",  "en": "SPONSOR / COMPANY PROFILE" },
       "tierSelect":     { "vi": "CHỌN GÓI TÀI TRỢ",                 "en": "SPONSORSHIP PACKAGE SELECTION" }
-    }
+    },
+    "sponsorPackages": [
+      {
+        "id": "diamond",
+        "name": "Kim Cương",
+        "nameEn": "Diamond Partner",
+        "fee": 600000000,
+        "color": "#6366f1",
+        "benefits": [
+          "Tặng 50 vé tham dự Gala",
+          "Tặng 3 vé tham dự tiệc Chào mừng",
+          "Giá sử dụng phòng Hand-on training (2h): 2 suất",
+          "Đại biểu đăng ký qua nhà tài trợ: Giảm 25%",
+          "Gian hàng theo tiêu chuẩn: Độc quyền",
+          "Logo trên backdrop và các ấn phẩm: Cỡ size 6",
+          "Nêu tên cảm ơn trong suốt chương trình: Có",
+          "Banner trên web hội: 3 tháng",
+          "Standee trước cửa hội trường: 2 cái",
+          "Đăng bài viết về sản phẩm trên Web, page hội: 5 bài",
+          "Giấy cảm ơn và quà lưu niệm: Có"
+        ],
+        "benefitsEn": [
+          "Complimentary 50 Gala tickets",
+          "Complimentary 3 Welcome Dinner tickets",
+          "Hands-on training room use (2h): 2 slots",
+          "Delegate registration discount: 25% Off",
+          "Standard exhibition booth: Exclusive",
+          "Logo on backdrop & printed materials: Size 6",
+          "Verbal thank-you announcement: Yes",
+          "Society website banner advertisement: 3 Months",
+          "Standee at hall entrance: 2 pcs",
+          "Product promotion posts on Web/Page: 5 posts",
+          "Appreciation certificate & souvenir: Yes"
+        ],
+        "isActive": true
+      },
+      {
+        "id": "platinum",
+        "name": "Bạch Kim",
+        "nameEn": "Platinum Partner",
+        "fee": 400000000,
+        "color": "#8b5cf6",
+        "benefits": [
+          "Tặng 40 vé tham dự Gala",
+          "Tặng 2 vé tham dự tiệc Chào mừng",
+          "Giá sử dụng phòng Hand-on training (2h): 1 suất",
+          "Đại biểu đăng ký qua nhà tài trợ: Giảm 20%",
+          "Gian hàng theo tiêu chuẩn: Đặc biệt 1",
+          "Logo trên backdrop và các ấn phẩm: Cỡ size 5",
+          "Nêu tên cảm ơn trong suốt chương trình: Có",
+          "Banner trên web hội: 2 tháng",
+          "Standee trước cửa hội trường: 1 cái",
+          "Đăng bài viết về sản phẩm trên Web, page hội: 3 bài",
+          "Giấy cảm ơn và quà lưu niệm: Có"
+        ],
+        "benefitsEn": [
+          "Complimentary 40 Gala tickets",
+          "Complimentary 2 Welcome Dinner tickets",
+          "Hands-on training room use (2h): 1 slot",
+          "Delegate registration discount: 20% Off",
+          "Standard exhibition booth: Special 1",
+          "Logo on backdrop & printed materials: Size 5",
+          "Verbal thank-you announcement: Yes",
+          "Society website banner advertisement: 2 Months",
+          "Standee at hall entrance: 1 pc",
+          "Product promotion posts on Web/Page: 3 posts",
+          "Appreciation certificate & souvenir: Yes"
+        ],
+        "isActive": true
+      },
+      {
+        "id": "gold",
+        "name": "Vàng",
+        "nameEn": "Gold Partner",
+        "fee": 300000000,
+        "color": "#f59e0b",
+        "benefits": [
+          "Tặng 30 vé tham dự Gala",
+          "Tặng 1 vé tham dự tiệc Chào mừng",
+          "Giá sử dụng phòng Hand-on training (2h): 1 suất",
+          "Đại biểu đăng ký qua nhà tài trợ: Giảm 15%",
+          "Gian hàng theo tiêu chuẩn: Đặc biệt 2",
+          "Logo trên backdrop và các ấn phẩm: Cỡ size 4",
+          "Nêu tên cảm ơn trong suốt chương trình: Có",
+          "Banner trên web hội: 1 tháng",
+          "Standee trước cửa hội trường: Không",
+          "Đăng bài viết về sản phẩm trên Web, page hội: 2 bài",
+          "Giấy cảm ơn và quà lưu niệm: Có"
+        ],
+        "benefitsEn": [
+          "Complimentary 30 Gala tickets",
+          "Complimentary 1 Welcome Dinner ticket",
+          "Hands-on training room use (2h): 1 slot",
+          "Delegate registration discount: 15% Off",
+          "Standard exhibition booth: Special 2",
+          "Logo on backdrop & printed materials: Size 4",
+          "Verbal thank-you announcement: Yes",
+          "Society website banner advertisement: 1 Month",
+          "Standee at hall entrance: No",
+          "Product promotion posts on Web/Page: 2 posts",
+          "Appreciation certificate & souvenir: Yes"
+        ],
+        "isActive": true
+      },
+      {
+        "id": "silver",
+        "name": "Bạc",
+        "nameEn": "Silver Partner",
+        "fee": 200000000,
+        "color": "#94a3b8",
+        "benefits": [
+          "Tặng 20 vé tham dự Gala",
+          "Không có vé tham dự tiệc Chào mừng",
+          "Giá sử dụng phòng Hand-on training (2h): Ưu đãi 50%",
+          "Đại biểu đăng ký qua nhà tài trợ: Giảm 10%",
+          "Gian hàng theo tiêu chuẩn: Ưu tiên 1",
+          "Logo trên backdrop và các ấn phẩm: Cỡ size 3",
+          "Nêu tên cảm ơn trong suốt chương trình: Có",
+          "Banner trên web hội: Không",
+          "Standee trước cửa hội trường: Không",
+          "Đăng bài viết về sản phẩm trên Web, page hội: 1 bài",
+          "Giấy cảm ơn và quà lưu niệm: Có"
+        ],
+        "benefitsEn": [
+          "Complimentary 20 Gala tickets",
+          "No Welcome Dinner tickets",
+          "Hands-on training room use (2h): 50% Discount",
+          "Delegate registration discount: 10% Off",
+          "Standard exhibition booth: Priority 1",
+          "Logo on backdrop & printed materials: Size 3",
+          "Verbal thank-you announcement: Yes",
+          "Society website banner advertisement: No",
+          "Standee at hall entrance: No",
+          "Product promotion posts on Web/Page: 1 post",
+          "Appreciation certificate & souvenir: Yes"
+        ],
+        "isActive": true
+      },
+      {
+        "id": "bronze",
+        "name": "Đồng",
+        "nameEn": "Bronze Partner",
+        "fee": 100000000,
+        "color": "#d97706",
+        "benefits": [
+          "Tặng 10 vé tham dự Gala",
+          "Không có vé tham dự tiệc Chào mừng",
+          "Giá sử dụng phòng Hand-on training (2h): Ưu đãi 40%",
+          "Đại biểu đăng ký qua nhà tài trợ: Giảm 5%",
+          "Gian hàng theo tiêu chuẩn: Ưu tiên 2",
+          "Logo trên backdrop và các ấn phẩm: Cỡ size 2",
+          "Nêu tên cảm ơn trong suốt chương trình: Có",
+          "Banner trên web hội: Không",
+          "Standee trước cửa hội trường: Không",
+          "Đăng bài viết về sản phẩm trên Web, page hội: 1 bài",
+          "Giấy cảm ơn và quà lưu niệm: Có"
+        ],
+        "benefitsEn": [
+          "Complimentary 10 Gala tickets",
+          "No Welcome Dinner tickets",
+          "Hands-on training room use (2h): 40% Discount",
+          "Delegate registration discount: 5% Off",
+          "Standard exhibition booth: Priority 2",
+          "Logo on backdrop & printed materials: Size 2",
+          "Verbal thank-you announcement: Yes",
+          "Society website banner advertisement: No",
+          "Standee at hall entrance: No",
+          "Product promotion posts on Web/Page: 1 post",
+          "Appreciation certificate & souvenir: Yes"
+        ],
+        "isActive": true
+      },
+      {
+        "id": "standard",
+        "name": "Tiêu Chuẩn",
+        "nameEn": "Standard Partner",
+        "fee": 50000000,
+        "color": "#64748b",
+        "benefits": [
+          "Không có vé tham dự Gala",
+          "Không có vé tham dự tiệc Chào mừng",
+          "Giá sử dụng phòng Hand-on training (2h): Ưu đãi 30%",
+          "Không có ưu đãi đăng ký đại biểu",
+          "Gian hàng theo tiêu chuẩn: Cơ bản",
+          "Logo trên backdrop và các ấn phẩm: Cỡ size 1",
+          "Nêu tên cảm ơn trong suốt chương trình: Có",
+          "Banner trên web hội: Không",
+          "Standee trước cửa hội trường: Không",
+          "Không có bài viết trên Web, page hội",
+          "Giấy cảm ơn và quà lưu niệm: Có"
+        ],
+        "benefitsEn": [
+          "No Gala tickets",
+          "No Welcome Dinner tickets",
+          "Hands-on training room use (2h): 30% Discount",
+          "No delegate registration discount",
+          "Standard exhibition booth: Basic",
+          "Logo on backdrop & printed materials: Size 1",
+          "Verbal thank-you announcement: Yes",
+          "Society website banner advertisement: No",
+          "Standee at hall entrance: No",
+          "No product promotion posts on Web/Page",
+          "Appreciation certificate & souvenir: Yes"
+        ],
+        "isActive": true
+      }
+    ]
   }'::jsonb
 )
 ON CONFLICT (id) DO NOTHING;

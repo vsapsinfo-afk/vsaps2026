@@ -4,9 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { Award, Plus, Coins, Play, FileDown, CheckCircle, Trash, ShoppingBag, ShieldCheck, Mail, Phone, Users, Landmark, FileText, Calendar, Upload, Link, AlertCircle, AlertTriangle, Edit3, FileCheck, Check, Eye, Download, X } from 'lucide-react';
+import { Award, Plus, Coins, Play, FileDown, CheckCircle, Trash, ShoppingBag, ShieldCheck, Mail, Phone, Users, Landmark, FileText, Calendar, Upload, Link, AlertCircle, AlertTriangle, Edit3, FileCheck, Check, Eye, Download, X, MapPin } from 'lucide-react';
 import { store } from '../dataStore';
-import { Sponsor, Role } from '../types';
+import { Sponsor, Role, SponsorPackage } from '../types';
 
 interface SponsorManagementProps {
   role: Role;
@@ -16,10 +16,50 @@ interface SponsorManagementProps {
 export default function SponsorManagement({ role, onNavigate }: SponsorManagementProps) {
   const [sponsors, setSponsors] = useState<Sponsor[]>(store.getSponsors());
   const [showForm, setShowForm] = useState(false);
+  const sponsorPackages = store.getSponsorPackages ? store.getSponsorPackages() : [];
+
+  const getTierStyle = (tierId: string) => {
+    const pkg = sponsorPackages.find(p => p.id === tierId);
+    if (!pkg) return undefined;
+    const color = pkg.color || '#6366f1';
+    return {
+      backgroundColor: color + '15',
+      color: color,
+      borderColor: color + '40',
+      borderWidth: '1px',
+      borderStyle: 'solid' as const
+    };
+  };
+
+  const getTierClass = (tierId: string) => {
+    const pkg = sponsorPackages.find(p => p.id === tierId);
+    if (pkg) return '';
+    if (tierId === 'diamond') return 'bg-indigo-50 text-indigo-700 border border-indigo-200';
+    if (tierId === 'platinum') return 'bg-purple-50 text-purple-750 border border-purple-200';
+    if (tierId === 'gold') return 'bg-amber-50 text-amber-705 border border-amber-200';
+    if (tierId === 'silver') return 'bg-slate-50 text-slate-600 border border-slate-200';
+    if (tierId === 'bronze') return 'bg-orange-50 text-orange-700 border border-orange-205';
+    if (tierId === 'standard') return 'bg-zinc-50 text-zinc-600 border border-zinc-200';
+    if (tierId === 'co_sponsor') return 'bg-emerald-50 text-emerald-707 border border-emerald-200';
+    return 'bg-slate-100 text-slate-650';
+  };
+
+  const getTierName = (tierId: string) => {
+    const pkg = sponsorPackages.find(p => p.id === tierId);
+    if (pkg) return pkg.name;
+    if (tierId === 'diamond') return 'Diamond Partner';
+    if (tierId === 'platinum') return 'Platinum Partner';
+    if (tierId === 'gold') return 'Gold Partner';
+    if (tierId === 'silver') return 'Silver Partner';
+    if (tierId === 'bronze') return 'Bronze Partner';
+    if (tierId === 'standard') return 'Standard Partner';
+    if (tierId === 'co_sponsor') return 'Co-Sponsor';
+    return `${tierId.toUpperCase()} Partner`;
+  };
 
   // Form fields for adding a new sponsor
   const [name, setName] = useState('');
-  const [tier, setTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard' | 'co_sponsor'>('gold');
+  const [tier, setTier] = useState<string>('gold');
   const [pledgedAmount, setPledgedAmount] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -27,6 +67,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const [benefitsListText, setBenefitsListText] = useState('Gian hàng triển lãm chính, Logo nổi bật trang bìa');
   const [logoImage, setLogoImage] = useState<string | null>(null);
   const [isLogoUploading, setIsLogoUploading] = useState(false);
+  const [boothLocation, setBoothLocation] = useState('auto');
+  const [customBoothLocation, setCustomBoothLocation] = useState('');
 
   // --- New fields for contract inputs in NEW sponsor form ---
   const [formContractNo, setFormContractNo] = useState('');
@@ -56,7 +98,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   // States for editing sponsor details
   const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null);
   const [editName, setEditName] = useState('');
-  const [editTier, setEditTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard' | 'co_sponsor'>('gold');
+  const [editTier, setEditTier] = useState<string>('gold');
   const [editPledgedAmount, setEditPledgedAmount] = useState('');
   const [editContactPerson, setEditContactPerson] = useState('');
   const [editContactEmail, setEditContactEmail] = useState('');
@@ -64,6 +106,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const [editBenefitsListText, setEditBenefitsListText] = useState('');
   const [editLogoImage, setEditLogoImage] = useState<string | null>(null);
   const [isEditLogoUploading, setIsEditLogoUploading] = useState(false);
+  const [editBoothLocation, setEditBoothLocation] = useState('auto');
+  const [editCustomBoothLocation, setEditCustomBoothLocation] = useState('');
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -121,6 +165,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       contractStatus: formContractNo ? formContractStatus : undefined,
       contractFileName: formContractFileName || undefined,
       contractFileUrl: formContractFileUrl || undefined,
+      boothLocation: boothLocation === 'other' ? customBoothLocation : boothLocation,
     };
 
     store.saveSponsor(sponsorData);
@@ -133,6 +178,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     setContactEmail('');
     setContactPhone('');
     setLogoImage(null);
+    setBoothLocation('auto');
+    setCustomBoothLocation('');
     setFormContractNo('');
     setFormContractSignDate('');
     setFormContractValue('');
@@ -200,7 +247,11 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       docContent += `ĐIỀU 1: PHẠM VI HỢP TÁC & GIÁ TRỊ CAM KẾT\n`;
       docContent += `- Bên B cam kết đồng hành với hạn mức: ${(sponsor.contractValue || sponsor.pledgedAmount).toLocaleString()} VNĐ\n`;
       docContent += `- Thực tế đã giải ngân thanh quyết toán: ${(sponsor.paidAmount).toLocaleString()} VNĐ\n`;
-      docContent += `- Phân khúc Partner đồng hành: Hạng ${sponsor.tier.toUpperCase()}\n\n`;
+      docContent += `- Phân khúc Partner đồng hành: Hạng ${sponsor.tier.toUpperCase()}\n`;
+      if (sponsor.boothLocation) {
+        docContent += `- Vị trí gian hàng đăng ký: ${sponsor.boothLocation === 'auto' ? 'Ban tổ chức sắp xếp' : sponsor.boothLocation}\n`;
+      }
+      docContent += `\n`;
       docContent += `ĐIỀU 2: QUYỀN LỢI BÊN B ĐƯỢC HƯỞNG\n`;
       sponsor.benefitsSigned.forEach((benefit, index) => {
         docContent += `  ${index + 1}. Quyền lợi danh mục: ${benefit}\n`;
@@ -308,6 +359,15 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     setEditContactPhone(sponsor.contactPhone);
     setEditBenefitsListText(sponsor.benefitsSigned.join(', '));
     setEditLogoImage(sponsor.logoUrl || null);
+    const currentLoc = sponsor.boothLocation || 'auto';
+    const standardLocs = ['auto', 'A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2'];
+    if (standardLocs.includes(currentLoc)) {
+      setEditBoothLocation(currentLoc);
+      setEditCustomBoothLocation('');
+    } else {
+      setEditBoothLocation('other');
+      setEditCustomBoothLocation(currentLoc);
+    }
   };
 
   const handleEditLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -350,6 +410,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       found.contactPhone = editContactPhone;
       found.benefitsSigned = benefits;
       found.logoUrl = editLogoImage || undefined;
+      found.boothLocation = editBoothLocation === 'other' ? editCustomBoothLocation : editBoothLocation;
       store.saveSponsor(found);
     }
 
@@ -380,6 +441,9 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       totalPaid += s.paidAmount;
       reportContent += `[${s.tier.toUpperCase()}] ${s.name}\n`;
       reportContent += `  - Người liên hệ: ${s.contactPerson} (${s.contactPhone})\n`;
+      if (s.boothLocation) {
+        reportContent += `  - Vị trí gian hàng: ${s.boothLocation === 'auto' ? 'BTC sắp xếp' : s.boothLocation}\n`;
+      }
       reportContent += `  - Kinh phí Thỏa thuận: ${s.pledgedAmount.toLocaleString()} VNĐ\n`;
       reportContent += `  - Đã chuyển khoản: ${s.paidAmount.toLocaleString()} VNĐ\n`;
       reportContent += `  - Tỷ lệ hoàn tất: ${Math.round(s.paidAmount/s.pledgedAmount*100)}%\n`;
@@ -459,17 +523,11 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
               <div className="space-y-4">
                 {/* Sponsor level header */}
                 <div className="flex items-center justify-between">
-                  <span className={`px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-widest ${
-                    sponsor.tier === 'diamond' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
-                    sponsor.tier === 'platinum' ? 'bg-purple-50 text-purple-750 border border-purple-200' :
-                    sponsor.tier === 'gold' ? 'bg-amber-50 text-amber-705 border border-amber-200' :
-                    sponsor.tier === 'silver' ? 'bg-slate-50 text-slate-600 border border-slate-200' :
-                    sponsor.tier === 'bronze' ? 'bg-orange-50 text-orange-700 border border-orange-205' :
-                    sponsor.tier === 'standard' ? 'bg-zinc-50 text-zinc-600 border border-zinc-200' :
-                    sponsor.tier === 'co_sponsor' ? 'bg-emerald-50 text-emerald-705 border border-emerald-200' :
-                    'bg-slate-100 text-slate-650'
-                  }`}>
-                    {sponsor.tier === 'co_sponsor' ? 'Co-Sponsor' : `${sponsor.tier} Partner`}
+                  <span 
+                    className={`px-2.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-widest ${getTierClass(sponsor.tier)}`}
+                    style={getTierStyle(sponsor.tier)}
+                  >
+                    {getTierName(sponsor.tier)}
                   </span>
                   
                   <span className="text-[10px] text-slate-400 font-mono font-bold">{sponsor.id}</span>
@@ -487,6 +545,12 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                   <div>
                     <h4 className="font-bold text-slate-900 text-sm leading-snug line-clamp-2">{sponsor.name}</h4>
                     <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{sponsor.contactPerson} - {sponsor.contactPhone}</p>
+                    {sponsor.boothLocation && (
+                      <div className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded-md text-[10px] font-bold text-indigo-700">
+                        <MapPin className="w-3.5 h-3.5 text-indigo-550 animate-pulse" />
+                        <span>Gian hàng: {sponsor.boothLocation === 'auto' ? 'BTC sắp xếp' : sponsor.boothLocation}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -784,12 +848,11 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                     onChange={(e: any) => setTier(e.target.value)}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700"
                   >
-                    <option value="diamond">Diamond Sponsor (600tr)</option>
-                    <option value="platinum">Platinum Sponsor (400tr)</option>
-                    <option value="gold">Gold Sponsor (300tr)</option>
-                    <option value="silver">Silver Sponsor (200tr)</option>
-                    <option value="bronze">Bronze Sponsor (100tr)</option>
-                    <option value="standard">Standard Sponsor (50tr)</option>
+                    {sponsorPackages.map(pkg => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.name} ({pkg.fee === 0 ? 'Miễn phí' : `${(pkg.fee / 1000000).toLocaleString()}tr`})
+                      </option>
+                    ))}
                     <option value="co_sponsor">Co-Sponsor</option>
                   </select>
                 </div>
@@ -803,6 +866,39 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                     placeholder="ví dụ: 100000000"
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Vị trí gian hàng</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={boothLocation}
+                    onChange={(e) => setBoothLocation(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700 bg-white"
+                  >
+                    <option value="auto">BTC tự sắp xếp / Tự chọn sau</option>
+                    <option value="A1">Gian A1 (Khu Kim Cương)</option>
+                    <option value="A2">Gian A2 (Khu Kim Cương)</option>
+                    <option value="A3">Gian A3 (Khu Kim Cương)</option>
+                    <option value="B1">Gian B1 (Khu Bạch Kim/Vàng)</option>
+                    <option value="B2">Gian B2 (Khu Bạch Kim/Vàng)</option>
+                    <option value="B3">Gian B3 (Khu Bạch Kim/Vàng)</option>
+                    <option value="C1">Gian C1 (Khu Tiêu chuẩn)</option>
+                    <option value="C2">Gian C2 (Khu Tiêu chuẩn)</option>
+                    <option value="other">Khác / Vị trí đặc biệt...</option>
+                  </select>
+
+                  {boothLocation === 'other' && (
+                    <input
+                      type="text"
+                      required
+                      value={customBoothLocation}
+                      onChange={(e) => setCustomBoothLocation(e.target.value)}
+                      placeholder="Mã gian hàng (ví dụ: D4)"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1054,12 +1150,11 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                     onChange={(e: any) => setEditTier(e.target.value)}
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700"
                   >
-                    <option value="diamond">Diamond Sponsor (600tr)</option>
-                    <option value="platinum">Platinum Sponsor (400tr)</option>
-                    <option value="gold">Gold Sponsor (300tr)</option>
-                    <option value="silver">Silver Sponsor (200tr)</option>
-                    <option value="bronze">Bronze Sponsor (100tr)</option>
-                    <option value="standard">Standard Sponsor (50tr)</option>
+                    {sponsorPackages.map(pkg => (
+                      <option key={pkg.id} value={pkg.id}>
+                        {pkg.name} ({pkg.fee === 0 ? 'Miễn phí' : `${(pkg.fee / 1000000).toLocaleString()}tr`})
+                      </option>
+                    ))}
                     <option value="co_sponsor">Co-Sponsor</option>
                   </select>
                 </div>
@@ -1073,6 +1168,39 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                     placeholder="ví dụ: 100000000"
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Vị trí gian hàng</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={editBoothLocation}
+                    onChange={(e) => setEditBoothLocation(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700 bg-white"
+                  >
+                    <option value="auto">BTC tự sắp xếp / Tự chọn sau</option>
+                    <option value="A1">Gian A1 (Khu Kim Cương)</option>
+                    <option value="A2">Gian A2 (Khu Kim Cương)</option>
+                    <option value="A3">Gian A3 (Khu Kim Cương)</option>
+                    <option value="B1">Gian B1 (Khu Bạch Kim/Vàng)</option>
+                    <option value="B2">Gian B2 (Khu Bạch Kim/Vàng)</option>
+                    <option value="B3">Gian B3 (Khu Bạch Kim/Vàng)</option>
+                    <option value="C1">Gian C1 (Khu Tiêu chuẩn)</option>
+                    <option value="C2">Gian C2 (Khu Tiêu chuẩn)</option>
+                    <option value="other">Khác / Vị trí đặc biệt...</option>
+                  </select>
+
+                  {editBoothLocation === 'other' && (
+                    <input
+                      type="text"
+                      required
+                      value={editCustomBoothLocation}
+                      onChange={(e) => setEditCustomBoothLocation(e.target.value)}
+                      placeholder="Mã gian hàng (ví dụ: D4)"
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -1360,6 +1488,9 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                       <li>Hạn ngạch bảo trợ thỏa thuận cam kết: <b className="text-pink-600">{(previewSponsor.contractValue || previewSponsor.pledgedAmount).toLocaleString()} VNĐ</b></li>
                       <li>Hình thức thanh toán: Chuyển khoản qua ngân hàng liên kết ERP</li>
                       <li>Thực tế lũy kế thu nhận đối soát: <b className="text-emerald-700">{(previewSponsor.paidAmount).toLocaleString()} VNĐ</b> (Hoàn thành {Math.round((previewSponsor.paidAmount / (previewSponsor.contractValue || previewSponsor.pledgedAmount)) * 100)}%)</li>
+                      {previewSponsor.boothLocation && (
+                        <li>Vị trí gian hàng trưng bày: <b>{previewSponsor.boothLocation === 'auto' ? 'Ban tổ chức sắp xếp' : previewSponsor.boothLocation}</b></li>
+                      )}
                     </ul>
                   </div>
 

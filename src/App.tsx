@@ -27,6 +27,7 @@ const FinanceReconciliation = lazy(() => import('./views/FinanceReconciliation')
 const SponsorManagement = lazy(() => import('./views/SponsorManagement'));
 const NotificationSystem = lazy(() => import('./views/NotificationSystem'));
 const SettingsPanel = lazy(() => import('./views/SettingsPanel'));
+const UserGuide = lazy(() => import('./views/UserGuide'));
 
 // Public views
 const PublicEventDetails = lazy(() => import('./views/PublicEventDetails'));
@@ -46,6 +47,7 @@ const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
   notifications: ['admin', 'btc'],
   'bulk-send': ['admin', 'btc'],
   settings: ['admin', 'btc'],
+  'user-guide': ['admin', 'btc', 'ctv'],
 };
 
 function AppContent() {
@@ -309,6 +311,8 @@ function AppContent() {
         return (
           <SettingsPanel role={role} />
         );
+      case 'user-guide':
+        return <UserGuide />;
 
       // Public-side pages
       case 'event-details':
@@ -363,7 +367,6 @@ function AppContent() {
         currentView={currentView}
         onNavigate={handleNavigate}
         currentRole={role}
-        onResetData={handleResetData}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

@@ -111,7 +111,7 @@ export interface ConferenceSession {
 export interface Sponsor {
   id: string;
   name: string;
-  tier: 'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard' | 'co_sponsor';
+  tier: string;
   logoUrl?: string; // or base64
   pledgedAmount: number;
   paidAmount: number;
@@ -119,6 +119,7 @@ export interface Sponsor {
   contactPerson: string;
   contactEmail: string;
   contactPhone: string;
+  boothLocation?: string;
   benefitsSigned: string[]; // ví dụ: Banner, Booth, Kỷ niệm chương
   notes?: string;
   contractNo?: string;
@@ -176,6 +177,17 @@ export interface RegistrationPackage {
   description?: string;
   includesCme?: boolean;
   includesGala?: boolean;
+}
+
+export interface SponsorPackage {
+  id: string;
+  name: string;
+  nameEn?: string;
+  fee: number; // VNĐ
+  color?: string;
+  benefits: string[];
+  benefitsEn?: string[];
+  isActive: boolean;
 }
 
 export interface ZaloConfig {
@@ -304,6 +316,7 @@ export interface PublicFormConfig {
   /** Tên các section tùy chỉnh — key: section id, value: label song ngữ */
   sectionLabels?: Record<string, BilingualLabel>;
   fieldLabels?: Record<string, BilingualLabel>;
+  sponsorPackages?: SponsorPackage[];
 }
 
 export interface BusinessConfig {

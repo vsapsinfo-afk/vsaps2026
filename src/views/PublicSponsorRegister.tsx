@@ -244,15 +244,18 @@ const TIER_HEADERS = [
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.sponsorFormConfig;
+  const sponsorTiers = store.getSponsorPackages();
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   // Form States
   const [name, setName] = useState('');
-  const [tier, setTier] = useState<'diamond' | 'platinum' | 'gold' | 'silver' | 'bronze' | 'standard'>('gold');
+  const [tier, setTier] = useState<string>('gold');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [boothLocation, setBoothLocation] = useState('auto');
+  const [customBoothLocation, setCustomBoothLocation] = useState('');
   
   // Custom logo image state
   const [logoImage, setLogoImage] = useState<string | null>(null);
@@ -270,13 +273,13 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
   // Auto-populate benefits when tier or nationality changes
   useEffect(() => {
-    const matched = SPONSOR_TIERS.find(t => t.id === tier);
+    const matched = sponsorTiers.find(t => t.id === tier);
     if (matched) {
       const list = nationality === 'vietname' ? matched.benefits : (matched as any).benefitsEn || matched.benefits;
       setCustomBenefits(list);
       setCustomBenefitsText(list.join('\n'));
     }
-  }, [tier, nationality]);
+  }, [tier, nationality, sponsorTiers]);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -309,7 +312,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
     }
   };
 
-  const currentTierData = SPONSOR_TIERS.find(t => t.id === tier) || SPONSOR_TIERS[1];
+  const currentTierData = sponsorTiers.find(t => t.id === tier) || sponsorTiers[1];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,7 +344,8 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       contactPhone,
       benefitsSigned: finalBenefits.length > 0 ? finalBenefits : currentTierData.benefits,
       logoUrl: logoImage || undefined,
-      notes: notes || undefined
+      notes: notes || undefined,
+      boothLocation: boothLocation === 'other' ? customBoothLocation : boothLocation
     };
 
     try {
@@ -415,6 +419,9 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                   <p>• {L.t('Người liên hệ: ', 'Contact Person: ')}<strong className="text-slate-900">{createdSponsor.contactPerson}</strong></p>
                   <p>• {L.t('Số điện thoại: ', 'Phone Number: ')}<strong className="text-slate-900">{createdSponsor.contactPhone}</strong></p>
                   <p>• {L.t('Hộp thư điện tử: ', 'Email Address: ')}<strong className="text-slate-900">{createdSponsor.contactEmail}</strong></p>
+                  {createdSponsor.boothLocation && (
+                    <p>• {L.t('Vị trí gian hàng: ', 'Booth Location: ')}<strong className="text-slate-900">{createdSponsor.boothLocation === 'auto' ? L.t('BTC sắp xếp', 'Assigned by Organizer') : createdSponsor.boothLocation}</strong></p>
+                  )}
                   <p>• {L.t('Kinh phí cam kết đóng góp: ', 'Pledged Sponsorship Fee: ')}<strong className="text-indigo-700 text-sm font-black font-mono">{createdSponsor.pledgedAmount.toLocaleString()} {L.t('VNĐ', 'VND')}</strong></p>
                 </div>
 
@@ -731,6 +738,41 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               </div>
 
               <div>
+                <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                  {L.t('Vị trí gian hàng mong muốn *', 'Preferred Booth Location *')}
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <select
+                    value={boothLocation}
+                    onChange={(e) => setBoothLocation(e.target.value)}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="auto">{L.t('Ban Tổ Chức tự sắp xếp / Tự chọn sau', 'Organizer assigns / Choose later')}</option>
+                    <option value="A1">{L.t('Gian A1 (Khu Kim Cương)', 'Booth A1 (Diamond Zone)')}</option>
+                    <option value="A2">{L.t('Gian A2 (Khu Kim Cương)', 'Booth A2 (Diamond Zone)')}</option>
+                    <option value="A3">{L.t('Gian A3 (Khu Kim Cương)', 'Booth A3 (Diamond Zone)')}</option>
+                    <option value="B1">{L.t('Gian B1 (Khu Bạch Kim/Vàng)', 'Booth B1 (Platinum/Gold Zone)')}</option>
+                    <option value="B2">{L.t('Gian B2 (Khu Bạch Kim/Vàng)', 'Booth B2 (Platinum/Gold Zone)')}</option>
+                    <option value="B3">{L.t('Gian B3 (Khu Bạch Kim/Vàng)', 'Booth B3 (Platinum/Gold Zone)')}</option>
+                    <option value="C1">{L.t('Gian C1 (Khu Tiêu chuẩn)', 'Booth C1 (Standard Zone)')}</option>
+                    <option value="C2">{L.t('Gian C2 (Khu Tiêu chuẩn)', 'Booth C2 (Standard Zone)')}</option>
+                    <option value="other">{L.t('Khác / Vị trí đặc biệt...', 'Other / Special location...')}</option>
+                  </select>
+
+                  {boothLocation === 'other' && (
+                    <input
+                      type="text"
+                      required
+                      value={customBoothLocation}
+                      onChange={(e) => setCustomBoothLocation(e.target.value)}
+                      placeholder={L.p('Nhập vị trí mong muốn (ví dụ: D4)', 'Enter preferred location (e.g., D4)')}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-teal-500"
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <RichTextEditor
                   value={notes}
                   onChange={setNotes}
@@ -751,7 +793,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               </h3>
 
               <div className="col-span-1 space-y-2">
-                {SPONSOR_TIERS.map((t) => (
+                {sponsorTiers.map((t) => (
                   <label 
                     key={t.id}
                     className={`p-3 border rounded-2xl flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all select-none relative ${
@@ -762,7 +804,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                       type="radio"
                       name="sponsorTier"
                       checked={tier === t.id}
-                      onChange={() => setTier(t.id as any)}
+                      onChange={() => setTier(t.id)}
                       className="mt-0.5 text-indigo-600 focus:ring-indigo-55 shrink-0"
                     />
                     <div className="flex-1 min-w-0">

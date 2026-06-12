@@ -148,6 +148,7 @@ CREATE TABLE public.sponsors (
     contact_person TEXT,
     contact_email TEXT,
     contact_phone TEXT,
+    booth_location TEXT,
     benefits_signed TEXT[] DEFAULT '{}',
     notes TEXT,
     contract_no TEXT,
