@@ -2,6 +2,7 @@
   "rewrites": [
     { "source": "/manifest.json", "destination": "/api/manifest" },
     { "source": "/api/health", "destination": "/api/health" },
+    { "source": "/api/sepay-check", "destination": "/api/sepay-check" },
     { "source": "/api/email/send", "destination": "/api/email/send" },
     { "source": "/api/email/test-connection", "destination": "/api/email/test-connection" },
     { "source": "/api/zalo/send", "destination": "/api/zalo/send" },

@@ -2335,52 +2335,32 @@ export class DataStore {
     error?: string;
   }> {
     const cfg = this.sepayConfig;
-    if (!cfg.isEnabled || !cfg.apiToken) {
+    if (!cfg.isEnabled) {
       return { found: false, error: 'SePay chưa được cấu hình hoặc chưa bật.' };
     }
 
     try {
       const q = encodeURIComponent(transferContent.substring(0, 50)); // max 50 ký tự
-      const url = `https://userapi.sepay.vn/v2/transactions?q=${q}&limit=20`;
+      const url = `/api/sepay-check?transferContent=${q}&expectedAmount=${expectedAmount}`;
 
       const res = await fetch(url, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${cfg.apiToken}`,
           'Content-Type': 'application/json',
         },
       });
 
       if (!res.ok) {
         const errText = await res.text();
-        return { found: false, error: `SePay API lỗi ${res.status}: ${errText}` };
+        return { found: false, error: `Lỗi kết nối API SePay (${res.status}): ${errText}` };
       }
 
       const data = await res.json();
-      // SePay v2 trả về { status: 'success', messages: {...}, transactions: [...] }
-      const transactions: any[] = data?.transactions || data?.data || [];
-
-      // Tìm giao dịch khớp số tiền (chênh lệch ≤ 1000đ để bù phí)
-      const matched = transactions.find((t: any) => {
-        const amt = Number(t.transferAmount ?? t.transfer_amount ?? 0);
-        return Math.abs(amt - expectedAmount) <= 1000;
-      });
-
-      if (matched) {
-        return {
-          found: true,
-          transaction: {
-            id: matched.id,
-            gateway: matched.gateway || matched.bankCode || '',
-            transactionDate: matched.transactionDate || matched.transaction_date || '',
-            transferAmount: Number(matched.transferAmount ?? matched.transfer_amount ?? 0),
-            content: matched.content || matched.transaction_content || '',
-            referenceCode: matched.referenceCode || matched.reference_number || '',
-          },
-        };
+      if (data.error) {
+        return { found: false, error: data.error };
       }
 
-      return { found: false };
+      return data;
     } catch (err: any) {
       return { found: false, error: err?.message || 'Lỗi kết nối SePay' };
     }

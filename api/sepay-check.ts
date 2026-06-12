@@ -1,0 +1,102 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { transferContent, expectedAmount } = req.query;
+
+  const transferContentStr = Array.isArray(transferContent) ? transferContent[0] : transferContent;
+  const expectedAmountStr = Array.isArray(expectedAmount) ? expectedAmount[0] : expectedAmount;
+
+  if (!transferContentStr) {
+    return res.status(400).json({ error: 'Thiếu thông tin nội dung chuyển khoản (transferContent)' });
+  }
+
+  const amount = expectedAmountStr ? Number(expectedAmountStr) : 0;
+
+  try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Chưa cấu hình Supabase URL hoặc Service Role Key trên backend.' });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data, error: dbErr } = await supabase
+      .from('system_config')
+      .select('*')
+      .eq('key', 'sepay_config')
+      .maybeSingle();
+
+    if (dbErr) {
+      console.error('[SePay Check] Supabase error:', dbErr);
+      return res.status(500).json({ error: 'Không thể lấy cấu hình SePay từ cơ sở dữ liệu' });
+    }
+
+    if (!data || !data.value) {
+      return res.status(400).json({ error: 'Không tìm thấy cấu hình SePay (sepay_config) trong cơ sở dữ liệu' });
+    }
+
+    const cfg = data.value;
+    if (!cfg.isEnabled || !cfg.apiToken) {
+      return res.status(400).json({ error: 'SePay chưa được cấu hình hoặc chưa bật trong hệ thống.' });
+    }
+
+    const q = encodeURIComponent(transferContentStr.substring(0, 50));
+    const url = `https://userapi.sepay.vn/v2/transactions?q=${q}&limit=20`;
+
+    const fetchRes = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${cfg.apiToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!fetchRes.ok) {
+      const errText = await fetchRes.text();
+      return res.status(fetchRes.status).json({ error: `SePay API báo lỗi (${fetchRes.status}): ${errText}` });
+    }
+
+    const resData = await fetchRes.json();
+    const transactions: any[] = resData?.transactions || resData?.data || [];
+
+    // Tìm giao dịch khớp số tiền (chênh lệch ≤ 1000đ để bù phí)
+    const matched = transactions.find((t: any) => {
+      const amt = Number(t.transferAmount ?? t.transfer_amount ?? 0);
+      return Math.abs(amt - amount) <= 1000;
+    });
+
+    if (matched) {
+      return res.json({
+        found: true,
+        transaction: {
+          id: matched.id,
+          gateway: matched.gateway || matched.bankCode || '',
+          transactionDate: matched.transactionDate || matched.transaction_date || '',
+          transferAmount: Number(matched.transferAmount ?? matched.transfer_amount ?? 0),
+          content: matched.content || matched.transaction_content || '',
+          referenceCode: matched.referenceCode || matched.reference_number || '',
+        },
+      });
+    }
+
+    return res.json({ found: false });
+  } catch (err: any) {
+    console.error('[SePay Check] Unhandled error:', err);
+    return res.status(500).json({ error: err?.message || 'Lỗi kết nối khi gọi SePay API' });
+  }
+}
