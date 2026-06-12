@@ -402,22 +402,22 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between bg-white p-4 rounded-2xl border border-slate-200">
         
         {/* Search & Class Dropdown left filter panel */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full sm:w-72 md:w-80">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Tìm tên Báo cáo viên, Chuyên khoa, Đề tài..."
-              className="pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-250 focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none placeholder-slate-400 transition-all uppercase w-64 md:w-80 shadow-inner"
+              className="pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-250 focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none placeholder-slate-400 transition-all uppercase w-full shadow-inner"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e: any) => setStatusFilter(e.target.value)}
-            className="px-3.5 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm"
+            className="px-3.5 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm w-full sm:w-auto"
           >
             <option value="all">📂 Tất cả Trạng thái</option>
             <option value="approved">🟢 Đã phê duyệt (Approved)</option>
@@ -427,14 +427,14 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         </div>
 
         {/* Action controllers: Tab mode switcher & Report downloads */}
-        <div className="flex items-center gap-3 justify-end">
+        <div className="flex flex-wrap items-center gap-3 justify-start md:justify-end w-full md:w-auto">
           
           {/* Layout switches */}
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200">
+          <div className="bg-slate-100 p-1 rounded-xl flex items-center border border-slate-200 w-full sm:w-auto justify-between sm:justify-start">
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`p-1.5 px-3 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all border-none cursor-pointer ${
+              className={`p-1.5 px-3 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all border-none cursor-pointer flex-1 sm:flex-initial justify-center ${
                 viewMode === 'table' 
                   ? 'bg-white text-indigo-700 shadow-sm' 
                   : 'text-slate-500 hover:text-slate-800 bg-transparent'
@@ -442,12 +442,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               title="Xem danh sách dạng bảng Excel báo cáo"
             >
               <Table className="w-3.5 h-3.5" />
-              <span>Dạng Bảng</span>
+              <span className="hidden sm:inline">Dạng Bảng</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode('cards')}
-              className={`p-1.5 px-3 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all border-none cursor-pointer ${
+              className={`p-1.5 px-3 rounded-lg text-xs font-extrabold flex items-center gap-1.5 transition-all border-none cursor-pointer flex-1 sm:flex-initial justify-center ${
                 viewMode === 'cards' 
                   ? 'bg-white text-indigo-700 shadow-sm' 
                   : 'text-slate-500 hover:text-slate-800 bg-transparent'
@@ -455,7 +455,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               title="Xem danh sách dạng lưới thẻ chi tiết"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Dạng Thẻ</span>
+              <span className="hidden sm:inline">Dạng Thẻ</span>
             </button>
           </div>
 
@@ -463,22 +463,24 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           <button
             type="button"
             onClick={() => setShowTrackModal(true)}
-            className="p-2 px-3.5 bg-teal-55 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            className="p-2 px-3.5 bg-teal-55 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm w-full sm:w-auto justify-center"
             title="Thêm, sửa, xóa quản lý danh mục chuyên khoa của báo cáo viên"
           >
             <Layers className="w-4 h-4 text-teal-600" />
-            <span>Danh các Chuyên khoa</span>
+            <span className="hidden sm:inline">Danh các Chuyên khoa</span>
+            <span className="sm:hidden">Chuyên khoa</span>
           </button>
 
           {role !== 'ctv' && (
             <button
               type="button"
               onClick={handleAddSpeaker}
-              className="p-2 px-3.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border-none shadow-sm"
+              className="p-2 px-3.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border-none shadow-sm w-full sm:w-auto justify-center"
               title="Thêm hồ sơ báo cáo viên thủ công"
             >
               <Plus className="w-4 h-4" />
-              <span>Thêm Báo Cáo Viên</span>
+              <span className="hidden sm:inline">Thêm Báo Cáo Viên</span>
+              <span className="sm:hidden">Thêm BCV</span>
             </button>
           )}
 
@@ -486,7 +488,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           <button
             type="button"
             onClick={handleExportXLSX}
-            className="p-2 px-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+            className="p-2 px-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm w-full sm:w-auto justify-center"
             title="Tải báo cáo tóm tắt danh sách báo cáo viên vào file .xlsx/csv"
           >
             <FileSpreadsheet className="w-4 h-4" />
