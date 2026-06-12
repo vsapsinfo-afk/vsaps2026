@@ -64,9 +64,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Thiếu API Token để thực hiện kết nối.' });
     }
 
+    // Auto-detect sandbox tokens (typically starting with 'apikeysb_')
+    const isSandbox = activeToken.trim().startsWith('apikeysb_');
+    const apiBase = isSandbox ? 'https://userapi-sandbox.sepay.vn' : 'https://userapi.sepay.vn';
+
     if (isTest) {
       // Test connection check
-      const url = `https://userapi.sepay.vn/v2/transactions?limit=1`;
+      const url = `${apiBase}/v2/transactions?limit=1`;
       const fetchRes = await fetch(url, {
         method: 'GET',
         headers: {
@@ -92,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const amount = expectedAmountStr ? Number(expectedAmountStr) : 0;
     const q = encodeURIComponent(transferContentStr.substring(0, 50));
-    const url = `https://userapi.sepay.vn/v2/transactions?q=${q}&limit=20`;
+    const url = `${apiBase}/v2/transactions?q=${q}&limit=20`;
 
     const fetchRes = await fetch(url, {
       method: 'GET',
