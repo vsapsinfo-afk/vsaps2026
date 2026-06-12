@@ -7,7 +7,8 @@ import React, { useState } from 'react';
 import {
   BookOpen, Search, Users, FileText, Calendar, Coins, Award,
   Megaphone, Settings, Printer, Shield, Check, Info, AlertTriangle,
-  HelpCircle, ChevronRight, Copy, Terminal, ExternalLink
+  HelpCircle, ChevronRight, Copy, Terminal, ExternalLink,
+  FileSpreadsheet, MapPin, Plug, Upload, Table, CheckCircle
 } from 'lucide-react';
 
 interface GuideSection {
@@ -525,6 +526,279 @@ SMTP_SENDER="VSAPS 2026 <no-reply@vsaps2026.com>"`}
                 <strong className="text-slate-900 block">Lưu Ý Triển Khai API Serverless:</strong>
                 <p className="text-slate-500 mt-0.5">Dự án đã định cấu hình sẵn file <code>vercel.json</code>. Khi deploy lên Vercel, các API Endpoint phục vụ Zalo OA, Webhook SePay và Gửi Email sẽ tự động hoạt động như các Serverless Function mà không cần cài đặt thêm server Node.js rời.</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+    ,
+    {
+      id: 'excel-import',
+      title: '9. Import Hàng Loạt Bằng Excel',
+      shortDesc: 'Đăng ký đại biểu hàng loạt từ file Excel (.xlsx, .xls) hoặc CSV chỉ trong vài giây.',
+      icon: FileSpreadsheet,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5">
+            <h4 className="text-xs font-black uppercase tracking-wide flex items-center gap-2 text-indigo-900">
+              <FileSpreadsheet className="w-4 h-4 text-indigo-600 shrink-0" />
+              Import Hàng Loạt Đại Biểu Từ File Excel
+            </h4>
+            <p className="text-xs leading-relaxed mt-2 text-indigo-800">
+              Tính năng này cho phép Ban tổ chức nhập danh sách đại biểu từ file Excel hoặc CSV sẵn có — không cần nhập tay từng người. Rất hữu ích khi bạn đã có danh sách từ Google Form, hệ thống đăng ký cũ hoặc file Excel từ phòng hành chính.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">📋 Định Dạng File Được Hỗ Trợ</h5>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className="border border-emerald-200 bg-emerald-50 rounded-xl p-3 text-center">
+                <span className="font-extrabold text-emerald-800 block">.xlsx</span>
+                <span className="text-[10px] text-slate-500 mt-1 block">Excel 2007+ (Khuyên dùng)</span>
+              </div>
+              <div className="border border-blue-200 bg-blue-50 rounded-xl p-3 text-center">
+                <span className="font-extrabold text-blue-800 block">.xls</span>
+                <span className="text-[10px] text-slate-500 mt-1 block">Excel 97–2003</span>
+              </div>
+              <div className="border border-slate-200 bg-slate-50 rounded-xl p-3 text-center">
+                <span className="font-extrabold text-slate-700 block">.csv</span>
+                <span className="text-[10px] text-slate-500 mt-1 block">Văn bản phân cách dấu phẩy</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">📊 Cấu Trúc Cột Bắt Buộc Trong File Excel</h5>
+            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-800 text-slate-200 text-[10px] font-black uppercase">
+                    <th className="p-3">Tên Cột (Header)</th>
+                    <th className="p-3">Mô Tả</th>
+                    <th className="p-3">Bắt buộc?</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  <tr><td className="p-3 font-mono text-indigo-700">fullName</td><td className="p-3">Họ và tên đầy đủ của đại biểu</td><td className="p-3 text-emerald-600 font-bold">✅ Bắt buộc</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-mono text-indigo-700">email</td><td className="p-3">Địa chỉ Email nhận thông báo và QR Code</td><td className="p-3 text-emerald-600 font-bold">✅ Bắt buộc</td></tr>
+                  <tr><td className="p-3 font-mono text-indigo-700">phone</td><td className="p-3">Số điện thoại / Zalo nhận thông báo</td><td className="p-3 text-emerald-600 font-bold">✅ Bắt buộc</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-mono text-indigo-700">organization</td><td className="p-3">Tên bệnh viện / cơ sở công tác</td><td className="p-3 text-slate-400">Tùy chọn</td></tr>
+                  <tr><td className="p-3 font-mono text-indigo-700">title</td><td className="p-3">Học hàm / học vị (BS, ThS, PGS...)</td><td className="p-3 text-slate-400">Tùy chọn</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-mono text-indigo-700">registrationPackage</td><td className="p-3">Tên gói đăng ký (phải khớp với gói đã cài)</td><td className="p-3 text-slate-400">Tùy chọn</td></tr>
+                  <tr><td className="p-3 font-mono text-indigo-700">paymentStatus</td><td className="p-3">Trạng thái: <code>paid</code> / <code>pending</code> / <code>cancelled</code></td><td className="p-3 text-slate-400">Tùy chọn</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">🚀 Các Bước Thực Hiện Import</h5>
+            <ol className="list-decimal pl-5 text-xs text-slate-600 space-y-2.5 leading-relaxed">
+              <li>Vào phân hệ <strong className="text-indigo-600">Quản Lý Đại Biểu</strong> trên thanh điều hướng bên trái.</li>
+              <li>Nhấn nút <strong className="text-indigo-600">"Nhập từ Excel"</strong> (biểu tượng bảng tính) ở góc trên bên phải.</li>
+              <li>Kéo thả file Excel vào vùng <strong>Drag &amp; Drop</strong> hoặc bấm <strong>"Chọn File"</strong> để duyệt file từ máy tính.</li>
+              <li>Hệ thống tự động đọc và <strong>hiển thị xem trước dữ liệu</strong> — kiểm tra lại danh sách trước khi xác nhận.</li>
+              <li>Nhấn <strong className="text-emerald-600">"Xác Nhận Import"</strong> để lưu toàn bộ vào hệ thống.</li>
+              <li>Mỗi đại biểu sẽ được cấp mã số tự động và có thể gửi email/Zalo thông báo ngay sau khi import.</li>
+            </ol>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 flex gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="block">Lưu ý khi chuẩn bị file:</strong>
+              <ul className="list-disc pl-4 mt-1 space-y-1 text-amber-800">
+                <li>Dòng đầu tiên phải là <strong>tiêu đề cột (header row)</strong> — không được để trống hay gộp ô.</li>
+                <li>Không cần đúng thứ tự cột — hệ thống tự nhận diện tên cột.</li>
+                <li>Nếu cột <code>paymentStatus</code> để trống, hệ thống mặc định là <code>pending</code> (chờ thanh toán).</li>
+                <li>Dữ liệu trùng email sẽ được bỏ qua để tránh nhập hai lần.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'sponsor-booth',
+      title: '10. Quản Lý Gian Hàng Nhà Tài Trợ',
+      shortDesc: 'Chọn và quản lý vị trí gian hàng triển lãm cho từng nhà tài trợ.',
+      icon: MapPin,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-teal-50 border border-teal-100 rounded-2xl p-5">
+            <h4 className="text-xs font-black uppercase tracking-wide flex items-center gap-2 text-teal-900">
+              <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
+              Vị Trí Gian Hàng (Booth Location) Triển Lãm
+            </h4>
+            <p className="text-xs leading-relaxed mt-2 text-teal-800">
+              Tính năng Vị trí Gian hàng cho phép BTC phân bổ và theo dõi vị trí triển lãm của từng nhà tài trợ trên sơ đồ hội nghị — giúp quản lý mặt bằng gian hàng chuyên nghiệp và tránh xung đột vị trí.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">🗺️ Cách Đặt Vị Trí Gian Hàng</h5>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs space-y-3">
+              <p className="text-slate-700 font-bold">Có 2 cách gán vị trí gian hàng cho nhà tài trợ:</p>
+              <div className="space-y-3">
+                <div className="bg-white border border-slate-200 rounded-xl p-3">
+                  <h6 className="font-bold text-slate-900 flex items-center gap-1.5 mb-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-black">A</span>
+                    Qua Form Đăng Ký Tài Trợ (Public)
+                  </h6>
+                  <ol className="list-decimal pl-5 space-y-1 text-slate-500 leading-relaxed">
+                    <li>Nhà tài trợ truy cập trang đăng ký tài trợ trực tuyến.</li>
+                    <li>Tại mục <strong>"Vị trí gian hàng mong muốn"</strong>, chọn từ danh sách vị trí sẵn có (A1, A2, B1...) hoặc nhập mô tả tùy chỉnh.</li>
+                    <li>Sau khi gửi form, yêu cầu vị trí được lưu vào hồ sơ và BTC duyệt xác nhận.</li>
+                  </ol>
+                </div>
+                <div className="bg-white border border-slate-200 rounded-xl p-3">
+                  <h6 className="font-bold text-slate-900 flex items-center gap-1.5 mb-2">
+                    <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-[10px] font-black">B</span>
+                    Qua Giao Diện Quản Trị (Admin)
+                  </h6>
+                  <ol className="list-decimal pl-5 space-y-1 text-slate-500 leading-relaxed">
+                    <li>Vào <strong className="text-indigo-600">Quản Lý Nhà Tài Trợ</strong> → tìm nhà tài trợ cần gán.</li>
+                    <li>Nhấn nút <strong>"Chỉnh sửa"</strong> (bút chì) trên thẻ nhà tài trợ.</li>
+                    <li>Trong form chỉnh sửa, tìm trường <strong>"Vị trí gian hàng"</strong> → nhập hoặc chọn vị trí.</li>
+                    <li>Nhấn <strong className="text-emerald-600">"Lưu thay đổi"</strong>.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">📋 Quản Lý Gói Đăng Ký Nhà Tài Trợ</h5>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              BTC có thể tùy chỉnh các gói tài trợ (Bạch Kim, Vàng, Bạc, Đồng) và quyền lợi đi kèm tại <strong>Cài Đặt → Gói Tài Trợ</strong>:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-slate-550 space-y-1.5 leading-normal">
+              <li>Đặt tên gói, mức phí tài trợ và số lượng gian hàng kèm theo mỗi gói.</li>
+              <li>Mô tả quyền lợi hiển thị trên trang đăng ký public để nhà tài trợ tự chọn gói phù hợp.</li>
+              <li>Xuất báo cáo danh sách nhà tài trợ kèm vị trí gian hàng ra file Excel để in sơ đồ mặt bằng.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">📄 Xuất Hợp Đồng Tài Trợ PDF</h5>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Hệ thống tự động tạo hợp đồng tài trợ PDF chứa đầy đủ thông tin: tên công ty, gói tài trợ, số tiền, quyền lợi và <strong>vị trí gian hàng được xác nhận</strong>.
+            </p>
+            <ol className="list-decimal pl-5 text-xs text-slate-550 space-y-1 leading-relaxed">
+              <li>Tại danh sách nhà tài trợ, nhấn icon <strong>"In / Tải hợp đồng"</strong>.</li>
+              <li>Hệ thống render PDF ngay trên trình duyệt — xem trước rồi tải về hoặc in trực tiếp.</li>
+              <li>Hợp đồng có đầy đủ thông tin vị trí gian hàng, thích hợp để ký kết chính thức.</li>
+            </ol>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'integrations',
+      title: '11. Hướng Dẫn Tích Hợp Bên Thứ Ba',
+      shortDesc: 'Kết nối SePay, Zalo ZNS, Email SMTP/Resend và Google Gemini AI vào hệ thống.',
+      icon: Plug,
+      content: (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* SePay */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 text-[11px] font-black">💳</span>
+                SePay — Đối Soát Tự Động
+              </h5>
+              <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                <li>Vào <strong>Cài Đặt → SePay - Xác nhận CK</strong>.</li>
+                <li>Copy địa chỉ <strong>Webhook URL</strong> hiển thị trên màn hình.</li>
+                <li>Đăng nhập <a href="https://sepay.vn" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">sepay.vn</a> → Tạo tích hợp Webhook → Dán URL vừa copy.</li>
+                <li>Điền <strong>API Key</strong> của SePay vào ô cấu hình → Nhấn <strong className="text-emerald-600">"Lưu & Kiểm tra"</strong>.</li>
+              </ol>
+              <div className="bg-slate-900 text-emerald-400 p-2.5 rounded-lg font-mono text-[10px] break-all">
+                {window.location.origin}/api/sepay/webhook
+              </div>
+            </div>
+
+            {/* Zalo ZNS */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 text-[11px] font-black">💬</span>
+                Zalo ZNS — Thông Báo OA
+              </h5>
+              <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                <li>Truy cập <a href="https://developers.zalo.me" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">developers.zalo.me</a> → Tạo ứng dụng mới.</li>
+                <li>Lấy <strong>App ID</strong>, <strong>Secret Key</strong> và <strong>OA ID</strong> của Zalo Official Account.</li>
+                <li>Điền vào <strong>Cài Đặt → Tích Hợp API → Zalo OA</strong>.</li>
+                <li>Lấy <strong>Refresh Token</strong> từ cổng Zalo → Nhấn <strong>"Gia hạn Access Token"</strong> (token ZNS có hạn 24h).</li>
+                <li>Gửi tin test để kiểm tra kết nối.</li>
+              </ol>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800">
+                ⚠️ Access Token Zalo chỉ có hiệu lực <strong>24 giờ</strong> — cần gia hạn định kỳ mỗi ngày.
+              </div>
+            </div>
+
+            {/* Email SMTP */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center text-red-700 text-[11px] font-black">📧</span>
+                Email SMTP / Resend
+              </h5>
+              <div className="text-xs text-slate-600 space-y-2">
+                <p className="font-bold text-slate-800">Cách 1 — SMTP Server (Gmail):</p>
+                <ul className="list-disc pl-4 space-y-1 leading-relaxed">
+                  <li>Host: <code>smtp.gmail.com</code>, Port: <code>587</code></li>
+                  <li>Bật <strong>"Xác minh 2 bước"</strong> cho Gmail → Tạo <strong>App Password</strong> (16 ký tự).</li>
+                  <li>Dùng App Password làm mật khẩu SMTP (không dùng mật khẩu Gmail thường).</li>
+                </ul>
+                <p className="font-bold text-slate-800 pt-1">Cách 2 — Resend API (Khuyên dùng):</p>
+                <ul className="list-disc pl-4 space-y-1 leading-relaxed">
+                  <li>Đăng ký tại <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">resend.com</a> → Tạo API Key.</li>
+                  <li>Điền vào <strong>Cài Đặt → Thông Báo → Resend API</strong>.</li>
+                  <li>Gửi được 3.000 email/tháng miễn phí — không bị rơi vào hòm thư Spam.</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Gemini AI */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-purple-700 text-[11px] font-black">✨</span>
+                Google Gemini AI
+              </h5>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Gemini AI được tích hợp để hỗ trợ các tính năng trợ lý thông minh trong hệ thống.
+              </p>
+              <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                <li>Truy cập <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">aistudio.google.com</a> → <strong>Get API Key</strong>.</li>
+                <li>Copy API Key (dạng <code>AIza...</code>).</li>
+                <li>Điền vào file <code>.env.local</code>: <code>GEMINI_API_KEY=AIza...</code></li>
+                <li>Khởi động lại server để áp dụng.</li>
+              </ol>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 text-[10px] text-purple-800">
+                💡 Free tier Gemini API: 1.500 requests/ngày — đủ dùng cho hội nghị quy mô vừa.
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">✅ Bảng Kiểm Tra Kết Nối Tích Hợp</h5>
+            <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-800 text-slate-200 text-[10px] font-black uppercase">
+                    <th className="p-3">Dịch Vụ</th>
+                    <th className="p-3">Vị Trí Kiểm Tra</th>
+                    <th className="p-3">Cách Xác Nhận</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  <tr><td className="p-3 font-bold">SePay</td><td className="p-3">Cài Đặt → SePay</td><td className="p-3">Nút "Kiểm tra kết nối" → Hiện trạng thái xanh</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-bold">Zalo ZNS</td><td className="p-3">Cài Đặt → Zalo OA</td><td className="p-3">Gửi tin test → Nhận Zalo trên điện thoại</td></tr>
+                  <tr><td className="p-3 font-bold">Email SMTP</td><td className="p-3">Cài Đặt → Email</td><td className="p-3">Gửi email test → Kiểm tra hộp thư</td></tr>
+                  <tr className="bg-slate-50"><td className="p-3 font-bold">Supabase DB</td><td className="p-3">Cài Đặt → Supabase</td><td className="p-3">Nút "Kiểm tra kết nối" → Hiện số bản ghi</td></tr>
+                  <tr><td className="p-3 font-bold">Gemini AI</td><td className="p-3">.env.local</td><td className="p-3">Khởi động server → Không có lỗi API key</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
