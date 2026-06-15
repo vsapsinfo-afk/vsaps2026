@@ -839,7 +839,9 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     </div>
 
                     {/* Language Selector */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+                    {
+                      /*
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
                       <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
                         {L.f('nationality', 'Chọn ngôn ngữ *', 'Select Language *')}
                       </label>
@@ -862,6 +864,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         </button>
                       </div>
                     </div>
+                      /*
+                    }
 
 
                     {/* Avatar & Doctor Proof row */}
