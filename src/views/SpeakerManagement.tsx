@@ -149,7 +149,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
   };
 
-  const handleUpdateStatus = (id: string, newStatus: 'approved' | 'rejected' | 'pending') => {
+  const handleUpdateStatus = async (id: string, newStatus: 'approved' | 'rejected' | 'pending') => {
     if (role === 'ctv') {
       alert('Tài khoản Cộng tác viên không có quyền phê duyệt đề tài báo cáo khoa học!');
       return;
@@ -157,6 +157,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     const list = store.getSpeakers();
     const found = list.find(s => s.id === id);
     if (found) {
+      const oldStatus = found.status;
       found.status = newStatus;
       
       // Auto assign a default session time for display, if approved
@@ -167,9 +168,29 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       store.saveSpeaker(found);
       loadAll();
       
-      // If approved, trigger simulated notification alert
-      if (newStatus === 'approved') {
-        alert(`Đã hệ thống hóa Phê Duyệt! Email thông báo tóm tắt lịch trình đã phát tự động gửi tới Bác Sĩ ${found.fullName}.`);
+      // If approved, trigger real email notification
+      if (newStatus === 'approved' && oldStatus !== 'approved') {
+        try {
+          const mockAttendee = {
+            id: found.id,
+            title: found.title,
+            fullName: found.fullName,
+            email: found.email,
+            phone: found.phone,
+            organization: found.organization,
+            packageName: 'Báo cáo viên',
+            packageFee: 0,
+            paymentStatus: 'paid' as const,
+            qrCodeValue: `VSAPS2026-${found.id}-${found.fullName.split(' ').pop()?.toUpperCase() || 'SPK'}`,
+            presentationTitle: found.presentationTitle,
+            presentationTrack: found.presentationTrack
+          };
+          await store.sendEmail(mockAttendee as any, undefined, undefined, 'tmpl-speaker-approved');
+          alert(`Đã hệ thống hóa Phê Duyệt! Email thông báo tóm tắt lịch trình đã phát tự động gửi tới Bác Sĩ ${found.fullName}.`);
+        } catch (error) {
+          console.error("Gửi email phê duyệt thất bại:", error);
+          alert(`Đã phê duyệt đề tài, nhưng xảy ra lỗi khi gửi email tự động: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
     }
   };

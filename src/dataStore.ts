@@ -2324,6 +2324,15 @@ export class DataStore {
           subject: '🎯 Xác nhận thanh toán thành công VSAPS 2026',
           content: 'Xin chào {{title}} {{fullname}}.\n\nChúng tôi xin xác nhận đã nhận được thanh toán phí tham dự Hội nghị Khoa học VSAPS 2026 của bạn cho gói {{package}}.\n- Mã đại biểu: {{code}}\n- Trạng thái đóng phí: {{payment_status}}\n\nTrân trọng cảm ơn!'
         };
+      } else if (templateId === 'tmpl-speaker-approved' || templateId === 'abstract_approved') {
+        template = {
+          id: 'tmpl-speaker-approved',
+          name: 'Duyệt Đề Tài Báo Cáo Thành Công (Email)',
+          type: 'abstract_approved',
+          channel: 'email',
+          subject: '🎉 Thư mời báo cáo & xác nhận đề tài khoa học VSAPS 2026',
+          content: 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng thông báo: Báo cáo khoa học của Quý vị với đề tài:\n\n"{{presentation_title}}"\n\nthuộc chuyên khoa/chương trình: {{track}}\n\nĐã được Hội đồng Khoa học phê duyệt chính thức để trình bày tại hội nghị.\n\nXin trân trọng cảm ơn sự đóng góp của Quý vị cho thành công chung của Hội nghị VSAPS 2026!\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+        };
       } else {
         template = this.templates.find(t => t.channel === 'email' && t.type === 'registration_success')
           || { id: 'tmpl-reg-email', name: 'Đăng Ký Đại Biểu Thành Công (Email)', type: 'registration_success', channel: 'email', subject: '🎯 Xác nhận bảo mẫu đăng ký thành công VSAPS 2026', content: 'Xin chào {{title}} {{fullname}}...' };
