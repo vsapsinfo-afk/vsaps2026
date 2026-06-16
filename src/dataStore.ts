@@ -2339,7 +2339,7 @@ export class DataStore {
       }
     }
 
-    const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chở Đối Soát' : 'Chưa Thanh Toán';
+    const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
     const rawContent = customBody || template.content || '';
     const attAny = attendee as any;
 
