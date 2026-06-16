@@ -286,7 +286,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     setContractFileUrl(sponsor.contractFileUrl || '');
   };
 
-  const handleSaveContract = (e: React.FormEvent) => {
+  const handleSaveContract = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showContractModal) return;
 
@@ -299,6 +299,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     const originalList = store.getSponsors();
     const found = originalList.find(s => s.id === showContractModal.id);
     if (found) {
+      const oldStatus = found.contractStatus;
       found.contractNo = contractNo || undefined;
       found.contractSignDate = contractSignDate || undefined;
       found.contractValue = nVal;
@@ -308,6 +309,31 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
         found.contractFileUrl = contractFileUrl;
       }
       store.saveSponsor(found);
+
+      // Nếu trạng thái chuyển sang đã ký (signed) và trước đó chưa ký, gửi email thông báo
+      if (contractStatus === 'signed' && oldStatus !== 'signed') {
+        try {
+          const mockAttendee = {
+            id: found.id,
+            title: 'Quý đối tác',
+            fullName: found.contactPerson,
+            email: found.contactEmail,
+            phone: found.contactPhone,
+            organization: found.name,
+            packageName: found.tier.toUpperCase(),
+            packageFee: found.pledgedAmount,
+            paymentStatus: found.paymentStatus,
+            qrCodeValue: `VSAPS2026-SPN-${found.id}`,
+            pledgedAmount: found.pledgedAmount,
+            paidAmount: found.paidAmount,
+            boothLocation: found.boothLocation,
+            contractNo: found.contractNo
+          };
+          await store.sendEmail(mockAttendee as any, undefined, undefined, 'tmpl-sponsor-contract');
+        } catch (emailErr) {
+          console.error("Gửi email ký hợp đồng nhà tài trợ thất bại:", emailErr);
+        }
+      }
     }
 
     setShowContractModal(null);
@@ -330,7 +356,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
 
     setIsSimulatingSuccess(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       // Update Sponsor amounts
       const originalList = store.getSponsors();
       const found = originalList.find(s => s.id === sponsorObj.id);
@@ -339,6 +365,29 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
         found.paidAmount = nextPaid >= found.pledgedAmount ? found.pledgedAmount : nextPaid;
         found.paymentStatus = found.paidAmount >= found.pledgedAmount ? 'fully_paid' : 'partially_paid';
         store.saveSponsor(found);
+
+        // Gửi email xác nhận thanh toán tài trợ
+        try {
+          const mockAttendee = {
+            id: found.id,
+            title: 'Quý đối tác',
+            fullName: found.contactPerson,
+            email: found.contactEmail,
+            phone: found.contactPhone,
+            organization: found.name,
+            packageName: found.tier.toUpperCase(),
+            packageFee: found.pledgedAmount,
+            paymentStatus: found.paymentStatus,
+            qrCodeValue: `VSAPS2026-SPN-${found.id}`,
+            pledgedAmount: found.pledgedAmount,
+            paidAmount: found.paidAmount,
+            boothLocation: found.boothLocation,
+            contractNo: found.contractNo
+          };
+          await store.sendEmail(mockAttendee as any, undefined, undefined, 'tmpl-sponsor-paid');
+        } catch (emailErr) {
+          console.error("Gửi email xác nhận thanh toán nhà tài trợ thất bại:", emailErr);
+        }
       }
 
       setIsSimulatingSuccess(false);

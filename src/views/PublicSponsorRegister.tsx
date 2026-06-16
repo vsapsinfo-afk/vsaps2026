@@ -358,6 +358,28 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
         'warning'
       );
 
+      // Tự động gửi email xác nhận đăng ký tài trợ
+      try {
+        const mockAttendee = {
+          id: saved.id,
+          title: 'Quý đối tác',
+          fullName: saved.contactPerson,
+          email: saved.contactEmail,
+          phone: saved.contactPhone,
+          organization: saved.name,
+          packageName: saved.tier.toUpperCase(),
+          packageFee: saved.pledgedAmount,
+          paymentStatus: saved.paymentStatus,
+          qrCodeValue: `VSAPS2026-SPN-${saved.id}`,
+          pledgedAmount: saved.pledgedAmount,
+          paidAmount: saved.paidAmount,
+          boothLocation: saved.boothLocation
+        };
+        await store.sendEmail(mockAttendee as any, undefined, undefined, 'tmpl-sponsor-registered');
+      } catch (emailErr) {
+        console.error("Gửi email đăng ký nhà tài trợ thất bại:", emailErr);
+      }
+
       setCreatedSponsor(saved);
       setIsSubmitted(true);
       window.scrollTo(0, 0);

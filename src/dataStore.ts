@@ -2333,13 +2333,43 @@ export class DataStore {
           subject: '🎉 Thư mời báo cáo & xác nhận đề tài khoa học VSAPS 2026',
           content: 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng thông báo: Báo cáo khoa học của Quý vị với đề tài:\n\n"{{presentation_title}}"\n\nthuộc chuyên khoa/chương trình: {{track}}\n\nĐã được Hội đồng Khoa học phê duyệt chính thức để trình bày tại hội nghị.\n\nXin trân trọng cảm ơn sự đóng góp của Quý vị cho thành công chung của Hội nghị VSAPS 2026!\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
         };
+      } else if (templateId === 'tmpl-sponsor-registered' || templateId === 'sponsor_registered') {
+        template = {
+          id: 'tmpl-sponsor-registered',
+          name: 'Xác Nhận Đăng Ký Tài Trợ (Email)',
+          type: 'sponsor_registered',
+          channel: 'email',
+          subject: '🤝 Xác nhận đăng ký tài trợ Hội nghị Khoa học VSAPS 2026',
+          content: 'Kính gửi Đại diện {{organization}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin chân thành cảm ơn Quý đơn vị đã đăng ký đồng hành cùng hội nghị với tư cách là Nhà tài trợ.\n\nTHÔNG TIN ĐĂNG KÝ CHI TIẾT:\n• Đơn vị tài trợ: {{organization}}\n• Gói tài trợ: {{package}}\n• Giá trị tài trợ: {{package_fee}} VNĐ\n• Người liên hệ: {{fullname}}\n• Số điện thoại: {{phone}}\n• Email: {{email}}\n• Vị trí gian hàng mong muốn: {{booth_location}}\n\nHệ thống đã ghi nhận thông tin đăng ký của Quý đơn vị. Ban Tổ Chức sẽ liên hệ trong thời gian sớm nhất để hoàn tất thủ tục hợp đồng và sơ đồ gian hàng.\n\nTrân trọng cảm ơn sự đồng hành của Quý đơn vị!\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+        };
+      } else if (templateId === 'tmpl-sponsor-paid' || templateId === 'sponsor_paid') {
+        template = {
+          id: 'tmpl-sponsor-paid',
+          name: 'Xác Nhận Thanh Toán Tài Trợ (Email)',
+          type: 'sponsor_paid',
+          channel: 'email',
+          subject: '🎯 Xác nhận hoàn tất đóng góp tài trợ VSAPS 2026',
+          content: 'Kính gửi Đại diện {{organization}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin xác nhận đã tiếp nhận khoản đóng góp tài trợ từ Quý đơn vị:\n\n• Đơn vị tài trợ: {{organization}}\n• Gói tài trợ: {{package}}\n• Số tiền đã nộp: {{paid_amount}} VNĐ\n• Trạng thái đóng phí: {{payment_status}}\n\nBan Tổ Chức xin trân trọng cảm ơn sự ủng hộ và đồng hành quý báu của Quý đơn vị đối với sự thành công của Hội nghị VSAPS 2026.\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+        };
+      } else if (templateId === 'tmpl-sponsor-contract' || templateId === 'sponsor_contract') {
+        template = {
+          id: 'tmpl-sponsor-contract',
+          name: 'Xác Nhận Ký Kết Hợp Đồng Tài Trợ (Email)',
+          type: 'sponsor_contract',
+          channel: 'email',
+          subject: '📜 Xác nhận ký kết hợp đồng tài trợ VSAPS 2026',
+          content: 'Kính gửi Đại diện {{organization}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng xác nhận Hợp đồng tài trợ của Quý đơn vị đã được ký kết thành công:\n\n• Đơn vị tài trợ: {{organization}}\n• Gói tài trợ: {{package}}\n• Số hợp đồng: {{contract_no}}\n• Trạng thái hợp đồng: Đã ký kết (Signed)\n\nBản scan hợp đồng đã được lưu trữ an toàn trên hệ thống. Ban Tổ Chức sẽ tiến hành các bước chuẩn bị gian hàng triển lãm và in ấn logo của Quý đơn vị theo đúng điều khoản cam kết.\n\nTrân trọng cảm ơn Quý đơn vị!\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+        };
       } else {
         template = this.templates.find(t => t.channel === 'email' && t.type === 'registration_success')
           || { id: 'tmpl-reg-email', name: 'Đăng Ký Đại Biểu Thành Công (Email)', type: 'registration_success', channel: 'email', subject: '🎯 Xác nhận bảo mẫu đăng ký thành công VSAPS 2026', content: 'Xin chào {{title}} {{fullname}}...' };
       }
     }
 
-    const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
+    const statusStr = attendee.paymentStatus as string;
+    const payStatusText = statusStr === 'paid' || statusStr === 'fully_paid' ? 'Đã Thanh Toán' : 
+                          statusStr === 'pending_verification' ? 'Chờ Đối Soát' : 
+                          statusStr === 'partially_paid' ? 'Thanh toán một phần' : 'Chưa Thanh Toán';
     const rawContent = customBody || template.content || '';
     const attAny = attendee as any;
 
@@ -2353,13 +2383,21 @@ export class DataStore {
       .replace(/\{\{email\}\}/g, attendee.email || '')
       .replace(/\{\{phone\}\}/g, attendee.phone || '')
       .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
-      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '');
+      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '')
+      .replace(/\{\{pledged_amount\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : '')
+      .replace(/\{\{paid_amount\}\}/g, attAny.paidAmount !== undefined ? attAny.paidAmount.toLocaleString() : '')
+      .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
+      .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '')
+      .replace(/\{\{package_fee\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : (attendee.packageFee ? attendee.packageFee.toLocaleString() : '0'));
 
     const finalSubject = (customSubject || template.subject || "Xác nhận đăng ký VSAPS 2026")
       .replace(/\{\{title\}\}/g, attendee.title || '')
       .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
+      .replace(/\{\{organization\}\}/g, attendee.organization || '')
       .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
-      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '');
+      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '')
+      .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
+      .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '');
 
     const payload = {
       to: attendee.email,
@@ -2383,7 +2421,13 @@ export class DataStore {
       try {
         const isHtml = /<[a-z][\s\S]*>/i.test(content);
         const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
-        const isSpeakerEmail = template?.type === 'abstract_approved' || template?.id === 'tmpl-speaker-email' || attendee.id.includes('SPK');
+        const hideQrSection = template?.type === 'abstract_approved' || 
+                              template?.id === 'tmpl-speaker-email' || 
+                              template?.id === 'tmpl-speaker-approved' ||
+                              template?.type?.includes('sponsor') ||
+                              template?.id?.includes('sponsor') ||
+                              attendee.id.includes('SPK') || 
+                              attendee.id.includes('SPN');
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
@@ -2395,7 +2439,7 @@ export class DataStore {
               ${formattedBody}
             </p>
             
-            ${!isSpeakerEmail ? `
+            ${!hideQrSection ? `
             <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
                 <tr><td style="padding: 6px 0; font-weight: bold; width: 130px;">Mã Đại Biểu:</td><td style="padding: 6px 0; color: #4f46e5; font-family: monospace; font-weight: bold;">${attendee.id}</td></tr>
