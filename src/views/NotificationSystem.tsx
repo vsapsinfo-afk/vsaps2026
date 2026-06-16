@@ -627,6 +627,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       .replace(/\{\{email\}\}/g, mockAttendee.email)
       .replace(/\{\{phone\}\}/g, mockAttendee.phone);
 
+    const isSpeakerEmail = selectedTemplate?.type === 'abstract_approved' || selectedTemplate?.id === 'tmpl-speaker-email';
+
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; text-align: left; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
         <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
@@ -638,6 +640,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           ${previewBody}
         </div>
         
+        ${!isSpeakerEmail ? `
         <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
           <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
             <tr><td style="padding: 6px 0; font-weight: bold; width: 130px;">Mã Đại Biểu:</td><td style="padding: 6px 0; color: #4f46e5; font-family: monospace; font-weight: bold;">${mockAttendee.id}</td></tr>
@@ -651,6 +654,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; font-weight: bold;">MÃ QR CHECK-IN (SIMULATED)</p>
           <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(mockAttendee.qrCodeValue)}" alt="QR Code" style="width: 150px; height: 150px; display: inline-block; border: 4px solid white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" />
         </div>
+        ` : ''}
       </div>
     `;
   };

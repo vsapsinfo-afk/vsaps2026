@@ -2362,6 +2362,7 @@ export class DataStore {
       try {
         const isHtml = /<[a-z][\s\S]*>/i.test(content);
         const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
+        const isSpeakerEmail = template?.type === 'abstract_approved' || template?.id === 'tmpl-speaker-email' || attendee.id.includes('SPK');
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
@@ -2373,6 +2374,7 @@ export class DataStore {
               ${formattedBody}
             </p>
             
+            ${!isSpeakerEmail ? `
             <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
               <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
                 <tr><td style="padding: 6px 0; font-weight: bold; width: 130px;">Mã Đại Biểu:</td><td style="padding: 6px 0; color: #4f46e5; font-family: monospace; font-weight: bold;">${attendee.id}</td></tr>
@@ -2386,6 +2388,7 @@ export class DataStore {
               <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; font-weight: bold;">MÃ QR CHECK-IN</p>
               <img src="${payload.attachment_qr}" alt="QR Code" style="width: 180px; height: 180px;" />
             </div>
+            ` : ''}
           </div>
         `;
 
