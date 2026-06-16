@@ -5,9 +5,9 @@ importScripts('OneSignalSDK.sw.js');
 // Strategy: Cache First for static assets, Network First for API/Supabase
 // Background Sync for offline check-in queue
 
-const CACHE_NAME = 'vsaps2026-v2';
-const STATIC_CACHE = 'vsaps2026-static-v2';
-const DYNAMIC_CACHE = 'vsaps2026-dynamic-v2';
+const CACHE_NAME = 'vsaps2026-v3';
+const STATIC_CACHE = 'vsaps2026-static-v3';
+const DYNAMIC_CACHE = 'vsaps2026-dynamic-v3';
 
 // App shell resources to pre-cache during install
 const APP_SHELL = [
@@ -46,7 +46,7 @@ const API_PATTERNS = [
 // INSTALL EVENT - Pre-cache app shell
 // ============================================================
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Service Worker...');
+  console.log('[SW] Installing Service Worker v3...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -54,8 +54,9 @@ self.addEventListener('install', (event) => {
         return cache.addAll(APP_SHELL);
       })
       .then(() => {
-        console.log('[SW] App shell cached successfully');
-        // Don't skip waiting automatically - let the app control this
+        console.log('[SW] App shell cached. Activating immediately (skipWaiting).');
+        // Activate immediately so new deploys are picked up without waiting for all tabs to close
+        return self.skipWaiting();
       })
       .catch((err) => {
         console.error('[SW] Failed to cache app shell:', err);
@@ -107,7 +108,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip cross-origin API and database requests (Supabase, SePay, QR Server, etc.)
-  // Only handle same-origin requests and Google Fonts to avoid PWA sandbox/CORS sync issues on mobile
   const isSameOrigin = url.origin === self.location.origin;
   const isGoogleFont = url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com');
 
@@ -118,11 +118,18 @@ self.addEventListener('fetch', (event) => {
   // Check if this is an API/Supabase request
   const isApiRequest = API_PATTERNS.some((pattern) => pattern.test(request.url));
 
+  // Vite build JS/CSS files have content-hash in filename (e.g. index-BfyKynWU.js)
+  // Always fetch these from network first so new deploys are served immediately
+  const isHashedAsset = /\/assets\/.*-[a-zA-Z0-9]{8,}\.(js|css)$/.test(url.pathname);
+
   if (isApiRequest) {
     // Network First for API calls
     event.respondWith(networkFirst(request));
+  } else if (isHashedAsset) {
+    // Network First for hashed Vite bundles — avoids serving stale JS after deploy
+    event.respondWith(networkFirst(request));
   } else if (isStaticAsset(request.url)) {
-    // Cache First for static assets
+    // Cache First for other static assets (fonts, images, icons)
     event.respondWith(cacheFirst(request));
   } else {
     // Network First for navigation and other requests
@@ -181,7 +188,8 @@ async function cacheFirst(request) {
  */
 async function networkFirst(request) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
+  // Increased to 8s — gives Supabase auth/realtime more time to respond on slow mobile connections
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
     let fetchRequest;

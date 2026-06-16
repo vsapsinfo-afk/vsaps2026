@@ -44,10 +44,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = onAuthStateChange(async (event, session) => {
         try {
-          if (session?.user) {
-            const currUser = await getCurrentUser();
-            setUser(currUser);
-          } else {
+          if (event === 'SIGNED_OUT') {
+            // Explicit logout — clear user state
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+
+          if (event === 'TOKEN_REFRESHED') {
+            // Token was silently refreshed — no need to re-query DB profile
+            // Just ensure loading is false so the app doesn't get stuck
+            setLoading(false);
+            return;
+          }
+
+          if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+            if (session?.user) {
+              const currUser = await getCurrentUser();
+              setUser(currUser);
+            }
+          } else if (!session?.user) {
             setUser(null);
           }
         } catch (err) {
