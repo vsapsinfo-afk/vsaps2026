@@ -118,6 +118,9 @@ const getInitialLang = (): 'vietname' | 'foreign' => {
 export default function PublicDelegateRegister({ onNavigate }: PublicDelegateRegisterProps) {
   const packages = store.getPackages().filter(p => p.isActive);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const doctorProofInputRef = useRef<HTMLInputElement>(null);
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.delegateFormConfig;
   const addOnServices: AddOnService[] = businessConfig.addOnServices || [
@@ -677,16 +680,21 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 {L.t('Sau khi quét mã QR thanh toán phía trên, đại biểu vui lòng tải lên hình ảnh biên nhận chuyển khoản thành công. Ban thư ký sẽ đối soát giao dịch và phê duyệt hồ sơ của đại biểu tức thì.', 'After scanning the VietQR code above, please upload the payment receipt. The secretariat will verify the transaction and approve your registration immediately.')}
               </p>
               <div className="flex items-center gap-3">
-                <label className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 cursor-pointer text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-all w-fit select-none">
+                <div 
+                  role="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 cursor-pointer text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-all w-fit select-none"
+                >
                   <Upload className="w-4 h-4 text-slate-500" />
                   {L.t('Đính kèm hóa đơn chuyển khoản', 'Attach Receipt')}
                   <input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleProofUploadInSuccess}
                     className="hidden"
                   />
-                </label>
+                </div>
                 {isUploading && <span className="text-[10px] text-slate-400 font-mono animate-pulse">{L.t('Đang nạp file...', 'Uploading...')}</span>}
                 {createdAttendee.transactionProofUrl && <span className="text-xs text-emerald-650 font-bold flex items-center gap-1">{L.t('✓ Đã tải ảnh hóa đơn thành công!', '✓ Receipt uploaded successfully!')}</span>}
               </div>
@@ -894,10 +902,20 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                             {L.t('Khuyên dùng ảnh chân dung rõ mặt để check-in nhận diện khuôn mặt tức thì.', 'Recommended clear face portrait for instant facial recognition check-in.')}
                           </p>
                           <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
-                            <label className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none">
+                            <div 
+                              role="button"
+                              onClick={() => avatarInputRef.current?.click()}
+                              className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none"
+                            >
                               {L.t('Tải ảnh chân dung', 'Upload Portrait')}
-                              <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-                            </label>
+                              <input 
+                                ref={avatarInputRef}
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleAvatarUpload} 
+                                className="hidden" 
+                              />
+                            </div>
                             {avatarImage && (
                               <button
                                 type="button"
@@ -935,10 +953,20 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                             {L.t('Tải ảnh Thẻ bác sĩ, bằng cấp chuyên khoa, hoặc chứng chỉ hành nghề.', 'Upload doctor ID card, specialty degree, or practicing certificate.')}
                           </p>
                           <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
-                            <label className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none">
+                            <div 
+                              role="button"
+                              onClick={() => doctorProofInputRef.current?.click()}
+                              className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none"
+                            >
                               {L.t('Tải ảnh minh chứng', 'Upload Credentials')}
-                              <input type="file" accept="image/*" onChange={handleDoctorProofUpload} className="hidden" />
-                            </label>
+                              <input 
+                                ref={doctorProofInputRef}
+                                type="file" 
+                                accept="image/*" 
+                                onChange={handleDoctorProofUpload} 
+                                className="hidden" 
+                              />
+                            </div>
                             {doctorProofImage && (
                               <button
                                 type="button"

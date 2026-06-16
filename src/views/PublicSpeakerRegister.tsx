@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ArrowLeft, CheckCircle, FileText, Upload, Calendar, AlertCircle, Sparkles, BookOpen } from 'lucide-react';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
@@ -41,6 +41,8 @@ interface PublicSpeakerRegisterProps {
 
 export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegisterProps) {
   const businessConfig = store.getBusinessConfig();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const formCfg = businessConfig.speakerFormConfig;
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
@@ -347,10 +349,20 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     {L.t('Ảnh chân dung của báo cáo viên sẽ được in trên Kỷ yếu Hội nghị, Thẻ đại biểu danh dự & Website chính thức.', 'The portrait photo of the speaker will be printed in the Conference Proceedings, Honorary Badge & Official Website.')}
                   </p>
                   <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
-                    <label className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none">
+                    <div 
+                      role="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none"
+                    >
                       {L.t('Tải ảnh chân dung', 'Upload Portrait')}
-                      <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-                    </label>
+                      <input 
+                        ref={avatarInputRef}
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleAvatarUpload} 
+                        className="hidden" 
+                      />
+                    </div>
                     {avatarImage && (
                       <button
                         type="button"
@@ -535,16 +547,21 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <label className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 cursor-pointer text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm">
+                  <div 
+                    role="button"
+                    onClick={() => docInputRef.current?.click()}
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 cursor-pointer text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm"
+                  >
                     <Upload className="w-4 h-4 text-slate-400" />
                     {L.t('Bấm để tải tệp', 'Click to upload')}
                     <input
+                      ref={docInputRef}
                       type="file"
                       accept=".pdf,.docx,.ppt,.pptx"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
-                  </label>
+                  </div>
                   {fileName && (
                     <span className="text-xs text-teal-700 font-semibold truncate max-w-[120px] md:max-w-xs">{fileName}</span>
                   )}
