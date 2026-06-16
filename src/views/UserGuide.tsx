@@ -8,7 +8,7 @@ import {
   BookOpen, Search, Users, FileText, Calendar, Coins, Award,
   Megaphone, Settings, Printer, Shield, Check, Info, AlertTriangle,
   HelpCircle, ChevronRight, Copy, Terminal, ExternalLink,
-  FileSpreadsheet, MapPin, Plug, Upload, Table, CheckCircle
+  FileSpreadsheet, MapPin, Plug, Upload, Table, CheckCircle, Bell
 } from 'lucide-react';
 
 interface GuideSection {
@@ -799,6 +799,105 @@ SMTP_SENDER="VSAPS 2026 <no-reply@vsaps2026.com>"`}
                   <tr><td className="p-3 font-bold">Gemini AI</td><td className="p-3">.env.local</td><td className="p-3">Khởi động server → Không có lỗi API key</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'notification-templates',
+      title: '12. Quản Lý Mẫu Thông Báo Tự Động',
+      shortDesc: 'Thiết lập, thêm mới và cập nhật các mẫu email, tin nhắn Zalo ZNS tự động gửi cho đại biểu.',
+      icon: Bell,
+      content: (
+        <div className="space-y-6">
+          <div className="bg-teal-50 border border-teal-100 rounded-2xl p-5 text-teal-950">
+            <h4 className="text-sm font-black uppercase tracking-wide flex items-center gap-2 text-teal-900">
+              <Bell className="w-4 h-4 text-teal-600 shrink-0" />
+              Hệ Thống Mẫu Thông Báo Tự Động VSAPS 2026
+            </h4>
+            <p className="text-xs leading-relaxed mt-2 text-teal-800">
+              Hệ thống hỗ trợ gửi thông báo tự động (Email/Zalo ZNS) tới đại biểu dựa trên các trạng thái và hành động tương ứng (khi đăng ký thành công, khi đối soát duyệt thanh toán thành công, nhắc nhở lịch trình...). Phân hệ này cho phép Ban tổ chức thiết lập nội dung động thông qua các biến hệ thống để cá nhân hóa thông tin của từng đại biểu.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">🛠️ Các Bước Thêm Mới Mẫu Thông Báo</h5>
+            <ol className="space-y-2 text-xs text-slate-650 list-decimal pl-4">
+              <li>
+                <strong className="text-slate-900">Truy cập phân hệ:</strong> Vào mục <strong className="text-indigo-600">Hệ Thống Thông Báo</strong> trên thanh menu bên trái, chọn tab <strong className="text-indigo-600">Cấu hình mẫu tin</strong>.
+              </li>
+              <li>
+                <strong className="text-slate-900">Tạo mẫu mới:</strong> Bấm nút <strong className="text-teal-600 font-bold border border-teal-200 bg-teal-50 px-2 py-0.5 rounded">+ Thêm mới</strong> ở cột danh sách mẫu tin phía bên trái.
+              </li>
+              <li>
+                <strong className="text-slate-900">Thiết lập thông tin chung:</strong>
+                <ul className="list-disc pl-5 mt-1 space-y-1 text-slate-500">
+                  <li><strong>Mã số mẫu (ID):</strong> Nhập mã định danh duy nhất (dạng chữ thường không dấu, phân tách bằng dấu gạch ngang, ví dụ: <code>tmpl-registration-welcome</code>).</li>
+                  <li><strong>Tên mẫu tin:</strong> Tên mô tả trực quan (ví dụ: <code>Email Chào mừng Đại biểu đăng ký</code>).</li>
+                  <li><strong>Kênh truyền phát (Channel):</strong> Chọn <strong>Email</strong>, <strong>Zalo ZNS</strong> hoặc <strong>WhatsApp</strong>.</li>
+                  <li><strong>Loại sự kiện (Type):</strong> Gán sự kiện kích hoạt gửi tự động (Đăng ký thành công, Xác nhận thanh toán, Duyệt bài báo cáo, Nhắc nhở sự kiện).</li>
+                </ul>
+              </li>
+              <li>
+                <strong className="text-slate-900">Soạn thảo nội dung:</strong>
+                <ul className="list-disc pl-5 mt-1 space-y-1 text-slate-500">
+                  <li><strong>Đối với Email:</strong> Nhập <strong>Tiêu đề thư (Subject)</strong>. Sử dụng trình soạn thảo trực quan (Visual Editor) với thanh công cụ định dạng (In đậm, In nghiêng, Căn lề, Danh sách...) hoặc chuyển sang chế độ <strong>Mã HTML (Code Editor)</strong> để chèn các mẫu layout email chuyên nghiệp.</li>
+                  <li><strong>Đối với Zalo ZNS / WhatsApp:</strong> Điền <strong>Mã mẫu tin Zalo ZNS (Template ID)</strong> đã được duyệt trước trên hệ thống Zalo OA, thiết lập <strong>Loại mẫu tin</strong> (Tin Giao dịch / Tin Truyền thông) và <strong>Trạng thái duyệt Zalo</strong>.</li>
+                </ul>
+              </li>
+              <li>
+                <strong className="text-slate-900">Lưu lại:</strong> Bấm nút <strong className="text-emerald-600">"Lưu mẫu tin"</strong> ở góc dưới bên phải để hoàn tất và đưa mẫu tin vào trạng thái sẵn sàng sử dụng.
+              </li>
+            </ol>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider">🔄 Cập Nhật &amp; Hiệu Chỉnh Mẫu Có Sẵn</h5>
+            <ul className="space-y-2 text-xs text-slate-650">
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10.5px] shrink-0 mt-0.5">1</span>
+                <div>
+                  <strong className="text-slate-900">Chọn mẫu cần sửa:</strong> Trong tab <strong className="text-indigo-600">Cấu hình mẫu tin</strong>, bấm chọn mẫu tương ứng từ danh sách cột bên trái. Thông tin chi tiết của mẫu sẽ được tải lên biểu mẫu hiệu chỉnh ở giữa.
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10.5px] shrink-0 mt-0.5">2</span>
+                <div>
+                  <strong className="text-slate-900">Sử dụng biến động (Placeholders):</strong> Hệ thống cung cấp các nút chèn nhanh các biến số của đại biểu ở phía trên khung soạn thảo. Khi chèn, hệ thống sẽ sử dụng định dạng <code>{"{{variable_name}}"}</code> để tự động ánh xạ thông tin tương ứng khi gửi:
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">{"{{title}}"} (Danh xưng BS/TS...)</span>
+                    <span className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">{"{{fullname}}"} (Họ tên)</span>
+                    <span className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">{"{{code}}"} (Mã số đại biểu)</span>
+                    <span className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">{"{{package}}"} (Gói vé đăng ký)</span>
+                    <span className="bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono text-[10px]">{"{{payment_status}}"} (Tình trạng thanh toán)</span>
+                  </div>
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10.5px] shrink-0 mt-0.5">3</span>
+                <div>
+                  <strong className="text-slate-900">Kiểm tra hiển thị (Preview):</strong> Bấm chọn tab <strong className="text-indigo-600">Xem Trước (Preview)</strong> phía trên khung soạn thảo để kiểm tra cách hiển thị nội dung mẫu thư thực tế sau khi đã thay thế các biến mẫu thử nghiệm.
+                </div>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10.5px] shrink-0 mt-0.5">4</span>
+                <div>
+                  <strong className="text-slate-900">Gửi thử nghiệm thực tế (Test Send):</strong> Sử dụng tính năng gửi test ở dưới cùng. Nhập thông tin/chọn đại biểu chạy thử, nhấn <strong className="text-teal-600 font-bold border border-teal-200 bg-teal-50 px-2 py-0.5 rounded">Gửi thử Email</strong> hoặc <strong className="text-teal-600 font-bold border border-teal-200 bg-teal-50 px-2 py-0.5 rounded">Gửi thử Zalo</strong> để kiểm tra xem tin nhắn đến hộp thư/điện thoại có đúng định dạng và căn lề chuẩn hay không.
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 flex gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="block">Lưu ý cực kỳ quan trọng đối với Zalo ZNS:</strong>
+              <ul className="list-disc pl-4 mt-1 space-y-1 text-amber-800">
+                <li>Mẫu Zalo ZNS <strong>bắt buộc phải đăng ký và được duyệt thành công bởi Zalo Cloud</strong> trước khi tích hợp vào hệ thống.</li>
+                <li>Nội dung văn bản và tên các tham số truyền đi trong trường <code>content</code> (ví dụ: <code>{"{{customer_name}}"}</code>, <code>{"{{order_id}}"}</code>) phải <strong>trùng khớp 100%</strong> với cấu trúc đã được Zalo phê duyệt. Mọi sai khác dù là nhỏ nhất (khoảng trắng, viết hoa) cũng sẽ khiến Zalo từ chối gửi tin nhắn.</li>
+                <li>Hệ thống VSAPS 2026 sẽ tự động ánh xạ các tham số từ đại biểu vào cấu trúc tham số Zalo tương ứng khi tiến hành kích hoạt lệnh gửi tự động.</li>
+              </ul>
             </div>
           </div>
         </div>
