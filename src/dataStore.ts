@@ -2218,6 +2218,7 @@ export class DataStore {
     }
 
     const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
+    const attAny = attendee as any;
     const content = template.content
       .replace(/\{\{title\}\}/g, attendee.title || '')
       .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
@@ -2226,7 +2227,9 @@ export class DataStore {
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, attendee.organization || '')
       .replace(/\{\{email\}\}/g, attendee.email || '')
-      .replace(/\{\{phone\}\}/g, attendee.phone || '');
+      .replace(/\{\{phone\}\}/g, attendee.phone || '')
+      .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
+      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '');
 
     const payload = {
       recipient: { phone: formattedPhone },
@@ -2240,6 +2243,8 @@ export class DataStore {
         organization: attendee.organization || '',
         email: attendee.email || '',
         phone: attendee.phone || '',
+        presentation_title: attAny.presentationTitle || '',
+        track: attAny.presentationTrack || '',
         qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(attendee.qrCodeValue)}`
       },
       raw_text_sent: content
@@ -2326,7 +2331,10 @@ export class DataStore {
     }
 
     const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chở Đối Soát' : 'Chưa Thanh Toán';
-    const content = customBody || template.content
+    const rawContent = customBody || template.content || '';
+    const attAny = attendee as any;
+
+    const content = rawContent
       .replace(/\{\{title\}\}/g, attendee.title || '')
       .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
       .replace(/\{\{package\}\}/g, attendee.packageName || '')
@@ -2334,11 +2342,15 @@ export class DataStore {
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, attendee.organization || '')
       .replace(/\{\{email\}\}/g, attendee.email || '')
-      .replace(/\{\{phone\}\}/g, attendee.phone || '');
+      .replace(/\{\{phone\}\}/g, attendee.phone || '')
+      .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
+      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '');
 
-    const finalSubject = customSubject || (template.subject || "Xác nhận đăng ký VSAPS 2026")
+    const finalSubject = (customSubject || template.subject || "Xác nhận đăng ký VSAPS 2026")
       .replace(/\{\{title\}\}/g, attendee.title || '')
-      .replace(/\{\{fullname\}\}/g, attendee.fullName || '');
+      .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
+      .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
+      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '');
 
     const payload = {
       to: attendee.email,
@@ -2478,6 +2490,7 @@ export class DataStore {
     }
 
     const payStatusText = attendee.paymentStatus === 'paid' ? 'Đã Thanh Toán' : attendee.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
+    const attAny = attendee as any;
     const content = template.content
       .replace(/\{\{title\}\}/g, attendee.title || '')
       .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
@@ -2486,7 +2499,9 @@ export class DataStore {
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, attendee.organization || '')
       .replace(/\{\{email\}\}/g, attendee.email || '')
-      .replace(/\{\{phone\}\}/g, attendee.phone || '');
+      .replace(/\{\{phone\}\}/g, attendee.phone || '')
+      .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
+      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '');
 
     const isRealWhatsapp = (this.whatsappConfig.accessToken && this.whatsappConfig.phoneNumberId) || isSupabaseConfigured();
 

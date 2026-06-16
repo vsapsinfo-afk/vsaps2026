@@ -624,6 +624,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       .replace(/\{\{payment_status\}\}/g, payStatusText)
       .replace(/\{\{organization\}\}/g, mockAttendee.organization)
       .replace(/\{\{presentation_title\}\}/g, 'Báo cáo đột phá trong Công nghệ phẫu thuật thẩm mỹ sọ mặt')
+      .replace(/\{\{track\}\}/g, 'Phẫu thuật Thẩm mỹ Sọ mặt')
       .replace(/\{\{email\}\}/g, mockAttendee.email)
       .replace(/\{\{phone\}\}/g, mockAttendee.phone);
 
@@ -1179,6 +1180,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       { code: 'payment_status', label: 'Trạng thái thanh toán' },
                       { code: 'organization', label: 'Đơn vị công tác' },
                       { code: 'presentation_title', label: 'Đề tài báo cáo' },
+                      { code: 'track', label: 'Chuyên khoa/Chương trình' },
                       { code: 'email', label: 'Email đại biểu' },
                       { code: 'phone', label: 'Số điện thoại' }
                     ].map(ph => (
