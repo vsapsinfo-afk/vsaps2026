@@ -76,6 +76,8 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [isNewAvatarUploading, setIsNewAvatarUploading] = useState(false);
   const [newDoctorProofImage, setNewDoctorProofImage] = useState<string | null>(null);
   const [isNewDoctorProofUploading, setIsNewDoctorProofUploading] = useState(false);
+  const [newTransactionProofImage, setNewTransactionProofImage] = useState<string | null>(null);
+  const [isNewTransactionProofUploading, setIsNewTransactionProofUploading] = useState(false);
   
   // Selected viewer for details modal
   const [viewDetailAttendee, setViewDetailAttendee] = useState<Attendee | null>(null);
@@ -881,6 +883,42 @@ Ban Thư ký Hội nghị VSAPS 2026`
     }
   };
 
+  const handleNewTransactionProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsNewTransactionProofUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewTransactionProofImage(reader.result as string);
+        setIsNewTransactionProofUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleEditTransactionProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && detailEditForm) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDetailEditForm({
+          ...detailEditForm,
+          transactionProofUrl: reader.result as string
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveEditTransactionProof = () => {
+    if (detailEditForm) {
+      setDetailEditForm({
+        ...detailEditForm,
+        transactionProofUrl: undefined
+      });
+    }
+  };
+
   const handleAddManualDelegate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFullName || !newOrg || !newPhone || !newEmail || !newAddress) {
@@ -930,6 +968,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
       tourRequired: newTourRequired,
       avatarUrl: newAvatarImage || undefined,
       doctorProofUrl: newDoctorProofImage || undefined,
+      transactionProofUrl: newTransactionProofImage || undefined,
     };
 
     store.saveAttendee(manualDelegate);
@@ -974,6 +1013,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
     setNewPaymentStatus('paid');
     setNewAvatarImage(null);
     setNewDoctorProofImage(null);
+    setNewTransactionProofImage(null);
     
     loadAll();
   };
@@ -1844,8 +1884,8 @@ Ban Thư ký Hội nghị VSAPS 2026`
             </div>
             
             <form onSubmit={handleAddManualDelegate} className="flex-1 overflow-y-auto p-6 space-y-4 text-slate-700">
-              {/* Profile Photo & Doctor Proof Upload Cards Side-by-Side */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Profile Photo, Doctor Proof & Transaction Proof Upload Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Profile Avatar Upload */}
                 <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
                   <div className="relative w-16 h-16 rounded-full overflow-hidden bg-slate-200 border-2 border-slate-350 shrink-0 flex items-center justify-center">
@@ -1901,6 +1941,41 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       type="file"
                       accept="image/*"
                       onChange={handleNewDoctorProofUpload}
+                      className="block w-full text-xs text-slate-500 file:mr-2 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* Transaction Proof Upload */}
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-200 border-2 border-slate-350 shrink-0 flex items-center justify-center">
+                    {newTransactionProofImage ? (
+                      <div className="relative w-full h-full">
+                        <img src={newTransactionProofImage} alt="Minh chứng chuyển khoản" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setNewTransactionProofImage(null)}
+                          className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-700 shadow border-none cursor-pointer flex items-center justify-center"
+                          title="Xóa ảnh"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-[9px] font-bold font-mono text-center uppercase leading-tight p-1">No Proof</span>
+                    )}
+                    {isNewTransactionProofUploading && (
+                      <div className="absolute inset-0 bg-slate-950/50 flex items-center justify-center text-[8px] text-white">
+                        Loading...
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <label className="block text-[9px] font-bold text-slate-500 uppercase leading-tight">Ảnh chuyển khoản (Minh chứng)</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleNewTransactionProofUpload}
                       className="block w-full text-xs text-slate-500 file:mr-2 file:py-0.5 file:px-2 file:rounded-md file:border-0 file:text-[9px] file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
                     />
                   </div>
@@ -2411,11 +2486,19 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
                       {/* Proof of transfer image rendering */}
                       {viewDetailAttendee.transactionProofUrl && (
-                        <div className="pt-2 border-t border-slate-100 flex items-center gap-3">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">BẰNG CHỨNG HÓA ĐƠN ĐÍNH KÈM:</span>
-                          <a href={viewDetailAttendee.transactionProofUrl} target="_blank" rel="noreferrer" className="text-indigo-605 hover:underline hover:text-indigo-850 text-[10px] font-bold flex items-center gap-1">
-                            <Eye className="w-3.5 h-3.5" /> XEM BIÊN LAI (MỞ TRANG MỚI)
-                          </a>
+                        <div className="pt-3 border-t border-slate-100 space-y-2">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">ẢNH CHUYỂN KHOẢN / MINH CHỨNG THANH TOÁN:</span>
+                          <div className="relative max-w-sm rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 group hover:shadow transition-shadow">
+                            <img 
+                              src={viewDetailAttendee.transactionProofUrl} 
+                              alt="Minh chứng thanh toán" 
+                              className="max-h-48 w-full object-contain cursor-zoom-in"
+                              onClick={() => window.open(viewDetailAttendee.transactionProofUrl || '', '_blank')}
+                            />
+                            <div className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[9px] font-bold px-2 py-0.5 rounded backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                              Click để xem ảnh lớn 🔍
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -2687,6 +2770,39 @@ Ban Thư ký Hội nghị VSAPS 2026`
                                 className="block w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
                               />
                               <p className="text-[9px] text-slate-400">Chọn ảnh minh chứng là Bác sĩ để cập nhật.</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Transaction Proof Upload in Edit Mode */}
+                        <div className="sm:col-span-2 border-t border-slate-100 pt-3">
+                          <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Ảnh chuyển khoản / Minh chứng thanh toán</label>
+                          <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            {detailEditForm.transactionProofUrl ? (
+                              <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-slate-100 border border-slate-300 shrink-0 group flex items-center justify-center">
+                                <img src={detailEditForm.transactionProofUrl} alt="Transaction Proof" className="w-full h-full object-cover" />
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveEditTransactionProof}
+                                  className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 hover:bg-rose-700 shadow border-none cursor-pointer flex items-center justify-center"
+                                  title="Xóa ảnh"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="w-16 h-16 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center font-extrabold text-slate-400 text-[9px] shadow-inner shrink-0 text-center uppercase leading-tight p-1">
+                                Chưa có
+                              </div>
+                            )}
+                            <div className="space-y-1 flex-1">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleEditTransactionProofUpload}
+                                className="block w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                              />
+                              <p className="text-[9px] text-slate-400">Chọn ảnh minh chứng thanh toán chuyển khoản để cập nhật.</p>
                             </div>
                           </div>
                         </div>
