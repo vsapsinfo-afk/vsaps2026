@@ -24,17 +24,18 @@ export default function Sidebar({ currentView, onNavigate, currentRole, isOpen, 
   const { user, signOut } = useAuth();
   const menuItems = [
     { id: 'overview', name: 'Tổng Quan', icon: BarChart2, roles: ['admin', 'btc', 'ctv'] },
-    { id: 'attendees', name: 'Đại Biểu Tham Dự', icon: Users, roles: ['admin', 'btc', 'ctv'] },
-    { id: 'speakers', name: 'Báo Cáo Viên', icon: FileText, roles: ['admin', 'btc', 'ctv'] },
     { id: 'schedule', name: 'Lịch Trình Hội Nghị', icon: Calendar, roles: ['admin', 'btc', 'ctv'] },
-    { id: 'tasks', name: 'Công Việc Nội Bộ', icon: CheckSquare, roles: ['admin', 'btc', 'ctv'] },
-    { id: 'finances', name: 'Đối Soát Tài Chính', icon: Coins, roles: ['admin', 'btc'] },
+    { id: 'speakers', name: 'Báo Cáo Viên', icon: FileText, roles: ['admin', 'btc', 'ctv'] },
+    { id: 'attendees', name: 'Đại Biểu', icon: Users, roles: ['admin', 'btc', 'ctv'] },
     { id: 'sponsors', name: 'Nhà Tài Trợ', icon: Award, roles: ['admin', 'btc'] },
     { id: 'notifications', name: 'Thông Báo Tự Động', icon: Megaphone, roles: ['admin', 'btc'] },
     { id: 'bulk-send', name: 'Gửi Tin Hàng Loạt', icon: Send, roles: ['admin', 'btc'] },
+    { id: 'tasks', name: 'Công Việc Nội Bộ', icon: CheckSquare, roles: ['admin', 'btc', 'ctv'] },
+    { id: 'finances', name: 'Đối Soát Tài Chính', icon: Coins, roles: ['admin', 'btc'] },
     { id: 'settings', name: 'Cài Đặt Hệ Thống', icon: Settings, roles: ['admin', 'btc'] },
     { id: 'user-guide', name: 'Hướng Dẫn Sử Dụng', icon: HelpCircle, roles: ['admin', 'btc', 'ctv'] },
   ];
+
 
   const publicLinks = [
     { id: 'event-details', name: 'Trang Tin Sự Kiện', icon: Globe },
