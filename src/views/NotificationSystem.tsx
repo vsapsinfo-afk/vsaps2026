@@ -1032,29 +1032,47 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             </button>
           </div>
           
-          <div className="space-y-3">
-            {templates.map(tmpl => (
-              <div
-                key={tmpl.id}
-                onClick={() => handleSelectTemplate(tmpl)}
-                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                  selectedTemplate?.id === tmpl.id 
-                    ? 'bg-teal-50/50 border-teal-500 shadow-sm' 
-                    : 'bg-white border-slate-250 hover:border-slate-350'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase ${
-                      tmpl.channel === 'email' ? 'bg-indigo-50 text-indigo-700' : tmpl.channel === 'whatsapp' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'
-                    }`}>
-                      {tmpl.channel.toUpperCase()}
+          <div className="space-y-4">
+            {['zalo', 'email', 'whatsapp'].map(channel => {
+              const channelTemplates = templates.filter(t => t.channel === channel);
+              if (channelTemplates.length === 0) return null;
+              
+              const channelTitle = channel === 'zalo' ? 'Kênh Zalo OA ZNS' : channel === 'email' ? 'Kênh Email Resend' : 'Kênh WhatsApp';
+              const channelBadgeColor = channel === 'zalo' ? 'bg-emerald-505 text-emerald-700 bg-emerald-50 border-emerald-200' : channel === 'email' ? 'bg-indigo-505 text-indigo-700 bg-indigo-50 border-indigo-200' : 'bg-blue-55 text-blue-700 bg-blue-50 border-blue-200';
+              
+              return (
+                <div key={channel} className="space-y-2">
+                  <div className="flex items-center gap-1.5 pb-1 border-b border-slate-100 mt-3 select-none">
+                    <span className={`px-2 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider border ${channelBadgeColor}`}>
+                      {channelTitle}
                     </span>
-                  <span className="text-[9px] font-mono text-slate-400 font-bold">{tmpl.id}</span>
+                    <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-500 px-1.5 py-0.2 rounded-full font-bold">
+                      {channelTemplates.length}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {channelTemplates.map(tmpl => (
+                      <div
+                        key={tmpl.id}
+                        onClick={() => handleSelectTemplate(tmpl)}
+                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                          selectedTemplate?.id === tmpl.id 
+                            ? 'bg-teal-50/50 border-teal-500 shadow-sm' 
+                            : 'bg-white border-slate-250 hover:border-slate-350'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] font-mono text-slate-400 font-bold">{tmpl.id}</span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-xs">{tmpl.name}</h4>
+                        <p className="text-[10.5px] text-slate-400 mt-1 truncate">{tmpl.content}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <h4 className="font-bold text-slate-900 text-xs">{tmpl.name}</h4>
-                <p className="text-[11px] text-slate-400 mt-1 truncate">{tmpl.content}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
