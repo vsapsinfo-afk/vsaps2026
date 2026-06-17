@@ -38,36 +38,8 @@ import { ConferenceSession, Role, SpeakerRegistration, ConferenceShift, VirtualS
 
 // ==================== HELPER FUNCTIONS ====================
 
-const SAMPLE_PAPERS = [
-  {
-    id: 'spk-sample-101',
-    title: 'Tối ưu hóa thời gian phục hồi sau phẫu thuật căng da mặt nội soi toàn phần',
-    speakerName: 'Dr. Jean-Louis Sebagh',
-    speakerTitle: 'Bệnh viện Thẩm mỹ Paris',
-    track: 'Phẫu thuật thẩm mỹ'
-  },
-  {
-    id: 'spk-sample-102',
-    title: 'Ứng dụng tổ hợp Laser Picosecond trong điều trị tăng sắc tố da ở người châu Á',
-    speakerName: 'PGS.TS.BS. Trần Thị Thanh',
-    speakerTitle: 'Đại học Y dược Thành phố',
-    track: 'Thẩm Mỹ Nội Khoa'
-  },
-  {
-    id: 'spk-sample-103',
-    title: 'Vật liệu sinh học tự nhiên thế hệ mới phục vụ tạo hình mũi cấu trúc độ bám dính cao',
-    speakerName: 'TS.BS. Kang Min-Seok',
-    speakerTitle: 'Seoul Aesthetic Clinic',
-    track: 'Phẫu thuật mũi'
-  },
-  {
-    id: 'spk-sample-104',
-    title: 'Kỹ thuật tiêm chất làm đầy (Filler) MD Codes trẻ hóa toàn diện vùng mí mắt & gò má',
-    speakerName: 'ThS.BS. Nguyễn Hoài Nam',
-    speakerTitle: 'Bệnh viện Da Liễu',
-    track: 'Căng chỉ & Filler'
-  }
-];
+const SAMPLE_PAPERS: any[] = [];
+
 
 function parseTimeToMinutes(timeStr: string): number {
   if (!timeStr) return 0;
