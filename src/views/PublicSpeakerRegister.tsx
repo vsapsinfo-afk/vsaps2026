@@ -58,9 +58,11 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const [presentationTrack, setPresentationTrack] = useState(store.getSpecialtyTracks()[0]?.name || 'Ngoại Lồng Ngực & Tim Mạch');
   const [abstractText, setAbstractText] = useState('');
   const [fileName, setFileName] = useState('');
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [calendarSynced, setCalendarSynced] = useState(true);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [isDocUploading, setIsDocUploading] = useState(false);
   
   // States
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -85,6 +87,13 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
     const file = e.target.files?.[0];
     if (file) {
       setFileName(file.name);
+      setIsDocUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDocumentUrl(reader.result as string);
+        setIsDocUploading(false);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -113,6 +122,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
         presentationTrack,
         abstractText,
         documentName: fileName || undefined,
+        documentUrl: documentUrl || undefined,
         calendarSynced,
         status: 'pending',
         registrationDate: new Date().toISOString().split('T')[0],
@@ -546,14 +556,18 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3">
                   <div 
                     role="button"
                     onClick={() => docInputRef.current?.click()}
-                    className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 cursor-pointer text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm"
+                    className={`px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 cursor-pointer text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-sm ${isDocUploading ? 'opacity-60 pointer-events-none' : ''}`}
                   >
-                    <Upload className="w-4 h-4 text-slate-400" />
-                    {L.t('Bấm để tải tệp', 'Click to upload')}
+                    {isDocUploading ? (
+                      <svg className="w-4 h-4 text-indigo-400 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3V4a10 10 0 100 20v-4l-3 3 3 3v-4a8 8 0 01-8-8z"/></svg>
+                    ) : (
+                      <Upload className="w-4 h-4 text-slate-400" />
+                    )}
+                    {isDocUploading ? L.t('Đang xử lý...', 'Processing...') : L.t('Bấm để tải tệp', 'Click to upload')}
                     <input
                       ref={docInputRef}
                       type="file"
@@ -562,8 +576,16 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                       className="hidden"
                     />
                   </div>
-                  {fileName && (
-                    <span className="text-xs text-teal-700 font-semibold truncate max-w-[120px] md:max-w-xs">{fileName}</span>
+                  {fileName && !isDocUploading && (
+                    <div className="flex items-center gap-1.5 max-w-[140px] md:max-w-xs">
+                      <span className="text-xs text-teal-700 font-semibold truncate">📎 {fileName}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setFileName(''); setDocumentUrl(null); if (docInputRef.current) docInputRef.current.value = ''; }}
+                        className="text-slate-400 hover:text-rose-500 text-[11px] shrink-0 cursor-pointer border-none bg-transparent p-0"
+                        title="Xóa tệp"
+                      >✕</button>
+                    </div>
                   )}
                 </div>
               </div>
