@@ -3,14 +3,15 @@
 -- ==========================================
 
 -- 1. Seed Specialty Tracks (Chuyên khoa báo cáo)
-INSERT INTO public.specialty_tracks (id, name, description) VALUES
-('track-1', 'Ngoại Lồng Ngực & Tim Mạch', 'Chuyên khoa ngoại lồng ngực, mạch máu và tim mạch'),
-('track-2', 'Thần Kinh Học', 'Nội thần kinh, ngoại thần kinh và đột quỵ'),
-('track-3', 'Gây Mê Hồi Sức & ERAS', 'Gây mê, hồi sức tích cực và phục hồi sớm sau phẫu thuật'),
-('track-4', 'Ngoại khoa tổng quát', 'Phẫu thuật tiêu hóa, gan mật và ổ bụng chung'),
-('track-5', 'Y học Công nghệ & AI', 'Ứng dụng công nghệ thông tin, mô phỏng sinh học và AI trong y học'),
-('track-6', 'Tạo hình Thẩm mỹ', 'Phẫu thuật tạo hình, tái tạo thẩm mỹ và da liễu thẩm mỹ')
+INSERT INTO public.specialty_tracks (id, name, name_en, description) VALUES
+('track-1', 'Ngoại Lồng Ngực & Tim Mạch', 'Thoracic & Cardiovascular Surgery', 'Chuyên khoa ngoại lồng ngực, mạch máu và tim mạch'),
+('track-2', 'Thần Kinh Học', 'Neurology & Stroke', 'Nội thần kinh, ngoại thần kinh và đột quỵ'),
+('track-3', 'Gây Mê Hồi Sức & ERAS', 'Anesthesia & Resuscitation & ERAS', 'Gây mê, hồi sức tích cực và phục hồi sớm sau phẫu thuật'),
+('track-4', 'Ngoại khoa tổng quát', 'General Surgery', 'Phẫu thuật tiêu hóa, gan mật và ổ bụng chung'),
+('track-5', 'Y học Công nghệ & AI', 'Medical Technology & AI', 'Ứng dụng công nghệ thông tin, mô phỏng sinh học và AI trong y học'),
+('track-6', 'Tạo hình Thẩm mỹ', 'Aesthetic Plastic Surgery', 'Phẫu thuật tạo hình, tái tạo thẩm mỹ và da liễu thẩm mỹ')
 ON CONFLICT (id) DO NOTHING;
+
 
 -- 2. Seed Registration Packages (Gói đăng ký)
 INSERT INTO public.packages (id, name, fee, benefits, is_active, includes_cme, includes_gala) VALUES

@@ -48,6 +48,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [editingTrack, setEditingTrack] = useState<SpecialtyTrack | null>(null);
   const [newTrackName, setNewTrackName] = useState('');
+  const [newTrackNameEn, setNewTrackNameEn] = useState('');
   const [newTrackDesc, setNewTrackDesc] = useState('');
 
   // Speaker manual Form state
@@ -106,6 +107,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       store.saveSpecialtyTrack({
         ...editingTrack,
         name: newName,
+        nameEn: newTrackNameEn.trim() || undefined,
         description: newTrackDesc.trim() || undefined
       });
       alert('Đã cập nhật chuyên khoa thành công!');
@@ -114,6 +116,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       store.saveSpecialtyTrack({
         id: newId,
         name: newTrackName.trim(),
+        nameEn: newTrackNameEn.trim() || undefined,
         description: newTrackDesc.trim() || undefined
       });
       alert('Đã thêm chuyên khoa mới thành công!');
@@ -121,6 +124,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
 
     setEditingTrack(null);
     setNewTrackName('');
+    setNewTrackNameEn('');
     setNewTrackDesc('');
     loadAll();
   };
@@ -128,6 +132,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const handleEditTrack = (track: SpecialtyTrack) => {
     setEditingTrack(track);
     setNewTrackName(track.name);
+    setNewTrackNameEn(track.nameEn || '');
     setNewTrackDesc(track.description || '');
   };
 
@@ -151,6 +156,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     if (editingTrack?.id === id) {
       setEditingTrack(null);
       setNewTrackName('');
+      setNewTrackNameEn('');
       setNewTrackDesc('');
     }
   };
@@ -1233,9 +1239,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                   <Sparkles className="w-3.5 h-3.5" />
                   {editingTrack ? '📝 CẬP NHẬT CHUYÊN KHOA' : '➕ THÊM CHUYÊN KHOA MỚI'}
                 </h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tên Chuyên khoa/Chuyên mục *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">🇻🇳 Tên tiếng Việt *</label>
                     <input
                       type="text"
                       required
@@ -1246,6 +1252,16 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     />
                   </div>
                   <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">🇬🇧 English Name</label>
+                    <input
+                      type="text"
+                      value={newTrackNameEn}
+                      onChange={(e) => setNewTrackNameEn(e.target.value)}
+                      placeholder="e.g. Aesthetic Plastic Surgery..."
+                      className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-semibold focus:border-teal-500 focus:outline-none placeholder-slate-400"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mô tả ngắn</label>
                     <input
                       type="text"
@@ -1263,6 +1279,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       onClick={() => {
                         setEditingTrack(null);
                         setNewTrackName('');
+                        setNewTrackNameEn('');
                         setNewTrackDesc('');
                       }}
                       className="px-3 py-1.5 text-xs bg-slate-200 hover:bg-slate-300 text-slate-755 font-bold rounded-xl cursor-pointer border-none"
@@ -1288,8 +1305,11 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     return (
                       <div key={track.id} className="flex items-center justify-between p-3 bg-white border border-slate-150 rounded-2xl shadow-xs hover:border-slate-300 transition-all">
                         <div className="min-w-0 pr-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-slate-800">{track.name}</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-slate-800">🇻🇳 {track.name}</span>
+                            {track.nameEn && (
+                              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">🇬🇧 {track.nameEn}</span>
+                            )}
                             <span className="text-[9px] font-extrabold bg-teal-50 border border-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full uppercase shrink-0">
                               {count} báo cáo
                             </span>

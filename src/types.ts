@@ -72,7 +72,8 @@ export interface SpeakerRegistration {
 
 export interface SpecialtyTrack {
   id: string;
-  name: string;
+  name: string;       // Tên tiếng Việt (luôn có)
+  nameEn?: string;    // Tên tiếng Anh (tùy chọn, dùng cho form đăng ký ngoại quốc)
   description?: string;
 }
 

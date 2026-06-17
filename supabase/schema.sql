@@ -22,9 +22,11 @@ CREATE TABLE public.packages (
 CREATE TABLE public.specialty_tracks (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    name_en TEXT,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
 
 -- 3. Dynamic Business Config (Cấu hình nghiệp vụ)
 CREATE TABLE public.business_config (

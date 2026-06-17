@@ -408,6 +408,7 @@ export function mapTrackToDb(t: SpecialtyTrack): Record<string, any> {
   return {
     id: t.id,
     name: t.name,
+    name_en: t.nameEn || null,
     description: t.description || null,
   };
 }
@@ -416,6 +417,7 @@ export function mapDbToTrack(row: any): SpecialtyTrack {
   return {
     id: row.id,
     name: row.name || '',
+    nameEn: row.name_en || undefined,
     description: row.description || undefined,
   };
 }

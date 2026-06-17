@@ -11,9 +11,17 @@ import { SpeakerRegistration } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { useFormLabel } from '../hooks/useFormLabel';
 
-const getTrackDisplayName = (name: string, isEn: boolean) => {
-  if (!isEn) return name;
-  const dict: Record<string, string> = {
+
+
+// Hiển thị tên chuyên khoa theo ngôn ngữ
+// - Ưu tiên field nameEn từ DB nếu có
+// - Fallback sang dictionary cứng cho dữ liệu cũ chưa có nameEn
+const getTrackDisplayName = (nameVi: string, isEn: boolean, nameEn?: string): string => {
+  if (!isEn) return nameVi;
+  // Dùng nameEn từ DB nếu đã được nhập
+  if (nameEn) return nameEn;
+  // Fallback: dictionary tĩnh cho backward compatibility
+  const fallbackDict: Record<string, string> = {
     'Ngoại Lồng Ngực & Tim Mạch': 'Thoracic & Cardiovascular Surgery',
     'Phẫu thuật Thẩm mỹ': 'Aesthetic Plastic Surgery',
     'Phẫu thuật Tạo hình Thẩm mỹ': 'Aesthetic Plastic Surgery',
@@ -32,8 +40,9 @@ const getTrackDisplayName = (name: string, isEn: boolean) => {
     'Hands-on': 'Hands-on',
     'Master Class': 'Master Class',
   };
-  return dict[name] || name;
+  return fallbackDict[nameVi] || nameVi;
 };
+
 
 interface PublicSpeakerRegisterProps {
   onNavigate: (view: string) => void;
@@ -221,7 +230,13 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">{L.t('Chuyên mục:', 'Category:')}</span>
-                  <p className="font-semibold text-slate-800 mt-0.5 bg-indigo-50 inline-block px-2 py-0.5 rounded text-[11px]">{getTrackDisplayName(createdSpeaker.presentationTrack, nationality === 'foreign')}</p>
+                  <p className="font-semibold text-slate-800 mt-0.5 bg-indigo-50 inline-block px-2 py-0.5 rounded text-[11px]">
+                    {getTrackDisplayName(
+                      createdSpeaker.presentationTrack,
+                      nationality === 'foreign',
+                      store.getSpecialtyTracks().find(t => t.name === createdSpeaker.presentationTrack)?.nameEn
+                    )}
+                  </p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium">{L.t('Tài liệu đính kèm:', 'Attached Document:')}</span>
@@ -528,7 +543,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                   >
                     {store.getSpecialtyTracks().map((track) => (
                       <option key={track.id} value={track.name}>
-                        {getTrackDisplayName(track.name, nationality === 'foreign')}
+                        {getTrackDisplayName(track.name, nationality === 'foreign', track.nameEn)}
                       </option>
                     ))}
                   </select>
