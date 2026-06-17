@@ -36,6 +36,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [excelFileName, setExcelFileName] = useState('');
   const [bulkSubject, setBulkSubject] = useState('Thư xác nhận tham dự Hội nghị Khoa học Thẩm mỹ VSAPS 2026');
   const [bulkBody, setBulkBody] = useState('<p>Kính gửi anh/chị <strong>{{Tên}}</strong>,</p>\n<p>Ban tổ chức Hội nghị Khoa học Thẩm mỹ Quốc tế Thường niên VSAPS 2026 trân trọng xác nhận thông tin đăng ký của anh/chị.</p>\n<p>Thông tin chi tiết:</p>\n<ul>\n<li>Hộp thư: {{Email}}</li>\n<li>Điện thoại: {{Số điện thoại}}</li>\n</ul>\n<p>Hệ thống tự động đã kích hoạt vé tham dự của anh/chị. Vui lòng mang theo email này để quét mã QR check-in tại sảnh chính.</p>\n<p>Trân trọng,<br>Ban tổ chức VSAPS 2026</p>');
+  const [bulkEditorMode, setBulkEditorMode] = useState<'visual' | 'code'>('visual');
+  const bulkEditorRef = React.useRef<HTMLDivElement>(null);
 
   // Zalo bulk templates
   const [zaloTemplates, setZaloTemplates] = useState<NotificationTemplate[]>(() =>
@@ -593,6 +595,76 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       } else {
         // Fallback
         setContent(prev => prev + textToInsert);
+      }
+    }
+  };
+
+  // Sync contenteditable content when switching to visual mode in bulk tab
+  React.useEffect(() => {
+    if (bulkEditorMode === 'visual' && bulkEditorRef.current && bulkChannel === 'email') {
+      if (bulkEditorRef.current.innerHTML !== bulkBody) {
+        bulkEditorRef.current.innerHTML = bulkBody;
+      }
+    }
+  }, [bulkEditorMode, bulkChannel]);
+
+  const handleBulkEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
+    setBulkBody(e.currentTarget.innerHTML);
+  };
+
+  const handleBulkFormat = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    if (bulkEditorRef.current) {
+      setBulkBody(bulkEditorRef.current.innerHTML);
+      bulkEditorRef.current.focus();
+    }
+  };
+
+  const insertBulkPlaceholder = (ph: string) => {
+    const textToInsert = `{{${ph}}}`;
+    if (bulkChannel === 'email' && bulkEditorMode === 'visual') {
+      // visual mode: insert at cursor in contenteditable
+      bulkEditorRef.current?.focus();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(textToInsert);
+        range.insertNode(textNode);
+        
+        // Move cursor after the inserted text
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        // Fallback: append at the end
+        if (bulkEditorRef.current) {
+          bulkEditorRef.current.innerHTML += textToInsert;
+        }
+      }
+      if (bulkEditorRef.current) {
+        setBulkBody(bulkEditorRef.current.innerHTML);
+      }
+    } else {
+      // code mode: insert at cursor in textarea
+      const textarea = document.getElementById('bulk-body-textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+        const nextValue = before + textToInsert + after;
+        setBulkBody(nextValue);
+        
+        // Focus & set cursor position back
+        setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + textToInsert.length, start + textToInsert.length);
+        }, 0);
+      } else {
+        setBulkBody(prev => prev + textToInsert);
       }
     }
   };
@@ -2061,9 +2133,33 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             {/* Composer Card (Only for Email since Zalo uses pre-defined templates) */}
             {bulkChannel === 'email' && (
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
-                  3. Soạn thảo thư hàng loạt (Email Template)
-                </span>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-2">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                    3. Soạn thảo thư hàng loạt (Email Template)
+                  </span>
+                  <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setBulkEditorMode('visual')}
+                      className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none bg-transparent ${
+                        bulkEditorMode === 'visual' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Trực quan (Visual)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBulkEditorMode('code')}
+                      className={`px-3 py-1.5 rounded-lg font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none bg-transparent ${
+                        bulkEditorMode === 'code' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      <Code className="w-3.5 h-3.5" />
+                      Mã HTML (Code)
+                    </button>
+                  </div>
+                </div>
                 
                 <div className="space-y-4 text-xs">
                   <div>
@@ -2077,14 +2173,198 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     />
                   </div>
 
+                  {/* Quick Placeholder Inserter Buttons */}
+                  <div className="flex items-center gap-2 bg-slate-50 p-2.5 border border-slate-150 rounded-xl">
+                    <span className="text-[9.5px] font-bold text-slate-500 select-none shrink-0">Chèn nhanh biến:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { code: 'Tên', label: 'Họ và Tên (Từ Excel)' },
+                        { code: 'Email', label: 'Địa chỉ Email (Từ Excel)' },
+                        { code: 'Số điện thoại', label: 'Số điện thoại (Từ Excel)' },
+                        { code: 'title', label: 'Danh xưng (ví dụ: BS.)' },
+                        { code: 'fullname', label: 'Họ & Tên đầy đủ' },
+                        { code: 'code', label: 'Mã Đại biểu / Báo cáo viên' },
+                        { code: 'package', label: 'Gói đăng ký' },
+                        { code: 'payment_status', label: 'Trạng thái thanh toán' },
+                        { code: 'organization', label: 'Đơn vị công tác' },
+                        { code: 'qr_url', label: 'Link ảnh mã QR check-in' }
+                      ].map(ph => (
+                        <button
+                          key={ph.code}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            insertBulkPlaceholder(ph.code);
+                          }}
+                          className="px-2 py-0.5 bg-white hover:bg-teal-50 border border-slate-200 hover:border-teal-300 rounded-lg text-[9px] font-bold text-slate-755 hover:text-teal-755 transition-all cursor-pointer shadow-sm"
+                          title={ph.label}
+                        >
+                          {`{{${ph.code}}}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Formatting Toolbar (Only for Visual Editor Mode) */}
+                  {bulkEditorMode === 'visual' && (
+                    <div className="flex flex-wrap items-center gap-1 p-1.5 bg-slate-55 border border-slate-200 rounded-xl mb-1 select-none">
+                      {/* Basic typography */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('bold'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Chữ đậm"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('italic'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Chữ nghiêng"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('underline'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Gạch chân"
+                      >
+                        <Underline className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                      {/* Alignment */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('justifyLeft'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Căn lề trái"
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('justifyCenter'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Căn lề giữa"
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('justifyRight'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Căn lề phải"
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                      {/* Lists */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('insertUnorderedList'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Danh sách dấu chấm"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('insertOrderedList'); }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Danh sách số"
+                      >
+                        <ListOrdered className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                      {/* Link insertion */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+                          if (url) handleBulkFormat('createLink', url);
+                        }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Chèn liên kết"
+                      >
+                        <Link className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Color selector dropdown */}
+                      <div className="relative group flex items-center">
+                        <button
+                          type="button"
+                          className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Chọn màu chữ"
+                        >
+                          <Palette className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="absolute top-full left-0 mt-1 hidden group-hover:flex bg-white border border-slate-200 p-1.5 rounded-lg shadow-lg gap-1.5 z-30">
+                          {[
+                            { color: '#000000', name: 'Đen' },
+                            { color: '#4b5563', name: 'Xám' },
+                            { color: '#4f46e5', name: 'Indigo' },
+                            { color: '#0d9488', name: 'Teal' },
+                            { color: '#dc2626', name: 'Đỏ' },
+                            { color: '#ea580c', name: 'Cam' }
+                          ].map(item => (
+                            <button
+                              key={item.color}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleBulkFormat('foreColor', item.color);
+                              }}
+                              className="w-5 h-5 rounded-full border border-slate-300 cursor-pointer transition-transform hover:scale-110"
+                              style={{ backgroundColor: item.color }}
+                              title={item.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="w-px h-4 bg-slate-350 mx-1" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBulkFormat('removeFormat'); }}
+                        className="px-2 py-0.5 hover:bg-slate-250 rounded text-slate-500 font-mono text-[9px] border border-slate-200 transition-colors cursor-pointer"
+                        title="Xóa định dạng"
+                      >
+                        Xóa định dạng
+                      </button>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Nội dung (HTML body)</label>
-                    <textarea
-                      rows={8}
-                      value={bulkBody}
-                      onChange={(e) => setBulkBody(e.target.value)}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none text-[11px]"
-                    />
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Nội dung thư (HTML body)</label>
+                    {bulkEditorMode === 'visual' ? (
+                      <div className="relative">
+                        <div
+                          ref={bulkEditorRef}
+                          contentEditable
+                          onInput={handleBulkEditorInput}
+                          className="w-full min-h-[200px] max-h-[400px] overflow-y-auto px-4 py-3 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-slate-800 text-[13px] leading-relaxed rich-editor-content"
+                          style={{ borderStyle: 'solid' }}
+                        />
+                      </div>
+                    ) : (
+                      <textarea
+                        id="bulk-body-textarea"
+                        rows={8}
+                        value={bulkBody}
+                        onChange={(e) => setBulkBody(e.target.value)}
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none text-[11px]"
+                      />
+                    )}
                   </div>
 
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-start gap-2 text-[10px] text-slate-650">
