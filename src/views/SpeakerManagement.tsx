@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Search, ListFilter, CheckCircle, XCircle, FileText, Calendar, Eye, UserCheck, Sparkles, Table, LayoutGrid, FileSpreadsheet, Printer, ArrowUpDown, Download, AlertTriangle, ShieldCheck, Layers, Plus, Trash2, Edit2, X, Check } from 'lucide-react';
+import { Search, ListFilter, CheckCircle, XCircle, FileText, Calendar, Eye, UserCheck, Sparkles, Table, LayoutGrid, FileSpreadsheet, Printer, ArrowUpDown, Download, AlertTriangle, ShieldCheck, Layers, Plus, Trash2, Edit2, X, Check, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Palette, Code, Upload } from 'lucide-react';
 import { store } from '../dataStore';
 import { SpeakerRegistration, Role, SpecialtyTrack } from '../types';
 
@@ -66,6 +66,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [speakerDocumentName, setSpeakerDocumentName] = useState('FullText-Paper.pdf');
   const [speakerStatus, setSpeakerStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
   const [speakerAvatar, setSpeakerAvatar] = useState<string | null>(null);
+  const [speakerDocumentUrl, setSpeakerDocumentUrl] = useState<string | null>(null);
+  const [isDocumentUploading, setIsDocumentUploading] = useState(false);
+  const [abstractEditorMode, setAbstractEditorMode] = useState<'visual' | 'code'>('visual');
+  const [bioEditorMode, setBioEditorMode] = useState<'visual' | 'code'>('visual');
+  const abstractEditorRef = React.useRef<HTMLDivElement>(null);
+  const bioEditorRef = React.useRef<HTMLDivElement>(null);
 
   // Load schedule sessions to allow assigning speakers to a specific room/time slots
   const sessions = store.getSessions();
@@ -219,6 +225,59 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
   };
 
+  // Sync contenteditable content when opening modal or switching modes
+  React.useEffect(() => {
+    if (showSpeakerModal) {
+      const timer = setTimeout(() => {
+        if (abstractEditorMode === 'visual' && abstractEditorRef.current) {
+          abstractEditorRef.current.innerHTML = speakerAbstractText;
+        }
+        if (bioEditorMode === 'visual' && bioEditorRef.current) {
+          bioEditorRef.current.innerHTML = speakerBio;
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [showSpeakerModal, abstractEditorMode, bioEditorMode]);
+
+  const handleAbstractInput = (e: React.FormEvent<HTMLDivElement>) => {
+    setSpeakerAbstractText(e.currentTarget.innerHTML);
+  };
+
+  const handleBioInput = (e: React.FormEvent<HTMLDivElement>) => {
+    setSpeakerBio(e.currentTarget.innerHTML);
+  };
+
+  const handleAbstractFormat = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    if (abstractEditorRef.current) {
+      setSpeakerAbstractText(abstractEditorRef.current.innerHTML);
+      abstractEditorRef.current.focus();
+    }
+  };
+
+  const handleBioFormat = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    if (bioEditorRef.current) {
+      setSpeakerBio(bioEditorRef.current.innerHTML);
+      bioEditorRef.current.focus();
+    }
+  };
+
+  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsDocumentUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSpeakerDocumentUrl(reader.result as string);
+        setSpeakerDocumentName(file.name);
+        setIsDocumentUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Open modal in Create mode
   const handleAddSpeaker = () => {
     setEditingSpeaker(null);
@@ -232,9 +291,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPresentationTrack(specialtyTracks[0]?.name || 'Ngoại khoa tổng quát');
     setSpeakerAbstractText('');
     setSpeakerBio('');
-    setSpeakerDocumentName('FullText-Paper.pdf');
+    setSpeakerDocumentName('');
+    setSpeakerDocumentUrl(null);
     setSpeakerStatus('approved');
     setSpeakerAvatar(null);
+    setAbstractEditorMode('visual');
+    setBioEditorMode('visual');
     setShowSpeakerModal(true);
   };
 
@@ -251,9 +313,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPresentationTrack(spk.presentationTrack);
     setSpeakerAbstractText(spk.abstractText);
     setSpeakerBio(spk.bio);
-    setSpeakerDocumentName(spk.documentName || 'FullText-Paper.pdf');
+    setSpeakerDocumentName(spk.documentName || '');
+    setSpeakerDocumentUrl(spk.documentUrl || null);
     setSpeakerStatus(spk.status);
     setSpeakerAvatar(spk.avatarUrl || null);
+    setAbstractEditorMode('visual');
+    setBioEditorMode('visual');
     setShowSpeakerModal(true);
   };
 
@@ -286,7 +351,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       presentationTrack: speakerPresentationTrack,
       abstractText: speakerAbstractText || 'Chưa cung cấp tóm tắt bài báo cáo',
       bio: speakerBio || 'Chưa cung cấp thông tin tiểu sử tóm lược',
-      documentName: speakerDocumentName,
+      documentName: speakerDocumentName || undefined,
+      documentUrl: speakerDocumentUrl || undefined,
       status: speakerStatus,
       calendarSynced: editingSpeaker ? editingSpeaker.calendarSynced : true,
       scheduledSessionId: editingSpeaker ? editingSpeaker.scheduledSessionId : undefined,
@@ -1057,10 +1123,21 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                   <span className="text-[10px] text-slate-500 font-medium">Bản thảo lưu trữ an toàn trong máy chủ phân định</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-teal-700 font-semibold flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[11px] font-mono">
-                    <FileText className="w-4 h-4 text-slate-400" />
-                    {selectedSpeaker.documentName}
-                  </span>
+                  {selectedSpeaker.documentUrl ? (
+                    <a
+                      href={selectedSpeaker.documentUrl}
+                      download={selectedSpeaker.documentName || 'FullText-Paper.pdf'}
+                      className="text-xs text-indigo-700 hover:text-indigo-900 font-semibold flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[11px] font-mono shadow-sm hover:bg-slate-50 cursor-pointer decoration-none"
+                    >
+                      <FileText className="w-4 h-4 text-slate-400" />
+                      Tải về: {selectedSpeaker.documentName || 'FullText-Paper.pdf'}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-500 font-semibold flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[11px] font-mono">
+                      <FileText className="w-4 h-4 text-slate-400" />
+                      {selectedSpeaker.documentName || 'Không có tài liệu'}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1403,37 +1480,404 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">File toàn văn đính kèm</label>
-                    <input
-                      type="text"
-                      value={speakerDocumentName}
-                      onChange={(e) => setSpeakerDocumentName(e.target.value)}
-                      placeholder="Ten-File-Toan-Van.pdf"
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none font-mono"
-                    />
+                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Tài liệu toàn văn đính kèm (.pdf, .doc, .docx)</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        id="speaker-doc-upload"
+                        accept=".pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={handleDocumentUpload}
+                        disabled={isDocumentUploading}
+                      />
+                      <label
+                        htmlFor="speaker-doc-upload"
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-750 cursor-pointer flex items-center gap-1 select-none shadow-sm transition"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
+                        Tải tài liệu lên
+                      </label>
+                      {speakerDocumentName ? (
+                        <span className="text-xs text-slate-605 font-mono flex items-center gap-1.5 bg-slate-50 px-2 py-1 border border-slate-200 rounded-lg">
+                          📄 {speakerDocumentName}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSpeakerDocumentName('');
+                              setSpeakerDocumentUrl(null);
+                            }}
+                            className="text-red-500 hover:text-red-700 font-bold bg-transparent border-none p-0 cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic font-semibold">Chưa có tệp</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Nội dung tóm tắt (Abstract)</label>
-                  <textarea
-                    value={speakerAbstractText}
-                    onChange={(e) => setSpeakerAbstractText(e.target.value)}
-                    rows={4}
-                    placeholder="Tóm tắt phương pháp nghiên cứu, kết quả đạt được, kết luận..."
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none leading-relaxed"
-                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-1.5 mb-2">
+                    <label className="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wider block">Nội dung tóm tắt (Abstract)</label>
+                    <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg w-fit select-none">
+                      <button
+                        type="button"
+                        onClick={() => setAbstractEditorMode('visual')}
+                        className={`px-2 py-1 rounded font-bold text-[9px] flex items-center gap-1 cursor-pointer transition-all border-none bg-transparent ${
+                          abstractEditorMode === 'visual' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Trực quan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAbstractEditorMode('code')}
+                        className={`px-2 py-1 rounded font-bold text-[9px] flex items-center gap-1 cursor-pointer transition-all border-none bg-transparent ${
+                          abstractEditorMode === 'code' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Code className="w-3 h-3" />
+                        HTML Code
+                      </button>
+                    </div>
+                  </div>
+
+                  {abstractEditorMode === 'visual' && (
+                    <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-50 border border-slate-200 rounded-xl mb-1 select-none">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('bold'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Chữ đậm"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('italic'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Chữ nghiêng"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('underline'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Gạch chân"
+                      >
+                        <Underline className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('justifyLeft'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Căn lề trái"
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('justifyCenter'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Căn lề giữa"
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('justifyRight'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Căn lề phải"
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('insertUnorderedList'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Danh sách dấu chấm"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('insertOrderedList'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Danh sách số"
+                      >
+                        <ListOrdered className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+                          if (url) handleAbstractFormat('createLink', url);
+                        }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Chèn liên kết"
+                      >
+                        <Link className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="relative group flex items-center">
+                        <button
+                          type="button"
+                          className="p-1 hover:bg-slate-200 rounded text-slate-700 flex items-center gap-0.5 cursor-pointer"
+                          title="Chọn màu chữ"
+                        >
+                          <Palette className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="absolute top-full left-0 mt-1 hidden group-hover:flex bg-white border border-slate-200 p-1.5 rounded-lg shadow-lg gap-1 z-30">
+                          {[
+                            { color: '#000000', name: 'Đen' },
+                            { color: '#4b5563', name: 'Xám' },
+                            { color: '#4f46e5', name: 'Indigo' },
+                            { color: '#0d9488', name: 'Teal' },
+                            { color: '#dc2626', name: 'Đỏ' },
+                            { color: '#ea580c', name: 'Cam' }
+                          ].map(item => (
+                            <button
+                              key={item.color}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleAbstractFormat('foreColor', item.color);
+                              }}
+                              className="w-4.5 h-4.5 rounded-full border border-slate-300 cursor-pointer transition-transform hover:scale-110"
+                              style={{ backgroundColor: item.color }}
+                              title={item.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleAbstractFormat('removeFormat'); }}
+                        className="px-2 py-0.5 hover:bg-slate-250 rounded text-slate-500 font-mono text-[9px] border border-slate-200 transition-colors cursor-pointer"
+                        title="Xóa định dạng"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  )}
+
+                  {abstractEditorMode === 'visual' ? (
+                    <div className="relative">
+                      <div
+                        ref={abstractEditorRef}
+                        contentEditable
+                        onInput={handleAbstractInput}
+                        className="w-full min-h-[150px] max-h-[300px] overflow-y-auto px-4 py-2.5 border border-slate-250 rounded-xl bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 text-xs leading-relaxed rich-editor-content"
+                        style={{ borderStyle: 'solid' }}
+                      />
+                    </div>
+                  ) : (
+                    <textarea
+                      value={speakerAbstractText}
+                      onChange={(e) => setSpeakerAbstractText(e.target.value)}
+                      rows={6}
+                      placeholder="Tóm tắt phương pháp nghiên cứu, kết quả đạt được, kết luận (Mã HTML)..."
+                      className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none leading-relaxed font-mono"
+                    />
+                  )}
                 </div>
 
                 <div>
-                  <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Tiểu sử vắn tắt của báo cáo viên (Bio)</label>
-                  <textarea
-                    value={speakerBio}
-                    onChange={(e) => setSpeakerBio(e.target.value)}
-                    rows={2}
-                    placeholder="Quá trình đào tạo, lĩnh vực nghiên cứu chính..."
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none leading-relaxed"
-                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-1.5 mb-2">
+                    <label className="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wider block">Tiểu sử vắn tắt của báo cáo viên (Bio)</label>
+                    <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg w-fit select-none">
+                      <button
+                        type="button"
+                        onClick={() => setBioEditorMode('visual')}
+                        className={`px-2 py-1 rounded font-bold text-[9px] flex items-center gap-1 cursor-pointer transition-all border-none bg-transparent ${
+                          bioEditorMode === 'visual' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        Trực quan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBioEditorMode('code')}
+                        className={`px-2 py-1 rounded font-bold text-[9px] flex items-center gap-1 cursor-pointer transition-all border-none bg-transparent ${
+                          bioEditorMode === 'code' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Code className="w-3 h-3" />
+                        HTML Code
+                      </button>
+                    </div>
+                  </div>
+
+                  {bioEditorMode === 'visual' && (
+                    <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-55 border border-slate-200 rounded-xl mb-1 select-none">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('bold'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Chữ đậm"
+                      >
+                        <Bold className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('italic'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Chữ nghiêng"
+                      >
+                        <Italic className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('underline'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Gạch chân"
+                      >
+                        <Underline className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('justifyLeft'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Căn lề trái"
+                      >
+                        <AlignLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('justifyCenter'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Căn lề giữa"
+                      >
+                        <AlignCenter className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('justifyRight'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Căn lề phải"
+                      >
+                        <AlignRight className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('insertUnorderedList'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Danh sách dấu chấm"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('insertOrderedList'); }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Danh sách số"
+                      >
+                        <ListOrdered className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+                          if (url) handleBioFormat('createLink', url);
+                        }}
+                        className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer"
+                        title="Chèn liên kết"
+                      >
+                        <Link className="w-3.5 h-3.5" />
+                      </button>
+
+                      <div className="relative group flex items-center">
+                        <button
+                          type="button"
+                          className="p-1 hover:bg-slate-200 rounded text-slate-700 flex items-center gap-0.5 cursor-pointer"
+                          title="Chọn màu chữ"
+                        >
+                          <Palette className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="absolute top-full left-0 mt-1 hidden group-hover:flex bg-white border border-slate-200 p-1.5 rounded-lg shadow-lg gap-1 z-30">
+                          {[
+                            { color: '#000000', name: 'Đen' },
+                            { color: '#4b5563', name: 'Xám' },
+                            { color: '#4f46e5', name: 'Indigo' },
+                            { color: '#0d9488', name: 'Teal' },
+                            { color: '#dc2626', name: 'Đỏ' },
+                            { color: '#ea580c', name: 'Cam' }
+                          ].map(item => (
+                            <button
+                              key={item.color}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleBioFormat('foreColor', item.color);
+                              }}
+                              className="w-4.5 h-4.5 rounded-full border border-slate-300 cursor-pointer transition-transform hover:scale-110"
+                              style={{ backgroundColor: item.color }}
+                              title={item.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="w-px h-3.5 bg-slate-300 mx-0.5" />
+
+                      <button
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); handleBioFormat('removeFormat'); }}
+                        className="px-2 py-0.5 hover:bg-slate-250 rounded text-slate-500 font-mono text-[9px] border border-slate-200 transition-colors cursor-pointer"
+                        title="Xóa định dạng"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  )}
+
+                  {bioEditorMode === 'visual' ? (
+                    <div className="relative">
+                      <div
+                        ref={bioEditorRef}
+                        contentEditable
+                        onInput={handleBioInput}
+                        className="w-full min-h-[100px] max-h-[200px] overflow-y-auto px-4 py-2.5 border border-slate-250 rounded-xl bg-white focus:ring-1 focus:ring-teal-500 focus:outline-none text-slate-800 text-xs leading-relaxed rich-editor-content"
+                        style={{ borderStyle: 'solid' }}
+                      />
+                    </div>
+                  ) : (
+                    <textarea
+                      value={speakerBio}
+                      onChange={(e) => setSpeakerBio(e.target.value)}
+                      rows={4}
+                      placeholder="Quá trình đào tạo, lĩnh vực nghiên cứu chính (Mã HTML)..."
+                      className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none leading-relaxed font-mono"
+                    />
+                  )}
                 </div>
 
                 <div>
