@@ -5,15 +5,16 @@ importScripts('OneSignalSDK.sw.js');
 // Strategy: Cache First for static assets, Network First for API/Supabase
 // Background Sync for offline check-in queue
 
-const CACHE_NAME = 'vsaps2026-v3';
-const STATIC_CACHE = 'vsaps2026-static-v3';
-const DYNAMIC_CACHE = 'vsaps2026-dynamic-v3';
+const CACHE_NAME = 'vsaps2026-v4';
+const STATIC_CACHE = 'vsaps2026-static-v4';
+const DYNAMIC_CACHE = 'vsaps2026-dynamic-v4';
 
 // App shell resources to pre-cache during install
 const APP_SHELL = [
   '/',
   '/index.html',
   '/offline.html',
+  '/manifest.json',
 ];
 
 // Patterns for static assets (Cache First)
@@ -126,8 +127,9 @@ self.addEventListener('fetch', (event) => {
     // Network First for API calls
     event.respondWith(networkFirst(request));
   } else if (isHashedAsset) {
-    // Network First for hashed Vite bundles — avoids serving stale JS after deploy
-    event.respondWith(networkFirst(request));
+    // ⚡ Perf: Stale-While-Revalidate for hashed Vite bundles
+    // Serve from cache instantly, update in background — best of both worlds
+    event.respondWith(staleWhileRevalidate(request));
   } else if (isStaticAsset(request.url)) {
     // Cache First for other static assets (fonts, images, icons)
     event.respondWith(cacheFirst(request));
@@ -262,6 +264,27 @@ async function refreshCache(request) {
   } catch (error) {
     // Silently fail - we already returned cached version
   }
+}
+
+/**
+ * Stale-While-Revalidate Strategy
+ * ⚡ Serve from cache immediately (instant), update cache in background.
+ * Best for: hashed JS/CSS Vite bundles — fast repeat visits + fresh after deploy.
+ */
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  const cachedResponse = await cache.match(request, { ignoreSearch: true });
+
+  // Fetch in background to update cache regardless
+  const fetchPromise = fetch(request).then(networkResponse => {
+    if (networkResponse.ok) {
+      cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+  }).catch(() => cachedResponse); // silently fallback if network fails
+
+  // Return cached version instantly if available, otherwise wait for network
+  return cachedResponse || fetchPromise;
 }
 
 // ============================================================

@@ -329,16 +329,44 @@ function AppContent() {
     }
   };
 
+  // ⚡ Perf: Show skeleton layout instead of blank spinner during auth verification
+  // This renders the actual app shell immediately from localStorage cache
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-          <span className="text-sm font-medium">Đang tải phiên làm việc...</span>
+      <div className="flex bg-slate-50 min-h-screen overflow-hidden">
+        {/* Skeleton Sidebar */}
+        <div className="hidden md:flex w-64 shrink-0 flex-col bg-white border-r border-slate-200 p-4 gap-3 animate-pulse">
+          <div className="h-10 bg-slate-100 rounded-xl mb-2" />
+          {[...Array(7)].map((_, i) => (
+            <div key={i} className="h-8 bg-slate-100 rounded-lg" style={{ width: `${70 + (i % 3) * 10}%` }} />
+          ))}
+        </div>
+        {/* Skeleton Main Content */}
+        <div className="flex-1 flex flex-col h-screen overflow-hidden">
+          {/* Skeleton Header */}
+          <div className="h-14 bg-white border-b border-slate-200 px-6 flex items-center gap-3 shrink-0 animate-pulse">
+            <div className="h-7 w-36 bg-slate-100 rounded-lg" />
+            <div className="flex-1" />
+            <div className="h-7 w-7 bg-slate-100 rounded-full" />
+            <div className="h-7 w-7 bg-slate-100 rounded-full" />
+          </div>
+          {/* Skeleton content cards */}
+          <div className="flex-1 p-6 animate-pulse">
+            <div className="max-w-7xl mx-auto space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-24 bg-white border border-slate-200 rounded-2xl" />
+                ))}
+              </div>
+              <div className="h-64 bg-white border border-slate-200 rounded-2xl" />
+              <div className="h-48 bg-white border border-slate-200 rounded-2xl" />
+            </div>
+          </div>
         </div>
       </div>
     );
   }
+
 
   if (!user && !isPublicView) {
     return (

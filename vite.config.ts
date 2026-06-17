@@ -114,5 +114,43 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+    build: {
+      // ⚡ Perf: Target modern browsers for smaller bundle output
+      target: 'esnext',
+      // ⚡ Perf: Increase warning limit for large chunks (xlsx is legitimately large)
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          // ⚡ Perf: Split large vendor libraries into separate chunks
+          // Each vendor chunk is cached independently → cache stays valid after app code updates
+          manualChunks(id) {
+            // React core — loaded first, very rarely changes
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+              return 'vendor-react';
+            }
+            // Animation library — separate chunk, changes rarely
+            if (id.includes('node_modules/motion') || id.includes('node_modules/framer-motion')) {
+              return 'vendor-motion';
+            }
+            // Supabase client — separate chunk, changes rarely
+            if (id.includes('node_modules/@supabase/')) {
+              return 'vendor-supabase';
+            }
+            // Icon library — large but cached independently
+            if (id.includes('node_modules/lucide-react')) {
+              return 'vendor-icons';
+            }
+            // Excel library — large, load only when needed
+            if (id.includes('node_modules/xlsx')) {
+              return 'vendor-xlsx';
+            }
+            // Other node_modules go into a general vendor chunk
+            if (id.includes('node_modules/')) {
+              return 'vendor-misc';
+            }
+          },
+        },
+      },
+    },
   };
 });

@@ -12,8 +12,25 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // ⚡ Perf: Read cached user synchronously from localStorage before first render
+  // This lets the app render immediately without waiting for network auth check
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const storedUser = localStorage.getItem('vsaps_mock_user');
+      if (storedUser) return JSON.parse(storedUser);
+    } catch (e) { /* ignore */ }
+    return null;
+  });
+  // ⚡ Perf: If we already have a cached user, skip initial loading state
+  const [loading, setLoading] = useState(() => {
+    try {
+      // If Supabase is NOT configured, we can trust the localStorage cache immediately
+      const hasMockUser = !!localStorage.getItem('vsaps_mock_user');
+      if (hasMockUser) return false;
+    } catch (e) { /* ignore */ }
+    return true;
+  });
+
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
