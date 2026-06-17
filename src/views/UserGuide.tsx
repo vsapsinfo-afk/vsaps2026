@@ -737,6 +737,27 @@ SMTP_SENDER="VSAPS 2026 <no-reply@vsaps2026.com>"`}
               </div>
             </div>
 
+            {/* WhatsApp Business API */}
+            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+              <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 text-[11px] font-black">🟢</span>
+                WhatsApp Business Cloud API
+              </h5>
+              <ol className="list-decimal pl-4 text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                <li>Truy cập <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">developers.facebook.com</a> → Đăng nhập → Tạo ứng dụng mới loại <strong>Doanh nghiệp (Business)</strong>.</li>
+                <li>Thiết lập sản phẩm <strong>WhatsApp</strong> trong bảng điều khiển ứng dụng để kết nối với tài khoản Meta Business Suite.</li>
+                <li>Lấy <strong>Phone Number ID</strong> và <strong>WhatsApp Business Account ID</strong> tại mục <strong>WhatsApp &rarr; Bắt đầu (Get Started)</strong>.</li>
+                <li>Tạo Access Token vĩnh viễn:
+                  <ul className="list-disc pl-4 mt-1 space-y-1">
+                    <li>Vào mục <strong>System Users (Người dùng hệ thống)</strong> trong Cài đặt doanh nghiệp Meta.</li>
+                    <li>Thêm một tài khoản system user mới vai trò quản trị viên.</li>
+                    <li>Nhấn <strong>Generate token (Tạo token)</strong> và tích chọn 2 quyền: <code>whatsapp_business_messaging</code> và <code>whatsapp_business_management</code>.</li>
+                  </ul>
+                </li>
+                <li>Điền toàn bộ 3 thông số này vào mục <strong>Cài Đặt &rarr; Cổng Tích Hợp API &rarr; WhatsApp Business Cloud API</strong> và thực hiện gửi test.</li>
+              </ol>
+            </div>
+
             {/* Email SMTP */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
               <h5 className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-2">

@@ -2505,6 +2505,40 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                       </div>
                     )}
                   </div>
+
+                  {/* Hướng dẫn tích hợp WhatsApp Business Cloud API */}
+                  <details className="border-t border-slate-200 pt-3 mt-3 cursor-pointer group">
+                    <summary className="text-[10px] font-black text-indigo-700 uppercase tracking-wider flex items-center justify-between list-none group-open:mb-2 select-none">
+                      <span>📖 HƯỚNG DẪN TÍCH HỢP WHATSAPP API</span>
+                      <span className="text-slate-400 group-open:rotate-180 transition-transform duration-200">▼</span>
+                    </summary>
+                    <div className="text-[10.5px] text-slate-600 space-y-2 leading-relaxed font-sans cursor-default pt-1 select-text">
+                      <p className="font-bold text-slate-700">Các bước kết nối với Meta WhatsApp Cloud API:</p>
+                      <ol className="list-decimal pl-4 space-y-2 text-slate-600">
+                        <li>
+                          <strong>Tạo Ứng dụng Meta:</strong> Truy cập <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">developers.facebook.com</a>, đăng nhập tài khoản Facebook, tạo ứng dụng mới loại <strong>Doanh nghiệp (Business)</strong>.
+                        </li>
+                        <li>
+                          <strong>Thiết lập WhatsApp:</strong> Tìm sản phẩm <strong>WhatsApp</strong> trong dashboard ứng dụng của bạn và nhấn <strong>Thiết lập (Set up)</strong> để kết nối với tài khoản Meta Business Suite.
+                        </li>
+                        <li>
+                          <strong>Lấy thông số ID:</strong> Vào mục <strong>WhatsApp &rarr; Bắt đầu (Get Started)</strong> trong thanh bên trái. Sao chép <strong>Phone Number ID</strong> và <strong>WhatsApp Business Account ID</strong> ở góc bên phải.
+                        </li>
+                        <li>
+                          <strong>Tạo Access Token vĩnh viễn:</strong>
+                          <ul className="list-disc pl-4 mt-1 space-y-1">
+                            <li>Vào <strong>Cài đặt doanh nghiệp (Business Settings)</strong> của Meta Suite &rarr; <strong>Người dùng hệ thống (System Users)</strong>.</li>
+                            <li>Thêm người dùng hệ thống mới vai trò <strong>Quản trị viên (Admin)</strong>.</li>
+                            <li>Chọn người dùng đó &rarr; nhấn <strong>Tạo mã token (Generate token)</strong>.</li>
+                            <li>Tích chọn ứng dụng của bạn và tích 2 quyền bắt buộc: <code>whatsapp_business_messaging</code> và <code>whatsapp_business_management</code> rồi sao chép mã Token.</li>
+                          </ul>
+                        </li>
+                        <li>
+                          <strong>Kiểm tra kết nối:</strong> Điền các thông số vào form trên, nhấn <strong>Đồng Bộ</strong>, sau đó điền số điện thoại test (dạng <code>84...</code>) rồi ấn <strong>Kiểm tra Token</strong> và <strong>Gửi test Template</strong>.
+                        </li>
+                      </ol>
+                    </div>
+                  </details>
                 </div>
               </div>
 
