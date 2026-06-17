@@ -112,6 +112,7 @@ export const DEFAULT_CME_TEMPLATE_CONFIG: CmeTemplateConfig = {
   locationDateText: "TP. Hồ Chí Minh, ngày 15 tháng 10 năm 2026",
   borderColor: "#b45309",
   bgColor: "#fdfbf7",
+  logoUrl: "",
 };
 
 const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {

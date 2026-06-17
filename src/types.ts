@@ -336,6 +336,7 @@ export interface CmeTemplateConfig {
   locationDateText: string;
   borderColor: string;
   bgColor: string;
+  logoUrl?: string;
 }
 
 export interface BusinessConfig {

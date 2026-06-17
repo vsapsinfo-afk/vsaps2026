@@ -4071,8 +4071,52 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     {/* Header Group */}
                     <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
                       <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
-                        🏛️ Tiêu Đề Đơn Vị Ban Hành (Header)
+                        🏛️ Tiêu Đề Đơn Vị Ban Hành & Logo (Header)
                       </span>
+                      
+                      {/* Logo Upload row */}
+                      <div className="space-y-1 pb-2 border-b border-slate-200">
+                        <label className="text-[10.5px] font-bold text-slate-500 block">Logo hiển thị trên chứng chỉ</label>
+                        <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-xl max-w-md">
+                          <div className="w-12 h-12 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+                            {cmeConfig.logoUrl ? (
+                              <img src={cmeConfig.logoUrl} alt="Logo CME" className="w-full h-full object-contain" />
+                            ) : (
+                              <span className="text-[9px] text-slate-400 font-bold select-none text-center leading-none">Chưa có Logo</span>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <label className="px-3 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-350 text-[10px] font-bold rounded-lg cursor-pointer transition-all inline-block select-none">
+                              Tải lên hình ảnh
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setCmeConfig({ logoUrl: reader.result as string });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                            {cmeConfig.logoUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setCmeConfig({ logoUrl: '' })}
+                                className="px-2 py-1 ml-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded-lg border-none cursor-pointer"
+                              >
+                                Xóa Logo
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10.5px] font-bold text-slate-500 block">Đơn vị ban hành (Tiếng Việt) *</label>
@@ -4331,7 +4375,14 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                       />
                       
                       {/* Header */}
-                      <div className="text-center">
+                      <div className="text-center flex flex-col items-center">
+                        {cmeConfig.logoUrl && (
+                          <img 
+                            src={cmeConfig.logoUrl} 
+                            alt="CME Logo Preview" 
+                            className="h-5 object-contain mb-0.5" 
+                          />
+                        )}
                         <h5 className="text-[6.5px] font-sans font-extrabold uppercase text-slate-700 leading-none">{cmeConfig.awardBodyTitle}</h5>
                         <h6 className="text-[5.5px] font-sans font-bold uppercase text-slate-500 mt-0.5 leading-none">{cmeConfig.awardBodySubtitle}</h6>
                         <div className="w-12 h-0.5 mx-auto my-1" style={{ backgroundColor: cmeConfig.borderColor || '#b45309' }} />

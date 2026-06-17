@@ -3646,7 +3646,14 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 <div className="absolute top-4 right-4 text-[9px] text-slate-400 font-mono tracking-wider font-bold">CMEID: VSAPS-2026-{selectedCmeAttendee.id}</div>
 
                 {/* National / Council Header */}
-                <div className="text-center space-y-0.5">
+                <div className="text-center space-y-0.5 flex flex-col items-center">
+                  {cmeConfig.logoUrl && (
+                    <img 
+                      src={cmeConfig.logoUrl} 
+                      alt="CME Logo" 
+                      className="h-10 object-contain mb-1.5" 
+                    />
+                  )}
                   <h5 className="text-[10px] font-sans font-extrabold uppercase text-slate-700 tracking-widest leading-none">{cmeConfig.awardBodyTitle}</h5>
                   <h6 className="text-[9px] font-sans font-bold uppercase text-slate-500 tracking-wide">{cmeConfig.awardBodySubtitle}</h6>
                   <div 
