@@ -271,18 +271,31 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   };
 
   const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
       setIsDocumentUploading(true);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSpeakerDocumentUrl(reader.result as string);
-        setSpeakerDocumentName(file.name);
-        setIsDocumentUploading(false);
-      };
-      reader.readAsDataURL(file);
+      const fileNamesArray: string[] = [];
+      const fileDataUrlsArray: string[] = [];
+      let processedCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        fileNamesArray.push(file.name);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          fileDataUrlsArray.push(reader.result as string);
+          processedCount++;
+          if (processedCount === files.length) {
+            setSpeakerDocumentName(fileNamesArray.join('|'));
+            setSpeakerDocumentUrl(fileDataUrlsArray.join('|'));
+            setIsDocumentUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
+
 
   // Open modal in Create mode
   const handleAddSpeaker = () => {
@@ -1130,20 +1143,32 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {selectedSpeaker.documentUrl ? (
-                    <a
-                      href={selectedSpeaker.documentUrl}
-                      download={selectedSpeaker.documentName || 'FullText-Paper.pdf'}
-                      className="text-xs text-white font-bold flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 px-3 py-2 rounded-xl text-[11px] shadow-sm transition-all cursor-pointer no-underline"
-                    >
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                      Tải về: {selectedSpeaker.documentName || 'FullText-Paper.pdf'}
-                    </a>
+                    <div className="flex flex-col md:flex-row gap-2">
+                      {selectedSpeaker.documentUrl.split('|').map((url, idx) => {
+                        const name = (selectedSpeaker.documentName || '').split('|')[idx] || `File-${idx + 1}`;
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            download={name}
+                            className="text-xs text-white font-bold flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 px-3 py-2 rounded-xl text-[11px] shadow-sm transition-all cursor-pointer no-underline truncate max-w-[200px]"
+                          >
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            Tải về: {name}
+                          </a>
+                        );
+                      })}
+                    </div>
                   ) : selectedSpeaker.documentName ? (
-                    <span className="text-xs text-amber-700 font-semibold flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-[11px] font-mono">
-                      <FileText className="w-4 h-4 text-amber-500 shrink-0" />
-                      <span>{selectedSpeaker.documentName}</span>
-                      <span className="text-amber-500 text-[9px] ml-1">(link chưa lưu — hãy upload lại từ form chỉnh sửa)</span>
-                    </span>
+                    <div className="flex flex-col gap-2">
+                      {selectedSpeaker.documentName.split('|').map((name, idx) => (
+                        <span key={idx} className="text-xs text-amber-700 font-semibold flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl text-[11px] font-mono">
+                          <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span>{name}</span>
+                          <span className="text-amber-500 text-[9px] ml-1">(link chưa lưu — hãy upload lại từ form chỉnh sửa)</span>
+                        </span>
+                      ))}
+                    </div>
                   ) : (
                     <span className="text-xs text-slate-400 font-semibold flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-[11px] font-mono">
                       <FileText className="w-4 h-4 text-slate-300 shrink-0" />
@@ -1152,6 +1177,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                   )}
                 </div>
               </div>
+
 
               {/* Assign or approve section inside the modal detail viewer */}
               <div className="pt-6 border-t border-slate-150 flex justify-between gap-3 flex-wrap">
@@ -1506,42 +1532,57 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Tài liệu toàn văn đính kèm (.pdf, .doc, .docx)</label>
-                    <div className="flex items-center gap-3">
+                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">CV/Abstract/Full file (.pdf, .doc, .docx, .ppt, .pptx)</label>
+                    <div className="flex flex-col md:flex-row md:items-center gap-3">
                       <input
                         type="file"
                         id="speaker-doc-upload"
-                        accept=".pdf,.doc,.docx"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx"
+                        multiple
                         className="hidden"
                         onChange={handleDocumentUpload}
                         disabled={isDocumentUploading}
                       />
                       <label
                         htmlFor="speaker-doc-upload"
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-750 cursor-pointer flex items-center gap-1 select-none shadow-sm transition"
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-755 cursor-pointer flex items-center gap-1 select-none shadow-sm transition shrink-0"
                       >
                         <Upload className="w-3.5 h-3.5 text-slate-500" />
                         Tải tài liệu lên
                       </label>
                       {speakerDocumentName ? (
-                        <span className="text-xs text-slate-605 font-mono flex items-center gap-1.5 bg-slate-50 px-2 py-1 border border-slate-200 rounded-lg">
-                          📄 {speakerDocumentName}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSpeakerDocumentName('');
-                              setSpeakerDocumentUrl(null);
-                            }}
-                            className="text-red-500 hover:text-red-700 font-bold bg-transparent border-none p-0 cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </span>
+                        <div className="flex flex-wrap gap-1.5 max-w-md">
+                          {speakerDocumentName.split('|').map((name, idx) => (
+                            <span key={idx} className="text-xs text-slate-605 font-mono flex items-center gap-1.5 bg-slate-50 px-2 py-1 border border-slate-200 rounded-lg justify-between gap-2">
+                              <span className="truncate max-w-[100px]">📄 {name}</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const names = speakerDocumentName.split('|');
+                                  const urls = (speakerDocumentUrl || '').split('|');
+                                  names.splice(idx, 1);
+                                  urls.splice(idx, 1);
+                                  if (names.length === 0) {
+                                    setSpeakerDocumentName('');
+                                    setSpeakerDocumentUrl(null);
+                                  } else {
+                                    setSpeakerDocumentName(names.join('|'));
+                                    setSpeakerDocumentUrl(urls.join('|'));
+                                  }
+                                }}
+                                className="text-red-500 hover:text-red-700 font-bold bg-transparent border-none p-0 cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+                        </div>
                       ) : (
                         <span className="text-[10px] text-slate-400 italic font-semibold">Chưa có tệp</span>
                       )}
                     </div>
                   </div>
+
                 </div>
 
                 <div>

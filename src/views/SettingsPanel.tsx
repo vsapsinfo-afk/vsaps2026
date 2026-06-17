@@ -3902,7 +3902,8 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                               { key: 'presentationTitle', labelVi: 'Tên đề tài báo cáo khoa học', labelEn: 'Presentation Title', placeholderVi: 'Tên đề tài bài báo cáo khoa học *', placeholderEn: 'Presentation Title *' },
                               { key: 'category', labelVi: 'Chuyên mục / Chuyên khoa chính', labelEn: 'Scientific Track', placeholderVi: 'Chuyên mục / Chuyên khoa chính *', placeholderEn: 'Scientific Category / Track *' },
                               { key: 'abstractText', labelVi: 'Tóm tắt nội dung báo cáo', labelEn: 'Abstract Text', placeholderVi: 'Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *', placeholderEn: 'Abstract text - Limit 500 words *' },
-                              { key: 'uploadFile', labelVi: 'Tải lên slide/đề cương', labelEn: 'Upload draft slides/abstract', placeholderVi: 'Tải lên slide nháp / đề cương / tóm tắt đầy đủ', placeholderEn: 'Upload draft slides / outline / full abstract' }
+                              { key: 'uploadFile', labelVi: 'CV/Abstract/Full file', labelEn: 'CV/Abstract/Full file', placeholderVi: 'CV/Abstract/Full file', placeholderEn: 'CV/Abstract/Full file' }
+
                             );
                           } else if (formActiveSection === 'sponsor') {
                             fields.push(

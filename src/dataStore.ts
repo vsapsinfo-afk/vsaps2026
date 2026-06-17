@@ -172,7 +172,8 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
       presentationTitle: { vi: "Tên đề tài bài báo cáo khoa học *", en: "Presentation Title *" },
       category: { vi: "Chuyên mục / Chuyên khoa chính *", en: "Scientific Category / Track *" },
       abstractText: { vi: "Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *", en: "Abstract text - Limit 500 words *" },
-      uploadFile: { vi: "Tải lên slide nháp / đề cương / tóm tắt đầy đủ", en: "Upload draft slides / outline / full abstract" },
+      uploadFile: { vi: "CV/Abstract/Full file", en: "CV/Abstract/Full file" },
+
     },
   },
   sponsorFormConfig: {

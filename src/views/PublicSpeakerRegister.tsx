@@ -93,18 +93,31 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
+    const files = e.target.files;
+    if (files && files.length > 0) {
       setIsDocUploading(true);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setDocumentUrl(reader.result as string);
-        setIsDocUploading(false);
-      };
-      reader.readAsDataURL(file);
+      const fileNamesArray: string[] = [];
+      const fileDataUrlsArray: string[] = [];
+      let processedCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        fileNamesArray.push(file.name);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          fileDataUrlsArray.push(reader.result as string);
+          processedCount++;
+          if (processedCount === files.length) {
+            setFileName(fileNamesArray.join('|'));
+            setDocumentUrl(fileDataUrlsArray.join('|'));
+            setIsDocUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -565,14 +578,14 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <span className="text-xs font-bold text-slate-800 block">
-                    {L.f('uploadFile', 'Tải lên slide nháp / đề cương / tóm tắt đầy đủ', 'Upload draft slides / outline / full abstract')}
+                    CV/Abstract/Full file
                   </span>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-slate-505">
                     {L.t('Chấp nhận định dạng .pdf, .docx, .ppt, .pptx tối đa 15MB. Bản này dùng để hội đồng đọc bình duyệt chuyên sâu.', 'Accepts .pdf, .docx, .ppt, .pptx formats, max 15MB. This file will be reviewed by the academic committee.')}
                   </p>
                 </div>
 
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
                   <div 
                     role="button"
                     onClick={() => docInputRef.current?.click()}
@@ -588,23 +601,42 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                       ref={docInputRef}
                       type="file"
                       accept=".pdf,.docx,.ppt,.pptx"
+                      multiple
                       onChange={handleFileUpload}
                       className="hidden"
                     />
                   </div>
                   {fileName && !isDocUploading && (
-                    <div className="flex items-center gap-1.5 max-w-[140px] md:max-w-xs">
-                      <span className="text-xs text-teal-700 font-semibold truncate">📎 {fileName}</span>
-                      <button
-                        type="button"
-                        onClick={() => { setFileName(''); setDocumentUrl(null); if (docInputRef.current) docInputRef.current.value = ''; }}
-                        className="text-slate-400 hover:text-rose-500 text-[11px] shrink-0 cursor-pointer border-none bg-transparent p-0"
-                        title="Xóa tệp"
-                      >✕</button>
+                    <div className="flex flex-wrap gap-1.5 max-w-[240px] md:max-w-md">
+                      {fileName.split('|').map((name, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 bg-teal-50 border border-teal-100 px-2 py-1 rounded-lg">
+                          <span className="text-[11px] text-teal-800 font-semibold truncate max-w-[100px] md:max-w-[160px]">📎 {name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const names = fileName.split('|');
+                              const urls = (documentUrl || '').split('|');
+                              names.splice(idx, 1);
+                              urls.splice(idx, 1);
+                              if (names.length === 0) {
+                                setFileName('');
+                                setDocumentUrl(null);
+                                if (docInputRef.current) docInputRef.current.value = '';
+                              } else {
+                                setFileName(names.join('|'));
+                                setDocumentUrl(urls.join('|'));
+                              }
+                            }}
+                            className="text-slate-400 hover:text-rose-500 text-[11px] shrink-0 cursor-pointer border-none bg-transparent p-0"
+                            title="Xóa tệp"
+                          >✕</button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
+
 
               {/* Calendar sync selection */}
               <div className="flex items-start gap-3 p-4 bg-teal-50/20 border border-teal-100 rounded-2xl mt-4">
