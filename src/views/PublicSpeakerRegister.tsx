@@ -316,8 +316,9 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               </div>
             )}
 
-            {/* Language Selector */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+            {/* Language Selector (Hidden) */}
+            <div className="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 shadow-sm">
+
               <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
                 {L.f('nationality', 'Chọn ngôn ngữ *', 'Select Language *')}
               </label>
