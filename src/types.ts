@@ -320,6 +320,24 @@ export interface PublicFormConfig {
   sponsorPackages?: SponsorPackage[];
 }
 
+export interface CmeTemplateConfig {
+  certificateTitle: string;
+  certificateSubtitle: string;
+  awardBodyTitle: string;
+  awardBodySubtitle: string;
+  paragraphText: string;
+  courseTitle: string;
+  durationText: string;
+  signerName: string;
+  signerTitle: string;
+  sealText1: string;
+  sealText2: string;
+  sealText3: string;
+  locationDateText: string;
+  borderColor: string;
+  bgColor: string;
+}
+
 export interface BusinessConfig {
   eventName: string;
   organizerName: string;
@@ -346,7 +364,10 @@ export interface BusinessConfig {
   sponsorFormConfig?: PublicFormConfig;
   /** Danh sách dịch vụ phụ trợ tùy chọn (CME, Gala, Masterclass, Tour...) */
   addOnServices?: AddOnService[];
+  /** Cấu hình layout chứng chỉ CME điện tử */
+  cmeTemplateConfig?: CmeTemplateConfig;
 }
+
 
 export interface EmbedScript {
   id: string;

@@ -39,7 +39,7 @@ import {
   RefreshCw,
   Award
 } from 'lucide-react';
-import { store } from '../dataStore';
+import { store, DEFAULT_CME_TEMPLATE_CONFIG } from '../dataStore';
 import { 
   UserAccount, 
   RegistrationPackage, 
@@ -53,7 +53,8 @@ import {
   NotificationTemplate,
   BusinessConfig,
   EmbedScript,
-  AddOnService
+  AddOnService,
+  CmeTemplateConfig
 } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 
@@ -63,7 +64,7 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout'>('business');
   const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
 
   // Printer config states (saved to localStorage for device-specific setup)
@@ -1272,6 +1273,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           >
             <span className="shrink-0 text-base">📋</span>
             <span>Cấu hình Form Public</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('cme-layout')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'cme-layout'
+                ? 'bg-amber-700 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-amber-50 hover:text-amber-800 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">🎓</span>
+            <span>Thiết kế Chứng chỉ CME</span>
           </button>
 
           {/* Quick diagnostic tips */}
@@ -4017,6 +4030,374 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
             );
           })()}
 
+          {/* ================= SECTION 9: CME CERTIFICATE LAYOUT CONFIGURATION ================= */}
+          {activeSubTab === 'cme-layout' && (() => {
+            const cmeConfig = businessConfig.cmeTemplateConfig || DEFAULT_CME_TEMPLATE_CONFIG;
+            
+            const setCmeConfig = (patch: Partial<CmeTemplateConfig>) => {
+              setBusinessConfig({
+                ...businessConfig,
+                cmeTemplateConfig: {
+                  ...DEFAULT_CME_TEMPLATE_CONFIG,
+                  ...cmeConfig,
+                  ...patch,
+                },
+              });
+            };
+
+            const handleSaveCmeSubmit = (e: React.FormEvent) => {
+              e.preventDefault();
+              store.saveBusinessConfig(businessConfig);
+              alert('Đã lưu cấu hình layout chứng chỉ CME thành công!');
+            };
+
+            return (
+              <div className="space-y-6 animate-fade-in text-slate-900 font-sans">
+                <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                      🎓 Thiết Kế Chứng Chỉ CME Điện Tử
+                    </h3>
+                    <p className="text-[11px] text-slate-450 mt-0.5">
+                      Tùy chỉnh nội dung chữ, chữ ký số, mộc đỏ và tông màu sắc của chứng chỉ CME phát hành cho đại biểu.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveCmeSubmit} className="space-y-6">
+                  {/* Grid fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    {/* Header Group */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        🏛️ Tiêu Đề Đơn Vị Ban Hành (Header)
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Đơn vị ban hành (Tiếng Việt) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.awardBodyTitle}
+                            onChange={(e) => setCmeConfig({ awardBodyTitle: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Đơn vị ban hành (Tiếng Anh) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.awardBodySubtitle}
+                            onChange={(e) => setCmeConfig({ awardBodySubtitle: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Certificate Titles */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        📜 Tên Loại Chứng Chỉ
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Tiêu đề chứng chỉ (Tiếng Việt) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.certificateTitle}
+                            onChange={(e) => setCmeConfig({ certificateTitle: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Tiêu đề chứng chỉ (Tiếng Anh) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.certificateSubtitle}
+                            onChange={(e) => setCmeConfig({ certificateSubtitle: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-semibold"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Content Texts */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        ✍️ Nội Dung Trình Bày (Body)
+                      </span>
+                      <div className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Lời dẫn chứng nhận *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.paragraphText}
+                            onChange={(e) => setCmeConfig({ paragraphText: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Tên chương trình / khóa học khoa học *</label>
+                          <textarea
+                            required
+                            value={cmeConfig.courseTitle}
+                            onChange={(e) => setCmeConfig({ courseTitle: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-semibold font-sans"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Thời lượng / Số tiết đào tạo *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.durationText}
+                            onChange={(e) => setCmeConfig({ durationText: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Signer Info */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        ✒️ Người Ký & Ngày Tháng Ban Hành
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1 md:col-span-2">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Địa điểm & Ngày tháng ký phát hành *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.locationDateText}
+                            onChange={(e) => setCmeConfig({ locationDateText: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Chức vụ người ký *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.signerTitle}
+                            onChange={(e) => setCmeConfig({ signerTitle: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-bold uppercase"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Họ và tên người ký *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.signerName}
+                            onChange={(e) => setCmeConfig({ signerName: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-bold italic"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Seal config */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        💮 Cấu Hợp Mộc Đỏ Số
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Mộc đỏ: Dòng 1 (Vòng ngoài) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.sealText1}
+                            onChange={(e) => setCmeConfig({ sealText1: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 uppercase"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Mộc đỏ: Dòng 2 (Trung tâm) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.sealText2}
+                            onChange={(e) => setCmeConfig({ sealText2: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 uppercase"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block">Mộc đỏ: Dòng 3 (Vòng dưới) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={cmeConfig.sealText3}
+                            onChange={(e) => setCmeConfig({ sealText3: e.target.value })}
+                            className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 uppercase"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Colors & Layout styling */}
+                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl md:col-span-2">
+                      <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                        🎨 Màu Sắc & Thiết Kế Đường Viền
+                      </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block flex items-center gap-1.5">
+                            <span className="w-3.5 h-3.5 rounded border border-slate-300 block" style={{ backgroundColor: cmeConfig.borderColor }} />
+                            Màu đường viền & chữ tiêu đề chính *
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={cmeConfig.borderColor}
+                              onChange={(e) => setCmeConfig({ borderColor: e.target.value })}
+                              className="w-9 h-8 border border-slate-200 rounded cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              required
+                              value={cmeConfig.borderColor}
+                              onChange={(e) => setCmeConfig({ borderColor: e.target.value })}
+                              className="w-full px-3 py-1 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-mono"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10.5px] font-bold text-slate-500 block flex items-center gap-1.5">
+                            <span className="w-3.5 h-3.5 rounded border border-slate-300 block" style={{ backgroundColor: cmeConfig.bgColor }} />
+                            Màu nền chứng chỉ *
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={cmeConfig.bgColor}
+                              onChange={(e) => setCmeConfig({ bgColor: e.target.value })}
+                              className="w-9 h-8 border border-slate-200 rounded cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              required
+                              value={cmeConfig.bgColor}
+                              onChange={(e) => setCmeConfig({ bgColor: e.target.value })}
+                              className="w-full px-3 py-1 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-amber-500 outline-none text-slate-800 font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-3 border-t border-slate-100 flex justify-end gap-2 text-xs">
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-black rounded-xl cursor-pointer transition-all border-none shadow-sm flex items-center gap-1.5"
+                    >
+                      💾 Lưu Cấu Hình Layout Chứng Chỉ
+                    </button>
+                  </div>
+                </form>
+
+                {/* Preview layout box */}
+                <div className="space-y-2 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-[11px] font-black text-slate-800 block uppercase tracking-wide">
+                    👁️ Bản Xem Trước Thu Nhỏ (Mini Preview)
+                  </span>
+                  <div className="p-4 bg-slate-200 rounded-xl flex justify-center overflow-x-auto">
+                    <div 
+                      className="p-4 shadow relative flex flex-col justify-between select-none rounded border-inset shrink-0"
+                      style={{ 
+                        width: '550px', 
+                        height: '387px', 
+                        fontFamily: 'Georgia, serif', 
+                        backgroundColor: cmeConfig.bgColor || '#fdfbf7', 
+                        border: `8px double ${cmeConfig.borderColor || '#b45309'}`,
+                        transform: 'scale(1)',
+                        transformOrigin: 'top center'
+                      }}
+                    >
+                      <div 
+                        className="absolute inset-1 border pointer-events-none" 
+                        style={{ borderColor: `${cmeConfig.borderColor || '#b45309'}30` }}
+                      />
+                      
+                      {/* Header */}
+                      <div className="text-center">
+                        <h5 className="text-[6.5px] font-sans font-extrabold uppercase text-slate-700 leading-none">{cmeConfig.awardBodyTitle}</h5>
+                        <h6 className="text-[5.5px] font-sans font-bold uppercase text-slate-500 mt-0.5 leading-none">{cmeConfig.awardBodySubtitle}</h6>
+                        <div className="w-12 h-0.5 mx-auto my-1" style={{ backgroundColor: cmeConfig.borderColor || '#b45309' }} />
+                      </div>
+
+                      {/* Title */}
+                      <div className="text-center mt-0.5">
+                        <h1 className="text-[13px] font-bold uppercase leading-none" style={{ color: cmeConfig.borderColor || '#b45309' }}>{cmeConfig.certificateTitle}</h1>
+                        <p className="text-[6px] italic text-slate-650 font-sans mt-0.5 leading-none">{cmeConfig.certificateSubtitle}</p>
+                      </div>
+
+                      {/* Recipient */}
+                      <div className="text-center mt-1">
+                        <p className="text-[6.5px] text-slate-600 font-sans leading-none">{cmeConfig.paragraphText}</p>
+                        <h2 className="text-[11px] font-black uppercase tracking-tight my-1 text-red-900 leading-none font-sans">
+                          BS. NGUYỄN VĂN A
+                        </h2>
+                        <div className="text-[6px] text-slate-500 font-sans leading-none">
+                          Năm sinh: 1985 | Quốc tịch: Việt Nam | Đơn vị: Bệnh viện Đa khoa Quốc tế
+                        </div>
+                      </div>
+
+                      {/* Course */}
+                      <div className="text-center mt-1 px-4">
+                        <p className="text-[6px] text-slate-600 font-sans leading-none">Đã hoàn thành xuất sắc chương trình đào tạo khoa học tại:</p>
+                        <p className="text-[7px] font-bold uppercase my-0.5 leading-tight font-sans" style={{ color: cmeConfig.borderColor || '#b45309' }}>
+                          "{cmeConfig.courseTitle}"
+                        </p>
+                        <p className="text-[6px] italic text-slate-500 font-sans leading-none">{cmeConfig.durationText}</p>
+                      </div>
+
+                      {/* Footer */}
+                      <div className="flex justify-between items-end mt-2">
+                        <div className="text-left font-sans flex items-center gap-1">
+                          <div className="w-6 h-6 bg-white border border-slate-200 flex items-center justify-center font-mono text-[3px] text-slate-450">QR CODE</div>
+                          <div>
+                            <span className="text-[4px] text-slate-450 block italic leading-none">Mã xác minh</span>
+                            <span className="text-[5px] font-mono font-bold text-slate-600 block leading-none">01-CME</span>
+                          </div>
+                        </div>
+
+                        <div className="relative text-center font-sans pr-2">
+                          <span className="text-[5px] text-slate-500 block italic leading-none">{cmeConfig.locationDateText}</span>
+                          <p className="text-[5.5px] font-bold text-slate-800 uppercase block tracking-wider mt-0.5 leading-none">{cmeConfig.signerTitle}</p>
+                          
+                          <div className="absolute top-0 left-1 w-8 h-8 border border-red-500 opacity-80 rounded-full flex flex-col items-center justify-center text-[3.5px] font-black text-red-600 border-dashed transform rotate-12 uppercase leading-none">
+                            <span className="text-[2.5px] tracking-tighter leading-none text-center">{cmeConfig.sealText1}</span>
+                            <span className="text-[3px] leading-none">{cmeConfig.sealText2}</span>
+                            <span className="text-[2.2px] tracking-tighter leading-none text-center">{cmeConfig.sealText3}</span>
+                          </div>
+
+                          <div className="pt-3.5 font-bold text-[6.5px] text-slate-900 italic font-serif leading-none">
+                            {cmeConfig.signerName}
+                          </div>
+                          <span className="text-[4px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 font-mono font-bold uppercase tracking-wider block mt-0.5 scale-95 leading-none">✓ CHỮ KÝ SỐ</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Modals or other subtab containers */}
         </div>
 
       </div>

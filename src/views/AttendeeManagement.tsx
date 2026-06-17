@@ -7,7 +7,7 @@ import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck, Cloud, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { store } from '../dataStore';
+import { store, DEFAULT_CME_TEMPLATE_CONFIG } from '../dataStore';
 import { Attendee, Role } from '../types';
 
 interface AttendeeManagementProps {
@@ -16,6 +16,7 @@ interface AttendeeManagementProps {
 
 export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [attendees, setAttendees] = useState<Attendee[]>(store.getAttendees());
+  const cmeConfig = store.getBusinessConfig().cmeTemplateConfig || DEFAULT_CME_TEMPLATE_CONFIG;
   
   // Filtering & searching states
   const [searchQuery, setSearchQuery] = useState('');
@@ -3600,6 +3601,32 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
             {/* Frame certificate styled */}
             <div className="p-8 bg-slate-100 overflow-y-auto flex-1 flex justify-center items-center">
+              <style dangerouslySetInnerHTML={{ __html: `
+                @page {
+                  size: 22cm 15.5cm;
+                  margin: 0;
+                }
+                @media print {
+                  body * {
+                    visibility: hidden !important;
+                  }
+                  #cme-paper-acc, #cme-paper-acc * {
+                    visibility: visible !important;
+                  }
+                  #cme-paper-acc {
+                    position: absolute !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 22cm !important;
+                    height: 15.5cm !important;
+                    margin: 0 !important;
+                    padding: 2cm !important;
+                    border: 12px double ${cmeConfig.borderColor || '#b45309'} !important;
+                    background-color: ${cmeConfig.bgColor || '#fdfbf7'} !important;
+                    -webkit-print-color-adjust: exact !important;
+                  }
+                }
+              `}} />
               <div 
                 id="cme-paper-acc"
                 className="bg-amber-50/5 p-8 shadow-inner relative flex flex-col justify-between select-text rounded border-inset"
@@ -3607,31 +3634,45 @@ Ban Thư ký Hội nghị VSAPS 2026`
                   width: '22cm', 
                   height: '15.5cm', 
                   fontFamily: 'Georgia, serif', 
-                  backgroundColor: '#fdfbf7', 
-                  border: '12px double #b45309' 
+                  backgroundColor: cmeConfig.bgColor || '#fdfbf7', 
+                  border: `12px double ${cmeConfig.borderColor || '#b45309'}` 
                 }}
               >
                 {/* Subtle gold floral graphic backgrounds */}
-                <div className="absolute inset-2 border border-amber-600/30 pointer-events-none" />
+                <div 
+                  className="absolute inset-2 border pointer-events-none" 
+                  style={{ borderColor: `${cmeConfig.borderColor || '#b45309'}30` }}
+                />
                 <div className="absolute top-4 right-4 text-[9px] text-slate-400 font-mono tracking-wider font-bold">CMEID: VSAPS-2026-{selectedCmeAttendee.id}</div>
 
                 {/* National / Council Header */}
                 <div className="text-center space-y-0.5">
-                  <h5 className="text-[10px] font-sans font-extrabold uppercase text-slate-700 tracking-widest leading-none">HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM</h5>
-                  <h6 className="text-[9px] font-sans font-bold uppercase text-slate-500 tracking-wide">VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS)</h6>
-                  <div className="w-24 h-0.5 bg-amber-600 mx-auto my-1.5" />
+                  <h5 className="text-[10px] font-sans font-extrabold uppercase text-slate-700 tracking-widest leading-none">{cmeConfig.awardBodyTitle}</h5>
+                  <h6 className="text-[9px] font-sans font-bold uppercase text-slate-500 tracking-wide">{cmeConfig.awardBodySubtitle}</h6>
+                  <div 
+                    className="w-24 h-0.5 mx-auto my-1.5" 
+                    style={{ backgroundColor: cmeConfig.borderColor || '#b45309' }}
+                  />
                 </div>
 
                 {/* Certificate Main Label */}
                 <div className="text-center space-y-1 mt-2">
-                  <h1 className="text-2xl font-bold uppercase text-amber-805 tracking-wide text-amber-800">CHỨNG CHỈ ĐÀO TẠO LIÊN TỤC</h1>
-                  <p className="text-xs italic text-slate-650 font-sans">Continuing Medical Education (CME) in Aesthetic Medicine</p>
+                  <h1 
+                    className="text-2xl font-bold uppercase tracking-wide"
+                    style={{ color: cmeConfig.borderColor || '#b45309' }}
+                  >
+                    {cmeConfig.certificateTitle}
+                  </h1>
+                  <p className="text-xs italic text-slate-650 font-sans">{cmeConfig.certificateSubtitle}</p>
                 </div>
 
                 {/* Recipient details */}
                 <div className="text-center space-y-2 mt-4">
-                  <p className="text-xs text-slate-600 font-sans">Ban Chấp Hành Hiệp Hội Danh Dự VSAPS chứng nhận và cấp cho:</p>
-                  <h2 className="text-xl font-black text-red-900 uppercase tracking-tight my-2">
+                  <p className="text-xs text-slate-600 font-sans">{cmeConfig.paragraphText}</p>
+                  <h2 
+                    className="text-xl font-black uppercase tracking-tight my-2"
+                    style={{ color: cmeConfig.borderColor || '#b45309' }}
+                  >
                     {selectedCmeAttendee.title} {selectedCmeAttendee.fullName}
                   </h2>
                   
@@ -3645,10 +3686,13 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 {/* Subject info */}
                 <div className="text-center max-w-lg mx-auto mt-4 space-y-1">
                   <p className="text-xs text-slate-600 font-sans">Đã hoàn thành xuất sắc chương trình đào tạo khoa học chuyên sâu thuộc khuôn khổ:</p>
-                  <p className="text-xs font-bold text-amber-905 uppercase text-amber-900 tracking-wide font-sans">
-                    "TIẾN BỘ MỚI TRONG THẨM MỸ NỘI KHOA & NGOẠI KHOA TẠO HÌNH THÂN MÌNH"
+                  <p 
+                    className="text-xs font-bold uppercase tracking-wide font-sans"
+                    style={{ color: cmeConfig.borderColor || '#b45309' }}
+                  >
+                    "{cmeConfig.courseTitle}"
                   </p>
-                  <p className="text-[10.5px] italic text-slate-500 font-sans">Thời lượng: <strong>24 tiết đào tạo tín chỉ CME cấp thẩm quyền y tế</strong></p>
+                  <p className="text-[10.5px] italic text-slate-500 font-sans">{cmeConfig.durationText}</p>
                 </div>
 
                 {/* Footer stamping, signing & date */}
@@ -3668,18 +3712,18 @@ Ban Thư ký Hội nghị VSAPS 2026`
 
                   {/* Red Digital Signature Seal */}
                   <div className="relative text-center font-sans space-y-1 pr-6">
-                    <span className="text-[9.5px] text-slate-500 block italic">TP. Hồ Chí Minh, ngày 15 tháng 10 năm 2026</span>
-                    <p className="text-[9.5px] font-bold text-slate-800 uppercase block tracking-wider pt-1">BAN ĐÀO TẠO CME & CHỦ TỊCH HỘI</p>
+                    <span className="text-[9.5px] text-slate-500 block italic">{cmeConfig.locationDateText}</span>
+                    <p className="text-[9.5px] font-bold text-slate-800 uppercase block tracking-wider pt-1">{cmeConfig.signerTitle}</p>
                     
                     {/* Seal Image Overlay simulation */}
                     <div className="absolute top-1 left-3 w-16 h-16 border-2 border-red-500 opacity-80 rounded-full flex flex-col items-center justify-center p-1 text-[7px] font-black text-red-600 border-dashed transform rotate-12 scale-105 pointer-events-none uppercase">
-                      <span className="text-[5.5px] tracking-wide text-center">HỘI PHẪU THUẬT</span>
-                      <span className="text-[6.5px]">VSAPS</span>
-                      <span className="text-[5px] tracking-tighter text-center">DẤU MỘC ĐỎ</span>
+                      <span className="text-[5.5px] tracking-wide text-center">{cmeConfig.sealText1}</span>
+                      <span className="text-[6.5px]">{cmeConfig.sealText2}</span>
+                      <span className="text-[5px] tracking-tighter text-center">{cmeConfig.sealText3}</span>
                     </div>
 
                     <div className="pt-6 font-bold text-[11px] text-slate-900 italic font-serif">
-                      GS. TS. Phạm Minh Chi
+                      {cmeConfig.signerName}
                     </div>
                     <span className="text-[8.5px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono font-bold uppercase tracking-wider block mt-1 scale-95">✓ CHỮ KÝ SỐ ĐÃ CHIỂU ĐỎ</span>
                   </div>

@@ -27,6 +27,7 @@ import {
   OneSignalConfig,
   Contact,
   SponsorPackage,
+  CmeTemplateConfig,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -95,6 +96,24 @@ const DEFAULT_WHATSAPP_CONFIG: WhatsappConfig = {
   testPhone: '',
 };
 
+export const DEFAULT_CME_TEMPLATE_CONFIG: CmeTemplateConfig = {
+  certificateTitle: "CHỨNG CHỈ ĐÀO TẠO LIÊN TỤC",
+  certificateSubtitle: "Continuing Medical Education (CME) in Aesthetic Medicine",
+  awardBodyTitle: "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM",
+  awardBodySubtitle: "VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS)",
+  paragraphText: "Ban Chấp Hành Hiệp Hội Danh Dự VSAPS chứng nhận và cấp cho:",
+  courseTitle: "TIẾN BỘ MỚI TRONG THẨM MỸ NỘI KHOA & NGOẠI KHOA TẠO HÌNH THÂN MÌNH",
+  durationText: "Thời lượng: 24 tiết đào tạo tín chỉ CME cấp thẩm quyền y tế",
+  signerName: "GS. TS. Phạm Minh Chi",
+  signerTitle: "BAN ĐÀO TẠO CME & CHỦ TỊCH HỘI",
+  sealText1: "HỘI PHẪU THUẬT",
+  sealText2: "VSAPS",
+  sealText3: "DẤU MỘC ĐỎ",
+  locationDateText: "TP. Hồ Chí Minh, ngày 15 tháng 10 năm 2026",
+  borderColor: "#b45309",
+  bgColor: "#fdfbf7",
+};
+
 const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   appUrl: 'https://vsaps2026.vercel.app',
   eventName: "Hội nghị Khoa học Thường niên VSAPS 2026",
@@ -106,6 +125,8 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   allowSelfCancellation: false,
   autoSendZns: true,
   requirePracticeCode: true,
+  cmeTemplateConfig: DEFAULT_CME_TEMPLATE_CONFIG,
+
   pwaName: "VSAPS 2026 - Hội Nghị Khoa Học Thẩm Mỹ",
   pwaShortName: "VSAPS 2026",
   pwaDescription: "Hệ thống quản lý Hội Nghị Khoa Học Thẩm Mỹ Quốc Tế Thường Niên VSAPS 2026",
@@ -525,7 +546,9 @@ export class DataStore {
       delegateFormConfig: savedConfig.delegateFormConfig || DEFAULT_BUSINESS_CONFIG.delegateFormConfig,
       speakerFormConfig: savedConfig.speakerFormConfig || DEFAULT_BUSINESS_CONFIG.speakerFormConfig,
       sponsorFormConfig: savedConfig.sponsorFormConfig || DEFAULT_BUSINESS_CONFIG.sponsorFormConfig,
+      cmeTemplateConfig: savedConfig.cmeTemplateConfig || DEFAULT_BUSINESS_CONFIG.cmeTemplateConfig,
     };
+
     
     // Auto-migrate old/empty appUrl
     if (!this.businessConfig.appUrl || this.businessConfig.appUrl.includes('vsaps2026-delta.vercel.app')) {
@@ -624,7 +647,9 @@ export class DataStore {
           delegateFormConfig: dbConfig.delegateFormConfig || DEFAULT_BUSINESS_CONFIG.delegateFormConfig,
           speakerFormConfig: dbConfig.speakerFormConfig || DEFAULT_BUSINESS_CONFIG.speakerFormConfig,
           sponsorFormConfig: dbConfig.sponsorFormConfig || DEFAULT_BUSINESS_CONFIG.sponsorFormConfig,
+          cmeTemplateConfig: dbConfig.cmeTemplateConfig || DEFAULT_BUSINESS_CONFIG.cmeTemplateConfig,
         };
+
         
         // Auto-migrate old/empty appUrl
         if (!this.businessConfig.appUrl || this.businessConfig.appUrl.includes('vsaps2026-delta.vercel.app')) {
