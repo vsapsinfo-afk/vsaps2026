@@ -795,6 +795,70 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     setZnsType('transaction');
   };
 
+  const getTemplateForFlow = (categoryCode: string, itemCode: string, channel: 'email' | 'zalo' | 'whatsapp') => {
+    if (categoryCode === 'speaker') {
+      if (itemCode === 'submitted') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-speaker-email' || t.id === 'tmpl-speaker-wa' || (t.type === 'abstract_approved' && (t.id.includes('submit') || t.id === 'tmpl-speaker-email' || t.id === 'tmpl-speaker-wa'))));
+      }
+      if (itemCode === 'approved') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-speaker-approved' || (t.type === 'abstract_approved' && t.id.includes('approve'))));
+      }
+      if (itemCode === 'reminder') {
+        return templates.find(t => t.channel === channel && t.type === 'reminder_event' && (t.id.includes('speaker') || t.name.toLowerCase().includes('báo cáo viên')));
+      }
+    } else if (categoryCode === 'attendee') {
+      if (itemCode === 'registered') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-reg-email' || t.id === 'tmpl-reg-zalo' || t.id === 'tmpl-reg-wa' || (t.type === 'registration_success' && !t.id.includes('sponsor'))));
+      }
+      if (itemCode === 'paid') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-pay-zalo' || (t.type === 'payment_confirmed' && !t.id.includes('sponsor'))));
+      }
+      if (itemCode === 'reminder') {
+        return templates.find(t => t.channel === channel && t.type === 'reminder_event' && !t.id.includes('speaker') && !t.id.includes('sponsor'));
+      }
+    } else if (categoryCode === 'sponsor') {
+      if (itemCode === 'registered') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-sponsor-registered' || t.type === 'sponsor_registered'));
+      }
+      if (itemCode === 'contract') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-sponsor-contract' || t.type === 'sponsor_contract'));
+      }
+      if (itemCode === 'paid') {
+        return templates.find(t => t.channel === channel && (t.id === 'tmpl-sponsor-paid' || t.type === 'sponsor_paid'));
+      }
+      if (itemCode === 'reminder') {
+        return templates.find(t => t.channel === channel && t.type === 'reminder_event' && (t.id.includes('sponsor') || t.name.toLowerCase().includes('nhà tài trợ')));
+      }
+    }
+    return null;
+  };
+
+  const handleCreateMissingTemplate = (categoryCode: string, itemCode: string, channel: 'email' | 'zalo' | 'whatsapp', type: string) => {
+    setIsCreating(true);
+    const categoryName = categoryCode === 'speaker' ? 'Báo cáo viên' : categoryCode === 'attendee' ? 'Đại biểu' : 'Nhà tài trợ';
+    const subName = itemCode === 'submitted' ? 'Nộp bài thành công' :
+                    itemCode === 'approved' ? 'Phê duyệt đề tài' :
+                    itemCode === 'registered' ? 'Đăng ký thành công' :
+                    itemCode === 'paid' ? 'Thanh toán thành công' :
+                    itemCode === 'contract' ? 'Ký hợp đồng thành công' : 'Nhắc nhở lịch trình';
+                    
+    const newId = `tmpl-${categoryCode}-${itemCode}-${channel}`;
+    const newName = `${subName} (${categoryName} - ${channel.toUpperCase()})`;
+    
+    setSelectedTemplate({
+      id: newId,
+      name: newName,
+      channel: channel,
+      type: type as any,
+      content: ''
+    });
+    setSubject('');
+    setContent('');
+    setZnsTemplateId('');
+    setStatus('pending');
+    setZnsType('transaction');
+  };
+
   const handleCancelCreate = () => {
     setIsCreating(false);
     const existing = store.getTemplates();
@@ -964,6 +1028,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     }, 2000);
   };
 
+  const matchedIds = new Set<string>();
+
   return (
     <div className="space-y-6 font-sans text-slate-805">
       <style dangerouslySetInnerHTML={{__html: `
@@ -1032,47 +1098,172 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             </button>
           </div>
           
-          <div className="space-y-4">
-            {['zalo', 'email', 'whatsapp'].map(channel => {
-              const channelTemplates = templates.filter(t => t.channel === channel);
-              if (channelTemplates.length === 0) return null;
-              
-              const channelTitle = channel === 'zalo' ? 'Kênh Zalo OA ZNS' : channel === 'email' ? 'Kênh Email Resend' : 'Kênh WhatsApp';
-              const channelBadgeColor = channel === 'zalo' ? 'bg-emerald-505 text-emerald-700 bg-emerald-50 border-emerald-200' : channel === 'email' ? 'bg-indigo-505 text-indigo-700 bg-indigo-50 border-indigo-200' : 'bg-blue-55 text-blue-700 bg-blue-50 border-blue-200';
-              
+          <div className="space-y-5">
+            {[
+              {
+                id: 'speaker',
+                name: '1. Báo cáo viên',
+                items: [
+                  { code: 'submitted', label: '1.1 Nộp bài báo cáo thành công', type: 'abstract_approved' },
+                  { code: 'approved', label: '1.2 Phê duyệt đề tài thành công', type: 'abstract_approved' },
+                  { code: 'reminder', label: '1.3 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' }
+                ]
+              },
+              {
+                id: 'attendee',
+                name: '2. Đại biểu',
+                items: [
+                  { code: 'registered', label: '2.1 Xác nhận đăng ký thành công', type: 'registration_success' },
+                  { code: 'paid', label: '2.2 Xác nhận thanh toán thành công', type: 'payment_confirmed' },
+                  { code: 'reminder', label: '2.3 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' }
+                ]
+              },
+              {
+                id: 'sponsor',
+                name: '3. Nhà tài trợ',
+                items: [
+                  { code: 'registered', label: '3.1 Xác nhận đăng ký tài trợ', type: 'sponsor_registered' },
+                  { code: 'contract', label: '3.2 Xác nhận ký hợp đồng thành công', type: 'sponsor_contract' },
+                  { code: 'paid', label: '3.3 Xác nhận thanh toán thành công', type: 'sponsor_paid' },
+                  { code: 'reminder', label: '3.4 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' }
+                ]
+              }
+            ].map(cat => {
               return (
-                <div key={channel} className="space-y-2">
-                  <div className="flex items-center gap-1.5 pb-1 border-b border-slate-100 mt-3 select-none">
-                    <span className={`px-2 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider border ${channelBadgeColor}`}>
-                      {channelTitle}
-                    </span>
-                    <span className="text-[9px] bg-slate-100 border border-slate-200 text-slate-500 px-1.5 py-0.2 rounded-full font-bold">
-                      {channelTemplates.length}
-                    </span>
-                  </div>
+                <div key={cat.id} className="space-y-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                  <h5 className="font-extrabold text-slate-800 text-[11px] uppercase tracking-wide border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                    <span>{cat.name}</span>
+                  </h5>
                   
-                  <div className="space-y-2">
-                    {channelTemplates.map(tmpl => (
+                  <div className="space-y-3">
+                    {cat.items.map(item => {
+                      const waTmpl = getTemplateForFlow(cat.id, item.code, 'whatsapp');
+                      const zaloTmpl = getTemplateForFlow(cat.id, item.code, 'zalo');
+                      const emailTmpl = getTemplateForFlow(cat.id, item.code, 'email');
+                      
+                      // Track matched IDs to filter other templates
+                      if (waTmpl) matchedIds.add(waTmpl.id);
+                      if (zaloTmpl) matchedIds.add(zaloTmpl.id);
+                      if (emailTmpl) matchedIds.add(emailTmpl.id);
+                      
+                      return (
+                        <div key={item.code} className="space-y-1.5 text-left">
+                          <p className="text-[11px] font-bold text-slate-700 leading-normal">{item.label}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {/* WhatsApp Badge */}
+                            {waTmpl ? (
+                              <button
+                                type="button"
+                                onClick={() => handleSelectTemplate(waTmpl)}
+                                className={`px-2 py-0.5 rounded text-[8.5px] font-black border transition cursor-pointer ${
+                                  selectedTemplate?.id === waTmpl.id
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                }`}
+                              >
+                                WA
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleCreateMissingTemplate(cat.id, item.code, 'whatsapp', item.type)}
+                                className="px-2 py-0.5 rounded text-[8.5px] font-medium border border-dashed border-slate-300 text-slate-400 bg-white hover:bg-slate-50 cursor-pointer"
+                                title="Mẫu chưa có. Bấm để thêm mới."
+                              >
+                                + WA
+                              </button>
+                            )}
+
+                            {/* Zalo Badge */}
+                            {zaloTmpl ? (
+                              <button
+                                type="button"
+                                onClick={() => handleSelectTemplate(zaloTmpl)}
+                                className={`px-2 py-0.5 rounded text-[8.5px] font-black border transition cursor-pointer ${
+                                  selectedTemplate?.id === zaloTmpl.id
+                                    ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                                    : 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100'
+                                }`}
+                              >
+                                Zalo
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleCreateMissingTemplate(cat.id, item.code, 'zalo', item.type)}
+                                className="px-2 py-0.5 rounded text-[8.5px] font-medium border border-dashed border-slate-300 text-slate-400 bg-white hover:bg-slate-50 cursor-pointer"
+                                title="Mẫu chưa có. Bấm để thêm mới."
+                              >
+                                + Zalo
+                              </button>
+                            )}
+
+                            {/* Email Badge */}
+                            {emailTmpl ? (
+                              <button
+                                type="button"
+                                onClick={() => handleSelectTemplate(emailTmpl)}
+                                className={`px-2 py-0.5 rounded text-[8.5px] font-black border transition cursor-pointer ${
+                                  selectedTemplate?.id === emailTmpl.id
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                                }`}
+                              >
+                                Email
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleCreateMissingTemplate(cat.id, item.code, 'email', item.type)}
+                                className="px-2 py-0.5 rounded text-[8.5px] font-medium border border-dashed border-slate-300 text-slate-400 bg-white hover:bg-slate-50 cursor-pointer"
+                                title="Mẫu chưa có. Bấm để thêm mới."
+                              >
+                                + Email
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Other Templates Group */}
+            {templates.filter(t => !matchedIds.has(t.id)).length > 0 && (
+              <div className="space-y-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                <h5 className="font-extrabold text-slate-800 text-[11px] uppercase tracking-wide border-b border-slate-200 pb-1.5 select-none text-left">
+                  4. Mẫu tùy chỉnh khác
+                </h5>
+                <div className="space-y-2">
+                  {templates
+                    .filter(t => !matchedIds.has(t.id))
+                    .map(tmpl => (
                       <div
                         key={tmpl.id}
                         onClick={() => handleSelectTemplate(tmpl)}
-                        className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-left ${
                           selectedTemplate?.id === tmpl.id 
                             ? 'bg-teal-50/50 border-teal-500 shadow-sm' 
                             : 'bg-white border-slate-250 hover:border-slate-350'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-[8.5px] font-black px-1.5 py-0.2 rounded border uppercase ${
+                            tmpl.channel === 'email' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : tmpl.channel === 'whatsapp' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            {tmpl.channel.toUpperCase()}
+                          </span>
                           <span className="text-[9px] font-mono text-slate-400 font-bold">{tmpl.id}</span>
                         </div>
                         <h4 className="font-bold text-slate-900 text-xs">{tmpl.name}</h4>
                         <p className="text-[10.5px] text-slate-400 mt-1 truncate">{tmpl.content}</p>
                       </div>
                     ))}
-                  </div>
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         </div>
 
