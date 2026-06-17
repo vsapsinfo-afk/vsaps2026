@@ -112,7 +112,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
         presentationTitle,
         presentationTrack,
         abstractText,
-        documentName: fileName || 'Draft_Abstract_' + fullName.replace(/\s+/g, '') + '.pdf',
+        documentName: fileName || undefined,
         calendarSynced,
         status: 'pending',
         registrationDate: new Date().toISOString().split('T')[0],

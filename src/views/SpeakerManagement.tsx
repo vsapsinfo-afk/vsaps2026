@@ -63,7 +63,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [speakerPresentationTrack, setSpeakerPresentationTrack] = useState('');
   const [speakerAbstractText, setSpeakerAbstractText] = useState('');
   const [speakerBio, setSpeakerBio] = useState('');
-  const [speakerDocumentName, setSpeakerDocumentName] = useState('FullText-Paper.pdf');
+  const [speakerDocumentName, setSpeakerDocumentName] = useState('');
   const [speakerStatus, setSpeakerStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
   const [speakerAvatar, setSpeakerAvatar] = useState<string | null>(null);
   const [speakerDocumentUrl, setSpeakerDocumentUrl] = useState<string | null>(null);
