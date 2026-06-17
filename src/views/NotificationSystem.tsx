@@ -1161,7 +1161,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                                     : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                 }`}
                               >
-                                WA
+                                Whatsapp
                               </button>
                             ) : (
                               <button
@@ -1170,7 +1170,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                                 className="px-2 py-0.5 rounded text-[8.5px] font-medium border border-dashed border-slate-300 text-slate-400 bg-white hover:bg-slate-50 cursor-pointer"
                                 title="Mẫu chưa có. Bấm để thêm mới."
                               >
-                                + WA
+                                + Whatsapp
                               </button>
                             )}
 
