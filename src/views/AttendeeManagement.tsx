@@ -3643,7 +3643,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                   className="absolute inset-2 border pointer-events-none" 
                   style={{ borderColor: `${cmeConfig.borderColor || '#b45309'}30` }}
                 />
-                <div className="absolute top-4 right-4 text-[9px] text-slate-400 font-mono tracking-wider font-bold">CMEID: VSAPS-2026-{selectedCmeAttendee.id}</div>
+                <div className="absolute top-4 right-4 text-[9px] text-slate-400 font-mono tracking-wider font-bold">CMEID: {selectedCmeAttendee.id}</div>
 
                 {/* National / Council Header */}
                 <div className="text-center space-y-0.5 flex flex-col items-center">
@@ -3707,7 +3707,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                   {/* Timestamp verified code */}
                   <div className="text-left font-sans space-y-1">
                     <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80&data=${encodeURIComponent(`VERIFIED-CME-VSAPS-2026-${selectedCmeAttendee.id}`)}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80&data=${encodeURIComponent(`VERIFIED-CME-${selectedCmeAttendee.id}`)}`}
                       alt="Mini Verified"
                       className="w-12 h-12 object-contain bg-white p-0.5 border border-slate-200"
                     />

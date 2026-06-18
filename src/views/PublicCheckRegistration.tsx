@@ -230,7 +230,7 @@ export default function PublicCheckRegistration({ onNavigate }: PublicCheckRegis
                   <div className="space-y-3 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="bg-indigo-50 border border-indigo-200 text-indigo-700 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded">
-                        ID: VSAPS-{att.id}
+                        ID: {att.id}
                       </span>
                       <h3 className="text-sm font-black text-slate-900 uppercase">
                         {att.title} {att.fullName}
@@ -365,7 +365,7 @@ export default function PublicCheckRegistration({ onNavigate }: PublicCheckRegis
                   className="absolute inset-2 border pointer-events-none" 
                   style={{ borderColor: `${cmeConfig.borderColor || '#b45309'}30` }}
                 />
-                <div className="absolute top-4 right-4 text-[9px] text-slate-400 font-mono tracking-wider font-bold">CMEID: VSAPS-2026-{selectedAttendee.id}</div>
+                <div className="absolute top-4 right-4 text-[9px] text-slate-400 font-mono tracking-wider font-bold">CMEID: {selectedAttendee.id}</div>
 
                 {/* National / Council Header */}
                 <div className="text-center space-y-0.5 flex flex-col items-center">
@@ -429,7 +429,7 @@ export default function PublicCheckRegistration({ onNavigate }: PublicCheckRegis
                   {/* Timestamp verified code */}
                   <div className="text-left font-sans space-y-1">
                     <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80&data=${encodeURIComponent(`VERIFIED-CME-VSAPS-2026-${selectedAttendee.id}`)}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=80&data=${encodeURIComponent(`VERIFIED-CME-${selectedAttendee.id}`)}`}
                       alt="Mini Verified"
                       className="w-12 h-12 object-contain bg-white p-0.5 border border-slate-200"
                     />
@@ -515,11 +515,11 @@ export default function PublicCheckRegistration({ onNavigate }: PublicCheckRegis
               {/* QR code */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180&data=${encodeURIComponent(`VERIFIED-ATTENDEE-VSAPS-2026-${selectedAttendee.id}`)}`}
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180&data=${encodeURIComponent(`VERIFIED-ATTENDEE-${selectedAttendee.id}`)}`}
                   alt="Attendee QR Ticket"
                   className="w-44 h-44 object-contain mx-auto"
                 />
-                <span className="text-[10px] font-mono font-bold text-slate-550 block mt-2">MÃ VÉ: VSAPS-2026-{selectedAttendee.id}</span>
+                <span className="text-[10px] font-mono font-bold text-slate-550 block mt-2">MÃ VÉ: {selectedAttendee.id}</span>
               </div>
 
               {/* Attendee details */}
