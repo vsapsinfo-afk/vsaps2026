@@ -12,6 +12,8 @@
     { "source": "/api/onesignal/send-push", "destination": "/api/onesignal/send-push" },
     { "source": "/sw.js", "destination": "/sw.js" },
     { "source": "/OneSignalSDKWorker.js", "destination": "/OneSignalSDKWorker.js" },
+    { "source": "/check-registration.html", "destination": "/check-registration.html" },
+    { "source": "/check-registration", "destination": "/check-registration.html" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [

@@ -120,6 +120,10 @@ export default defineConfig(() => {
       // ⚡ Perf: Increase warning limit for large chunks (xlsx is legitimately large)
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          'check-registration': path.resolve(__dirname, 'check-registration.html'),
+        },
         output: {
           // ⚡ Perf: Split large vendor libraries into separate chunks
           // Each vendor chunk is cached independently → cache stays valid after app code updates
