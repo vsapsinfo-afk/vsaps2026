@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Search, ListFilter, CheckCircle, XCircle, FileText, Calendar, Eye, UserCheck, Sparkles, Table, LayoutGrid, FileSpreadsheet, Printer, ArrowUpDown, Download, AlertTriangle, ShieldCheck, Layers, Plus, Trash2, Edit2, X, Check, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Palette, Code, Upload } from 'lucide-react';
+import { Search, ListFilter, CheckCircle, XCircle, Clock, FileText, Calendar, Eye, UserCheck, Sparkles, Table, LayoutGrid, FileSpreadsheet, Printer, ArrowUpDown, Download, AlertTriangle, ShieldCheck, Layers, Plus, Trash2, Edit2, X, Check, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Palette, Code, Upload } from 'lucide-react';
 import { store } from '../dataStore';
 import { SpeakerRegistration, Role, SpecialtyTrack } from '../types';
 
@@ -1948,16 +1948,45 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                 </div>
 
                 <div>
-                  <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Trạng thái phê duyệt *</label>
-                  <select
-                    value={speakerStatus}
-                    onChange={(e: any) => setSpeakerStatus(e.target.value)}
-                    className="w-[180px] px-3 py-1.5 border border-slate-200 rounded-xl text-xs bg-white font-bold cursor-pointer focus:ring-1 focus:ring-teal-500 focus:outline-none"
-                  >
-                    <option value="approved">✓ CHẤP THUẬN (Approved)</option>
-                    <option value="pending">⏳ CHỜ PHÊ DUYỆT (Pending)</option>
-                    <option value="rejected">✕ BÁC BỎ (Rejected)</option>
-                  </select>
+                  <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1.5">Trạng thái phê duyệt *</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSpeakerStatus('approved')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border shadow-sm ${
+                        speakerStatus === 'approved'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-800 ring-2 ring-emerald-100'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      Chấp thuận
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSpeakerStatus('pending')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border shadow-sm ${
+                        speakerStatus === 'pending'
+                          ? 'bg-amber-50 border-amber-300 text-amber-800 ring-2 ring-amber-100'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                      Chờ duyệt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSpeakerStatus('rejected')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border shadow-sm ${
+                        speakerStatus === 'rejected'
+                          ? 'bg-rose-50 border-rose-300 text-rose-800 ring-2 ring-rose-100'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                      }`}
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                      Từ chối
+                    </button>
+                  </div>
                 </div>
               </div>
 
