@@ -557,7 +557,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {L.f('category', 'Chuyên mục / Chuyên khoa chính *', 'Scientific Category / Track *')}
+                    {L.f('category', 'Chuyên đề *', 'Scientific Topic / Track *')}
                   </label>
                   <select
                     value={presentationTrack}

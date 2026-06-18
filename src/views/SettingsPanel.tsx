@@ -3913,7 +3913,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                               { key: 'email', labelVi: 'Email liên hệ trao đổi học thuật', labelEn: 'Academic Contact Email', placeholderVi: 'Email liên hệ trao đổi học thuật *', placeholderEn: 'Academic Contact Email *' },
                               { key: 'bio', labelVi: 'Tiểu sử khoa học tóm tắt (Bio)', labelEn: 'Short Scientific Bio', placeholderVi: 'Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ', placeholderEn: 'Short Scientific Bio - Around 100 words' },
                               { key: 'presentationTitle', labelVi: 'Tên đề tài báo cáo khoa học', labelEn: 'Presentation Title', placeholderVi: 'Tên đề tài bài báo cáo khoa học *', placeholderEn: 'Presentation Title *' },
-                              { key: 'category', labelVi: 'Chuyên mục / Chuyên khoa chính', labelEn: 'Scientific Track', placeholderVi: 'Chuyên mục / Chuyên khoa chính *', placeholderEn: 'Scientific Category / Track *' },
+                              { key: 'category', labelVi: 'Chuyên đề', labelEn: 'Scientific Topic', placeholderVi: 'Chuyên đề *', placeholderEn: 'Scientific Topic / Track *' },
                               { key: 'abstractText', labelVi: 'Tóm tắt nội dung báo cáo', labelEn: 'Abstract Text', placeholderVi: 'Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *', placeholderEn: 'Abstract text - Limit 500 words *' },
                               { key: 'uploadFile', labelVi: 'CV/Abstract/Full file', labelEn: 'CV/Abstract/Full file', placeholderVi: 'CV/Abstract/Full file', placeholderEn: 'CV/Abstract/Full file' }
 

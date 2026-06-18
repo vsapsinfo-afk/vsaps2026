@@ -192,7 +192,7 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
       email: { vi: "Email liên hệ trao đổi học thuật *", en: "Academic Contact Email *" },
       bio: { vi: "Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ", en: "Short Scientific Bio - Around 100 words" },
       presentationTitle: { vi: "Tên đề tài bài báo cáo khoa học *", en: "Presentation Title *" },
-      category: { vi: "Chuyên mục / Chuyên khoa chính *", en: "Scientific Category / Track *" },
+      category: { vi: "Chuyên đề *", en: "Scientific Topic / Track *" },
       abstractText: { vi: "Tóm tắt nội dung báo cáo (Abstract) - Giới hạn 500 từ *", en: "Abstract text - Limit 500 words *" },
       uploadFile: { vi: "CV/Abstract/Full file", en: "CV/Abstract/Full file" },
 

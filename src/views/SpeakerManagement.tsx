@@ -637,7 +637,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     </th>
                     <th className="p-4 w-[12%]">
                       <button type="button" onClick={() => toggleSort('presentationTrack')} className="flex items-center gap-1.5 hover:text-white bg-transparent border-none p-0 cursor-pointer text-[10.5px] font-black uppercase">
-                        Chuyên Khoa
+                        Chuyên Đề
                         <ArrowUpDown className="w-3 h-3 text-indigo-400 shrink-0" />
                       </button>
                     </th>
@@ -1501,7 +1501,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
 
               {/* Presentation Information Section */}
               <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
-                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider block font-mono">2. Đề tài & Chuyên khoa báo cáo</span>
+                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider block font-mono">2. Đề tài & Chuyên đề báo cáo</span>
 
                 <div>
                   <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Tên đề tài báo cáo khoa học *</label>
@@ -1517,7 +1517,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Chuyên khoa đệ trình *</label>
+                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Chuyên đề đệ trình *</label>
                     <select
                       value={speakerPresentationTrack}
                       onChange={(e) => setSpeakerPresentationTrack(e.target.value)}
