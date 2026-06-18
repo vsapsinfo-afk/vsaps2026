@@ -129,7 +129,11 @@ export default defineConfig(() => {
           // Each vendor chunk is cached independently → cache stays valid after app code updates
           manualChunks(id) {
             // React core — loaded first, very rarely changes
-            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            if (
+              id.includes('node_modules/react/') || 
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) {
               return 'vendor-react';
             }
             // Animation library — separate chunk, changes rarely
