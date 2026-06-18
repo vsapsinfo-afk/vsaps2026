@@ -230,7 +230,7 @@ export interface WhatsappConfig {
 export interface NotificationTemplate {
   id: string;
   name: string;
-  type: 'registration_success' | 'payment_confirmed' | 'abstract_approved' | 'reminder_event' | 'sponsor_registered' | 'sponsor_paid' | 'sponsor_contract';
+  type: 'registration_success' | 'payment_confirmed' | 'abstract_approved' | 'reminder_event' | 'sponsor_registered' | 'sponsor_paid' | 'sponsor_contract' | 'thank_you_survey';
   channel: 'email' | 'zalo' | 'whatsapp';
   subject?: string;
   content: string; // Chứa placeholder {{fullname}}, {{package}}, {{code}}...

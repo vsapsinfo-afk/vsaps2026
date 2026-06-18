@@ -230,6 +230,14 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
               <HeartHandshake className="w-4 h-4" />
             </button>
             <button
+              id="btn-nav-check-reg"
+              onClick={() => onNavigate('check-registration')}
+              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 font-semibold text-slate-950 transition-all shadow-lg inline-flex items-center gap-2"
+            >
+              Tra Cứu Hồ Sơ & Tải Vé / CME
+              <Search className="w-4 h-4" />
+            </button>
+            <button
               id="btn-nav-portal"
               onClick={() => onNavigate('dashboard')}
               className="px-6 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 font-medium border border-teal-500/20 transition-all"

@@ -806,6 +806,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       if (itemCode === 'reminder') {
         return templates.find(t => t.channel === channel && t.type === 'reminder_event' && (t.id.includes('speaker') || t.name.toLowerCase().includes('báo cáo viên')));
       }
+      if (itemCode === 'survey') {
+        return templates.find(t => t.channel === channel && t.type === 'thank_you_survey' && (t.id.includes('speaker') || t.name.toLowerCase().includes('báo cáo viên')));
+      }
     } else if (categoryCode === 'attendee') {
       if (itemCode === 'registered') {
         return templates.find(t => t.channel === channel && (t.id === 'tmpl-reg-email' || t.id === 'tmpl-reg-zalo' || t.id === 'tmpl-reg-wa' || (t.type === 'registration_success' && !t.id.includes('sponsor'))));
@@ -815,6 +818,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
       if (itemCode === 'reminder') {
         return templates.find(t => t.channel === channel && t.type === 'reminder_event' && !t.id.includes('speaker') && !t.id.includes('sponsor'));
+      }
+      if (itemCode === 'survey') {
+        return templates.find(t => t.channel === channel && t.type === 'thank_you_survey' && !t.id.includes('speaker') && !t.id.includes('sponsor'));
       }
     } else if (categoryCode === 'sponsor') {
       if (itemCode === 'registered') {
@@ -829,6 +835,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       if (itemCode === 'reminder') {
         return templates.find(t => t.channel === channel && t.type === 'reminder_event' && (t.id.includes('sponsor') || t.name.toLowerCase().includes('nhà tài trợ')));
       }
+      if (itemCode === 'survey') {
+        return templates.find(t => t.channel === channel && t.type === 'thank_you_survey' && (t.id.includes('sponsor') || t.name.toLowerCase().includes('nhà tài trợ')));
+      }
     }
     return null;
   };
@@ -840,7 +849,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     itemCode === 'approved' ? 'Phê duyệt đề tài' :
                     itemCode === 'registered' ? 'Đăng ký thành công' :
                     itemCode === 'paid' ? 'Thanh toán thành công' :
-                    itemCode === 'contract' ? 'Ký hợp đồng thành công' : 'Nhắc nhở lịch trình';
+                    itemCode === 'contract' ? 'Ký hợp đồng thành công' :
+                    itemCode === 'survey' ? 'Cảm ơn & Khảo sát' : 'Nhắc nhở lịch trình';
                     
     const newId = `tmpl-${categoryCode}-${itemCode}-${channel}`;
     const newName = `${subName} (${categoryName} - ${channel.toUpperCase()})`;
@@ -1106,7 +1116,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 items: [
                   { code: 'submitted', label: '1.1 Nộp bài báo cáo thành công', type: 'abstract_approved' },
                   { code: 'approved', label: '1.2 Phê duyệt đề tài thành công', type: 'abstract_approved' },
-                  { code: 'reminder', label: '1.3 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' }
+                  { code: 'reminder', label: '1.3 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' },
+                  { code: 'survey', label: '1.4 Tin nhắn cảm ơn và gửi thông tin khảo sát', type: 'thank_you_survey' }
                 ]
               },
               {
@@ -1115,7 +1126,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 items: [
                   { code: 'registered', label: '2.1 Xác nhận đăng ký thành công', type: 'registration_success' },
                   { code: 'paid', label: '2.2 Xác nhận thanh toán thành công', type: 'payment_confirmed' },
-                  { code: 'reminder', label: '2.3 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' }
+                  { code: 'reminder', label: '2.3 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' },
+                  { code: 'survey', label: '2.4 Tin nhắn cảm ơn và gửi thông tin khảo sát', type: 'thank_you_survey' }
                 ]
               },
               {
@@ -1125,7 +1137,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   { code: 'registered', label: '3.1 Xác nhận đăng ký tài trợ', type: 'sponsor_registered' },
                   { code: 'contract', label: '3.2 Xác nhận ký hợp đồng thành công', type: 'sponsor_contract' },
                   { code: 'paid', label: '3.3 Xác nhận thanh toán thành công', type: 'sponsor_paid' },
-                  { code: 'reminder', label: '3.4 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' }
+                  { code: 'reminder', label: '3.4 Nhắc nhở lịch trình hội nghị', type: 'reminder_event' },
+                  { code: 'survey', label: '3.5 Tin nhắn cảm ơn và gửi thông tin khảo sát', type: 'thank_you_survey' }
                 ]
               }
             ].map(cat => {
@@ -1335,6 +1348,10 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       <option value="payment_confirmed">Xác nhận thanh toán (payment_confirmed)</option>
                       <option value="abstract_approved">Duyệt bài báo cáo (abstract_approved)</option>
                       <option value="reminder_event">Nhắc nhở sự kiện (reminder_event)</option>
+                      <option value="thank_you_survey">Cảm ơn & Khảo sát (thank_you_survey)</option>
+                      <option value="sponsor_registered">Đăng ký tài trợ (sponsor_registered)</option>
+                      <option value="sponsor_contract">Ký hợp đồng tài trợ (sponsor_contract)</option>
+                      <option value="sponsor_paid">Thanh toán tài trợ (sponsor_paid)</option>
                     </select>
                   </div>
                 </div>
