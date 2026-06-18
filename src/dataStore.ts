@@ -947,6 +947,18 @@ export class DataStore {
       if (isQuotaError) {
         console.warn(`⚠️ LocalStorage quota exceeded for key "${key}". Cleaning up base64 image data and retrying...`);
         const cleanedData = this.stripBase64FromData(data);
+        
+        // Update in-memory reference to prevent subsequent saving loops in this session
+        if (key === DataStore.KEY_SPEAKERS) {
+          this.speakers = cleanedData;
+        } else if (key === DataStore.KEY_ATTENDEES) {
+          this.attendees = cleanedData;
+        } else if (key === DataStore.KEY_SPONSORS) {
+          this.sponsors = cleanedData;
+        } else if (key === DataStore.KEY_CONTACTS) {
+          this.contacts = cleanedData;
+        }
+
         try {
           localStorage.setItem(key, JSON.stringify(cleanedData));
           console.log(`✅ Successfully saved cleaned data for key "${key}" after quota cleanup.`);
@@ -1204,6 +1216,39 @@ export class DataStore {
             }
           }
 
+          if (speaker.documentUrl && speaker.documentUrl.includes('data:')) {
+            const urls = speaker.documentUrl.split('|');
+            const uploadedUrls = [];
+            for (let i = 0; i < urls.length; i++) {
+              const url = urls[i];
+              if (url.startsWith('data:')) {
+                let ext = 'pdf';
+                const mimeMatch = url.match(/^data:([^;]+);base64,/);
+                if (mimeMatch) {
+                  const mime = mimeMatch[1];
+                  if (mime.includes('pdf')) ext = 'pdf';
+                  else if (mime.includes('word') || mime.includes('document')) ext = 'docx';
+                  else if (mime.includes('sheet') || mime.includes('excel')) ext = 'xlsx';
+                  else {
+                    const parts = mime.split('/');
+                    ext = parts[parts.length - 1] || 'pdf';
+                  }
+                }
+                const path = `documents/${speaker.id}-${i}-${Date.now()}.${ext}`;
+                const publicUrl = await uploadToSupabaseStorage(path, url);
+                if (publicUrl) {
+                  uploadedUrls.push(publicUrl);
+                }
+              } else {
+                uploadedUrls.push(url);
+              }
+            }
+            if (uploadedUrls.length > 0) {
+              updatedSpeaker.documentUrl = uploadedUrls.join('|');
+              changed = true;
+            }
+          }
+
           if (changed) {
             const idxMemory = this.speakers.findIndex(s => s.id === speaker.id);
             if (idxMemory >= 0) {
@@ -1254,6 +1299,39 @@ export class DataStore {
           const publicUrl = await uploadToSupabaseStorage(path, speaker.avatarUrl);
           if (publicUrl) {
             updatedSpeaker.avatarUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        if (speaker.documentUrl && speaker.documentUrl.includes('data:')) {
+          const urls = speaker.documentUrl.split('|');
+          const uploadedUrls = [];
+          for (let i = 0; i < urls.length; i++) {
+            const url = urls[i];
+            if (url.startsWith('data:')) {
+              let ext = 'pdf';
+              const mimeMatch = url.match(/^data:([^;]+);base64,/);
+              if (mimeMatch) {
+                const mime = mimeMatch[1];
+                if (mime.includes('pdf')) ext = 'pdf';
+                else if (mime.includes('word') || mime.includes('document')) ext = 'docx';
+                else if (mime.includes('sheet') || mime.includes('excel')) ext = 'xlsx';
+                else {
+                  const parts = mime.split('/');
+                  ext = parts[parts.length - 1] || 'pdf';
+                }
+              }
+              const path = `documents/${speaker.id}-${i}-${Date.now()}.${ext}`;
+              const publicUrl = await uploadToSupabaseStorage(path, url);
+              if (publicUrl) {
+                uploadedUrls.push(publicUrl);
+              }
+            } else {
+              uploadedUrls.push(url);
+            }
+          }
+          if (uploadedUrls.length > 0) {
+            updatedSpeaker.documentUrl = uploadedUrls.join('|');
             changed = true;
           }
         }
