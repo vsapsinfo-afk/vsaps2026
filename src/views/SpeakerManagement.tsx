@@ -85,7 +85,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const handleSaveTrack = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTrackName.trim()) {
-      alert('Vui lòng nhập tên chuyên khoa!');
+      alert('Vui lòng nhập tên chuyên đề!');
       return;
     }
 
@@ -110,7 +110,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         nameEn: newTrackNameEn.trim() || undefined,
         description: newTrackDesc.trim() || undefined
       });
-      alert('Đã cập nhật chuyên khoa thành công!');
+      alert('Đã cập nhật chuyên đề thành công!');
     } else {
       const newId = 'track-' + Math.floor(Math.random() * 90000 + 10000);
       store.saveSpecialtyTrack({
@@ -119,7 +119,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         nameEn: newTrackNameEn.trim() || undefined,
         description: newTrackDesc.trim() || undefined
       });
-      alert('Đã thêm chuyên khoa mới thành công!');
+      alert('Đã thêm chuyên đề mới thành công!');
     }
 
     setEditingTrack(null);
@@ -140,18 +140,18 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     // Check if any speakers have this track
     const affectedSpeakers = speakers.filter(s => s.presentationTrack === name);
     if (affectedSpeakers.length > 0) {
-      if (!confirm(`Chuyên khoa "${name}" đang được sử dụng bởi ${affectedSpeakers.length} báo cáo viên. Bạn có chắc chắn vẫn muốn xóa chuyên khoa này không? (Sau khi xóa, các báo cáo viên này vẫn giữ nguyên chuyên khoa cũ, nhưng sẽ không xuất hiện trong danh mục chọn mới cho các đệ trình tiếp theo).`)) {
+      if (!confirm(`Chuyên đề "${name}" đang được sử dụng bởi ${affectedSpeakers.length} báo cáo viên. Bạn có chắc chắn vẫn muốn xóa chuyên đề này không? (Sau khi xóa, các báo cáo viên này vẫn giữ nguyên chuyên đề cũ, nhưng sẽ không xuất hiện trong danh mục chọn mới cho các đệ trình tiếp theo).`)) {
         return;
       }
     } else {
-      if (!confirm(`Bạn có chắc chắn muốn xóa chuyên khoa "${name}"?`)) {
+      if (!confirm(`Bạn có chắc chắn muốn xóa chuyên đề "${name}"?`)) {
         return;
       }
     }
 
     store.deleteSpecialtyTrack(id);
     loadAll();
-    alert('Đã xóa chuyên khoa thành công!');
+    alert('Đã xóa chuyên đề thành công!');
 
     if (editingTrack?.id === id) {
       setEditingTrack(null);
@@ -515,7 +515,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm tên Báo cáo viên, Chuyên khoa, Đề tài..."
+              placeholder="Tìm tên Báo cáo viên, Chuyên đề, Đề tài..."
               className="pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-250 focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none placeholder-slate-400 transition-all uppercase w-full shadow-inner"
             />
           </div>
@@ -570,11 +570,11 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             type="button"
             onClick={() => setShowTrackModal(true)}
             className="p-2 px-3.5 bg-teal-55 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm w-full sm:w-auto justify-center"
-            title="Thêm, sửa, xóa quản lý danh mục chuyên khoa của báo cáo viên"
+            title="Thêm, sửa, xóa quản lý danh mục chuyên đề của báo cáo viên"
           >
             <Layers className="w-4 h-4 text-teal-600" />
-            <span className="hidden sm:inline">Danh các Chuyên khoa</span>
-            <span className="sm:hidden">Chuyên khoa</span>
+            <span className="hidden sm:inline">Danh sách Chuyên đề</span>
+            <span className="sm:hidden">Chuyên đề</span>
           </button>
 
           {role !== 'ctv' && (
@@ -1238,10 +1238,10 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-slate-100 shadow-2xl animate-fade-in flex flex-col text-slate-800">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-teal-700 to-emerald-800 text-white p-6 relative shrink-0">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-teal-300 block">QUẢN PHÂN CHUYÊN KHOA</span>
-              <h4 className="font-extrabold text-lg mt-1">Danh Mục Chuyên Khoa Đăng Ký</h4>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-teal-300 block">QUẢN LÝ CHUYÊN ĐỀ</span>
+              <h4 className="font-extrabold text-lg mt-1">Danh Mục Chuyên Đề Đăng Ký</h4>
               <p className="text-xs text-teal-100/80 mt-1">
-                Thêm, sửa, hoặc xóa danh mục ngành dọc báo cáo viên. Các thay đổi sẽ được cập nhật đồng bộ tức thời với form đăng ký.
+                Thêm, sửa, hoặc xóa danh mục chuyên đề báo cáo của báo cáo viên. Các thay đổi sẽ được cập nhật đồng bộ tức thời với form đăng ký.
               </p>
               <button 
                 onClick={() => {
@@ -1263,7 +1263,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               <form onSubmit={handleSaveTrack} className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <h5 className="text-xs font-black uppercase text-teal-850 mb-3 tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" />
-                  {editingTrack ? '📝 CẬP NHẬT CHUYÊN KHOA' : '➕ THÊM CHUYÊN KHOA MỚI'}
+                  {editingTrack ? '📝 CẬP NHẬT CHUYÊN ĐỀ' : '➕ THÊM CHUYÊN ĐỀ MỚI'}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
@@ -1273,7 +1273,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       required
                       value={newTrackName}
                       onChange={(e) => setNewTrackName(e.target.value)}
-                      placeholder="Ví dụ: Tạo hình Thẩm mỹ..."
+                      placeholder="Ví dụ: Thẩm mỹ da, Trẻ hóa..."
                       className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-semibold focus:border-teal-500 focus:outline-none placeholder-slate-400"
                     />
                   </div>
@@ -1324,7 +1324,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
 
               {/* Specialty Track List */}
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono block mb-2.5">DANH SÁCH CHUYÊN KHOA ĐANG ĐIỀU HÀNH ({specialtyTracks.length}):</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono block mb-2.5">DANH SÁCH CHUYÊN ĐỀ ĐANG ĐIỀU HÀNH ({specialtyTracks.length}):</span>
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {specialtyTracks.map((track) => {
                     const count = speakers.filter(s => s.presentationTrack === track.name).length;
@@ -1349,7 +1349,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                             type="button"
                             onClick={() => handleEditTrack(track)}
                             className="p-1 px-1.5 bg-slate-50 hover:bg-indigo-50 border-none text-indigo-650 hover:text-indigo-800 rounded-lg text-xs font-bold cursor-pointer transition-colors flex items-center justify-center"
-                            title="Chỉnh sửa tên & mô tả chuyên khoa"
+                            title="Chỉnh sửa tên & mô tả chuyên đề"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
