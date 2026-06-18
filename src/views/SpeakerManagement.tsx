@@ -307,7 +307,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPhone('');
     setSpeakerEmail('');
     setSpeakerPresentationTitle('');
-    setSpeakerPresentationTrack(specialtyTracks[0]?.name || 'Ngoại khoa tổng quát');
+    setSpeakerPresentationTrack(specialtyTracks[0]?.name || '');
     setSpeakerAbstractText('');
     setSpeakerBio('');
     setSpeakerDocumentName('');

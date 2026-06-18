@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, CheckCircle, FileText, Upload, Calendar, AlertCircle, Sparkles, BookOpen } from 'lucide-react';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
@@ -64,7 +64,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [presentationTitle, setPresentationTitle] = useState('');
-  const [presentationTrack, setPresentationTrack] = useState(store.getSpecialtyTracks()[0]?.name || 'Ngoại Lồng Ngực & Tim Mạch');
+  const [presentationTrack, setPresentationTrack] = useState(store.getSpecialtyTracks()[0]?.name || '');
   const [abstractText, setAbstractText] = useState('');
   const [fileName, setFileName] = useState('');
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
@@ -72,6 +72,15 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const [isDocUploading, setIsDocUploading] = useState(false);
+
+  const tracks = store.getSpecialtyTracks();
+  useEffect(() => {
+    if (tracks.length > 0) {
+      if (!presentationTrack || !tracks.some(t => t.name === presentationTrack)) {
+        setPresentationTrack(tracks[0].name);
+      }
+    }
+  }, [tracks, presentationTrack]);
   
   // States
   const [isSubmitted, setIsSubmitted] = useState(false);
