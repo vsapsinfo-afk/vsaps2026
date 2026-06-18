@@ -7,7 +7,7 @@ import React from 'react';
 import { 
   Users, Award, Calendar, CheckSquare, Coins, Megaphone, Settings, 
   BarChart2, Globe, Shield, User, FileText, RefreshCw, LogOut, Send,
-  HelpCircle
+  HelpCircle, Search
 } from 'lucide-react';
 import { Role } from '../types';
 import { useAuth } from './AuthProvider';
@@ -42,6 +42,7 @@ export default function Sidebar({ currentView, onNavigate, currentRole, isOpen, 
     { id: 'register-delegate', name: 'Đăng Ký Đại Biểu (Form)', icon: Users },
     { id: 'register-speaker', name: 'Đăng Ký Báo Cáo (Form)', icon: FileText },
     { id: 'register-sponsor', name: 'Đăng Ký Tài Trợ (Form)', icon: Award },
+    { id: 'check-registration', name: 'Tra Cứu Vé Điện Tử', icon: Search },
   ];
 
   const handleNavClick = (viewId: string) => {
