@@ -298,6 +298,17 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const allSponsors = store.getSponsors();
+  const occupiedBooths = allSponsors
+    .map(s => s.boothLocation)
+    .filter((loc): loc is string => !!loc && loc !== 'auto' && loc !== 'other');
+  const boothsList = store.getBooths();
+  const availableBooths = boothsList.filter(b => !occupiedBooths.includes(b));
+  
+  const occupiedSponsors = allSponsors
+    .filter(s => !!s.boothLocation && s.boothLocation !== 'auto' && s.boothLocation !== 'other')
+    .sort((a, b) => (a.boothLocation || '').localeCompare(b.boothLocation || ''));
+
   // Auto-populate benefits when tier or nationality changes
   useEffect(() => {
     const matched = sponsorTiers.find(t => t.id === tier);
