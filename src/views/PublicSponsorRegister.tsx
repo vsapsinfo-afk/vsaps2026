@@ -436,6 +436,8 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
   if (isSubmitted && createdSponsor) {
     const { taxId: successTaxId } = extractTaxId(createdSponsor.notes);
+    const matchedTier = sponsorTiers.find(t => t.id === createdSponsor.tier);
+    const benefitsList = createdSponsor.benefitsSigned || (matchedTier ? (nationality === 'vietname' ? matchedTier.benefits : (matchedTier as any).benefitsEn || matchedTier.benefits) : []);
 
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 font-sans text-slate-900">
