@@ -105,24 +105,38 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
     const files = e.target.files;
     if (files && files.length > 0) {
       setIsDocUploading(true);
-      const fileNamesArray: string[] = [];
-      const fileDataUrlsArray: string[] = [];
+      const existingNames = fileName ? fileName.split('|') : [];
+      const existingUrls = documentUrl ? documentUrl.split('|') : [];
+
+      const fileNamesArray: string[] = [...existingNames];
+      const fileDataUrlsArray: string[] = [...existingUrls];
       let processedCount = 0;
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        fileNamesArray.push(file.name);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          fileDataUrlsArray.push(reader.result as string);
+        if (!fileNamesArray.includes(file.name)) {
+          fileNamesArray.push(file.name);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            fileDataUrlsArray.push(reader.result as string);
+            processedCount++;
+            if (processedCount === files.length) {
+              setFileName(fileNamesArray.join('|'));
+              setDocumentUrl(fileDataUrlsArray.join('|'));
+              setIsDocUploading(false);
+              if (docInputRef.current) docInputRef.current.value = '';
+            }
+          };
+          reader.readAsDataURL(file);
+        } else {
           processedCount++;
           if (processedCount === files.length) {
             setFileName(fileNamesArray.join('|'));
             setDocumentUrl(fileDataUrlsArray.join('|'));
             setIsDocUploading(false);
+            if (docInputRef.current) docInputRef.current.value = '';
           }
-        };
-        reader.readAsDataURL(file);
+        }
       }
     }
   };
