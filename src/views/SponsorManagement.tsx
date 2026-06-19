@@ -13,6 +13,19 @@ interface SponsorManagementProps {
   onNavigate?: (view: string) => void;
 }
 
+const extractTaxId = (htmlStr: string | undefined): { taxId: string, cleanNotes: string } => {
+  if (!htmlStr) return { taxId: '', cleanNotes: '' };
+  const regex = /<p><strong>Mã số thuế:<\/strong>\s*([^<]+)<\/p>/;
+  const match = htmlStr.match(regex);
+  if (match) {
+    return {
+      taxId: match[1].trim(),
+      cleanNotes: htmlStr.replace(regex, '').trim()
+    };
+  }
+  return { taxId: '', cleanNotes: htmlStr };
+};
+
 export default function SponsorManagement({ role, onNavigate }: SponsorManagementProps) {
   const [sponsors, setSponsors] = useState<Sponsor[]>(store.getSponsors());
   const [showForm, setShowForm] = useState(false);
@@ -69,6 +82,12 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const [isLogoUploading, setIsLogoUploading] = useState(false);
   const [boothLocation, setBoothLocation] = useState('auto');
   const [customBoothLocation, setCustomBoothLocation] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [showBoothManager, setShowBoothManager] = useState(false);
+  const [booths, setBooths] = useState<string[]>(store.getBooths());
+  const [newBoothName, setNewBoothName] = useState('');
+  const [editingBoothIndex, setEditingBoothIndex] = useState<number | null>(null);
+  const [editingBoothName, setEditingBoothName] = useState('');
 
   // --- New fields for contract inputs in NEW sponsor form ---
   const [formContractNo, setFormContractNo] = useState('');
@@ -108,6 +127,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const [isEditLogoUploading, setIsEditLogoUploading] = useState(false);
   const [editBoothLocation, setEditBoothLocation] = useState('auto');
   const [editCustomBoothLocation, setEditCustomBoothLocation] = useState('');
+  const [editTaxId, setEditTaxId] = useState('');
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,8 +154,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
 
   const handleCreateSponsor = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !pledgedAmount) {
-      alert('Vui lòng điền tên tập đoàn và số tiền tài trợ.');
+    if (!name || !pledgedAmount || !taxId) {
+      alert('Vui lòng điền tên tập đoàn, số tiền tài trợ và Mã số thuế.');
       return;
     }
 
@@ -146,6 +166,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     }
 
     const benefits = benefitsListText.split(',').map(b => b.trim()).filter(b => b !== '');
+
+    const taxIdPara = taxId ? `<p><strong>Mã số thuế:</strong> ${taxId}</p>` : '';
 
     const sponsorData: Sponsor = {
       id: 'SPN-' + Math.floor(Math.random() * 900 + 100),
@@ -166,6 +188,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       contractFileName: formContractFileName || undefined,
       contractFileUrl: formContractFileUrl || undefined,
       boothLocation: boothLocation === 'other' ? customBoothLocation : boothLocation,
+      notes: taxIdPara || undefined,
     };
 
     store.saveSponsor(sponsorData);
@@ -173,6 +196,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     
     // Clear
     setName('');
+    setTaxId('');
     setPledgedAmount('');
     setContactPerson('');
     setContactEmail('');
@@ -408,8 +432,12 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     setEditContactPhone(sponsor.contactPhone);
     setEditBenefitsListText(sponsor.benefitsSigned.join(', '));
     setEditLogoImage(sponsor.logoUrl || null);
+
+    const { taxId: parsedTaxId } = extractTaxId(sponsor.notes);
+    setEditTaxId(parsedTaxId);
+
     const currentLoc = sponsor.boothLocation || 'auto';
-    const standardLocs = ['auto', 'A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2'];
+    const standardLocs = ['auto', ...store.getBooths()];
     if (standardLocs.includes(currentLoc)) {
       setEditBoothLocation(currentLoc);
       setEditCustomBoothLocation('');
@@ -435,8 +463,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const handleSaveSponsorDetails = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSponsor) return;
-    if (!editName || !editPledgedAmount) {
-      alert('Vui lòng điền tên tập đoàn và số tiền tài trợ.');
+    if (!editName || !editPledgedAmount || !editTaxId) {
+      alert('Vui lòng điền đầy đủ tên tập đoàn, kinh phí tài trợ và Mã số thuế.');
       return;
     }
 
@@ -451,6 +479,10 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
     const originalList = store.getSponsors();
     const found = originalList.find(s => s.id === editingSponsor.id);
     if (found) {
+      const taxIdPara = editTaxId ? `<p><strong>Mã số thuế:</strong> ${editTaxId}</p>` : '';
+      const { cleanNotes } = extractTaxId(found.notes);
+      const finalNotes = taxIdPara + cleanNotes;
+
       found.name = editName;
       found.tier = editTier;
       found.pledgedAmount = nPledged;
@@ -460,6 +492,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       found.benefitsSigned = benefits;
       found.logoUrl = editLogoImage || undefined;
       found.boothLocation = editBoothLocation === 'other' ? editCustomBoothLocation : editBoothLocation;
+      found.notes = finalNotes || undefined;
       store.saveSponsor(found);
     }
 
@@ -538,6 +571,16 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
             >
               <Award className="w-4 h-4 text-indigo-600" />
               Mở Đăng Ký Public
+            </button>
+          )}
+
+          {role !== 'ctv' && (
+            <button
+              onClick={handleOpenBoothManager}
+              className="px-4 py-2 text-xs bg-indigo-50 border border-indigo-150 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <MapPin className="w-4 h-4 text-indigo-650" />
+              Quản Lý Gian Hàng
             </button>
           )}
 
@@ -878,6 +921,18 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
               </div>
 
               <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Mã số thuế *</label>
+                <input
+                  type="text"
+                  required
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                  placeholder="ví dụ: 0101234567"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div>
                 <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên Tập đoàn / Doanh nghiệp *</label>
                 <input
                   type="text"
@@ -885,7 +940,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="ví dụ: Medtronic VN"
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
                 />
               </div>
 
@@ -927,14 +982,20 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700 bg-white"
                   >
                     <option value="auto">BTC tự sắp xếp / Tự chọn sau</option>
-                    <option value="A1">Gian A1 (Khu Kim Cương)</option>
-                    <option value="A2">Gian A2 (Khu Kim Cương)</option>
-                    <option value="A3">Gian A3 (Khu Kim Cương)</option>
-                    <option value="B1">Gian B1 (Khu Bạch Kim/Vàng)</option>
-                    <option value="B2">Gian B2 (Khu Bạch Kim/Vàng)</option>
-                    <option value="B3">Gian B3 (Khu Bạch Kim/Vàng)</option>
-                    <option value="C1">Gian C1 (Khu Tiêu chuẩn)</option>
-                    <option value="C2">Gian C2 (Khu Tiêu chuẩn)</option>
+                    {(() => {
+                      const occupied = sponsors
+                        .map(s => s.boothLocation)
+                        .filter((loc): loc is string => !!loc && loc !== 'auto' && loc !== 'other');
+                      const list = store.getBooths();
+                      return list
+                        .filter(b => !occupied.includes(b))
+                        .map(b => {
+                          const label = b.startsWith('A') ? `Gian ${b} (Khu Kim Cương)` :
+                                        b.startsWith('B') ? `Gian ${b} (Khu Bạch Kim/Vàng)` :
+                                        b.startsWith('C') ? `Gian ${b} (Khu Tiêu chuẩn)` : `Gian ${b}`;
+                          return <option key={b} value={b}>{label}</option>;
+                        });
+                    })()}
                     <option value="other">Khác / Vị trí đặc biệt...</option>
                   </select>
 
@@ -1180,6 +1241,18 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
               </div>
 
               <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Mã số thuế *</label>
+                <input
+                  type="text"
+                  required
+                  value={editTaxId}
+                  onChange={(e) => setEditTaxId(e.target.value)}
+                  placeholder="ví dụ: 0101234567"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                />
+              </div>
+
+              <div>
                 <label className="text-[10px] font-bold text-slate-500 block mb-1">Tên Tập đoàn / Doanh nghiệp *</label>
                 <input
                   type="text"
@@ -1187,7 +1260,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="ví dụ: Medtronic VN"
-                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
                 />
               </div>
 
@@ -1229,14 +1302,23 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                     className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer font-semibold text-slate-700 bg-white"
                   >
                     <option value="auto">BTC tự sắp xếp / Tự chọn sau</option>
-                    <option value="A1">Gian A1 (Khu Kim Cương)</option>
-                    <option value="A2">Gian A2 (Khu Kim Cương)</option>
-                    <option value="A3">Gian A3 (Khu Kim Cương)</option>
-                    <option value="B1">Gian B1 (Khu Bạch Kim/Vàng)</option>
-                    <option value="B2">Gian B2 (Khu Bạch Kim/Vàng)</option>
-                    <option value="B3">Gian B3 (Khu Bạch Kim/Vàng)</option>
-                    <option value="C1">Gian C1 (Khu Tiêu chuẩn)</option>
-                    <option value="C2">Gian C2 (Khu Tiêu chuẩn)</option>
+                    {(() => {
+                      const occupied = sponsors
+                        .map(s => s.boothLocation)
+                        .filter((loc): loc is string => !!loc && loc !== 'auto' && loc !== 'other');
+                      const list = store.getBooths();
+                      return list
+                        .filter(b => {
+                          if (editingSponsor && editingSponsor.boothLocation === b) return true;
+                          return !occupied.includes(b);
+                        })
+                        .map(b => {
+                          const label = b.startsWith('A') ? `Gian ${b} (Khu Kim Cương)` :
+                                        b.startsWith('B') ? `Gian ${b} (Khu Bạch Kim/Vàng)` :
+                                        b.startsWith('C') ? `Gian ${b} (Khu Tiêu chuẩn)` : `Gian ${b}`;
+                          return <option key={b} value={b}>{label}</option>;
+                        });
+                    })()}
                     <option value="other">Khác / Vị trí đặc biệt...</option>
                   </select>
 
@@ -1588,6 +1670,224 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                 className="px-4 py-2 text-xs bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition"
               >
                 Đóng Xem Trước
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Registered Booth Locations Table */}
+      {(() => {
+        const occupiedSponsors = sponsors
+          .filter(s => !!s.boothLocation && s.boothLocation !== 'auto' && s.boothLocation !== 'other')
+          .sort((a, b) => (a.boothLocation || '').localeCompare(b.boothLocation || ''));
+
+        if (occupiedSponsors.length === 0) return null;
+
+        return (
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm mt-6 text-left">
+            <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+              Sơ Đồ Phân Bổ Gian Hàng Đã Đăng Ký
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
+                    <th className="py-2.5 px-3">Vị trí gian hàng</th>
+                    <th className="py-2.5 px-3">Tên Doanh nghiệp / Thương hiệu</th>
+                    <th className="py-2.5 px-3">Phân khúc tài trợ</th>
+                    <th className="py-2.5 px-3">Người liên hệ / Điện thoại</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {occupiedSponsors.map(s => {
+                    const matchedTier = sponsorPackages.find(p => p.id === s.tier);
+                    return (
+                      <tr key={s.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-3 font-bold text-teal-700 font-mono">{s.boothLocation}</td>
+                        <td className="py-3 px-3 font-bold text-slate-800">{s.name}</td>
+                        <td className="py-3 px-3">
+                          <span
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{
+                              backgroundColor: (matchedTier?.color || '#cbd5e1') + '15',
+                              color: matchedTier?.color || '#475569'
+                            }}
+                          >
+                            {matchedTier?.name || s.tier.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-slate-505 font-mono">
+                          {s.contactPerson} ({s.contactPhone})
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Booth Manager Modal */}
+      {showBoothManager && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in text-left">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
+            <div className="p-6 bg-gradient-to-r from-teal-800 to-indigo-900 text-white flex justify-between items-center shrink-0">
+              <div>
+                <h3 className="font-extrabold text-base">Quản Lý Vị Trí Gian Hàng</h3>
+                <p className="text-teal-200 text-[10px] mt-0.5">Thêm, sửa, xóa vị trí các gian hàng trưng bày trong sơ đồ</p>
+              </div>
+              <button 
+                onClick={() => setShowBoothManager(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer border-none"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Thêm Gian Hàng Mới</h4>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="ví dụ: A4, B5, Premium-1..."
+                    value={newBoothName}
+                    onChange={(e) => setNewBoothName(e.target.value.toUpperCase())}
+                    className="flex-1 px-3 py-1.5 border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500"
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newBoothName.trim()) return;
+                      if (booths.includes(newBoothName.trim())) {
+                        alert('Gian hàng này đã tồn tại!');
+                        return;
+                      }
+                      const updated = [...booths, newBoothName.trim()];
+                      setBooths(updated);
+                      store.saveBooths(updated);
+                      setNewBoothName('');
+                    }}
+                    className="px-4 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer border-none"
+                  >
+                    Thêm
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Danh Sách Gian Hàng Hiện Có</h4>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {booths.map((b, idx) => {
+                    const sponsorUsing = sponsors.find(s => s.boothLocation === b);
+                    const isEditing = editingBoothIndex === idx;
+
+                    return (
+                      <div 
+                        key={idx} 
+                        className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+                      >
+                        {isEditing ? (
+                          <div className="flex items-center gap-2 flex-1 mr-4">
+                            <input
+                              type="text"
+                              value={editingBoothName}
+                              onChange={(e) => setEditingBoothName(e.target.value.toUpperCase())}
+                              className="px-2 py-1 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 flex-1"
+                            />
+                            <button
+                              onClick={() => {
+                                if (!editingBoothName.trim()) return;
+                                if (booths.includes(editingBoothName.trim()) && booths[idx] !== editingBoothName.trim()) {
+                                  alert('Gian hàng này đã tồn tại!');
+                                  return;
+                                }
+                                const updated = [...booths];
+                                updated[idx] = editingBoothName.trim();
+                                setBooths(updated);
+                                store.saveBooths(updated);
+                                setEditingBoothIndex(null);
+                              }}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg border-none cursor-pointer"
+                            >
+                              Lưu
+                            </button>
+                            <button
+                              onClick={() => setEditingBoothIndex(null)}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold rounded-lg border-none cursor-pointer"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 text-xs font-mono">{b}</span>
+                              {sponsorUsing && (
+                                <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100 truncate max-w-[200px]">
+                                  Đang dùng: {sponsorUsing.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {!isEditing && (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => {
+                                setEditingBoothIndex(idx);
+                                setEditingBoothName(b);
+                              }}
+                              className="p-1.5 hover:bg-indigo-50 text-indigo-600 rounded-lg transition-colors border-none cursor-pointer bg-transparent"
+                              title="Sửa tên gian hàng"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (sponsorUsing) {
+                                  if (!window.confirm(`Gian hàng ${b} đang được sử dụng bởi nhà tài trợ "${sponsorUsing.name}". Xóa gian hàng này sẽ giải phóng vị trí của họ. Bạn có chắc chắn muốn xóa?`)) {
+                                    return;
+                                  }
+                                  sponsorUsing.boothLocation = 'auto';
+                                  store.saveSponsor(sponsorUsing);
+                                } else {
+                                  if (!window.confirm(`Bạn có chắc chắn muốn xóa gian hàng ${b}?`)) {
+                                    return;
+                                  }
+                                }
+                                const updated = booths.filter((_, i) => i !== idx);
+                                setBooths(updated);
+                                store.saveBooths(updated);
+                                setSponsors(store.getSponsors());
+                              }}
+                              className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors border-none cursor-pointer bg-transparent"
+                              title="Xóa gian hàng"
+                            >
+                              <Trash className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {booths.length === 0 && (
+                    <p className="text-center text-xs text-slate-400 py-6">Chưa có gian hàng nào được cấu hình.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 text-right shrink-0">
+              <button
+                onClick={() => setShowBoothManager(false)}
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-all text-xs border-none cursor-pointer"
+              >
+                Đóng
               </button>
             </div>
           </div>

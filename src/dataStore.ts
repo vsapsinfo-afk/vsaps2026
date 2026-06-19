@@ -474,6 +474,7 @@ export class DataStore {
   private static KEY_SECTIONS = 'vsaps_schedule_sections';
   private static KEY_ONESIGNAL = 'vsaps_config_onesignal';
   private static KEY_CONTACTS = 'vsaps_contacts';
+  private static KEY_BOOTHS = 'vsaps_booths';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -502,6 +503,7 @@ export class DataStore {
   private shifts: ConferenceShift[] = [];
   private virtualSections: VirtualSection[] = [];
   private contacts: Contact[] = [];
+  private booths: string[] = [];
 
   constructor() {
     this.loadLocalStorage();
@@ -569,6 +571,7 @@ export class DataStore {
     this.whatsappConfig = this.getLocalStorage(DataStore.KEY_WHATSAPP, DEFAULT_WHATSAPP_CONFIG);
     this.oneSignalConfig = this.getLocalStorage(DataStore.KEY_ONESIGNAL, DEFAULT_ONESIGNAL_CONFIG);
     this.contacts = this.getLocalStorage(DataStore.KEY_CONTACTS, []);
+    this.booths = this.getLocalStorage(DataStore.KEY_BOOTHS, ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2']);
   }
 
   /**
@@ -750,6 +753,11 @@ export class DataStore {
         if (onesignal) {
           this.oneSignalConfig = onesignal.value;
           this.saveToLocalStorage(DataStore.KEY_ONESIGNAL, this.oneSignalConfig);
+        }
+        const boothsConfig = configs.find(c => c.key === 'booths_config');
+        if (boothsConfig) {
+          this.booths = boothsConfig.value;
+          this.saveToLocalStorage(DataStore.KEY_BOOTHS, this.booths);
         }
       }
 
@@ -1836,6 +1844,22 @@ export class DataStore {
       });
     }
     return config;
+  }
+
+  getBooths() {
+    return this.booths;
+  }
+
+  saveBooths(booths: string[]) {
+    this.booths = booths;
+    this.saveToLocalStorage(DataStore.KEY_BOOTHS, booths);
+
+    if (isSupabaseConfigured()) {
+      supabase.from('system_config').upsert({ key: 'booths_config', value: booths }).then(({ error }) => {
+        if (error) console.error('Error saving booths config to Supabase:', error);
+      });
+    }
+    return booths;
   }
 
   async checkAndAutoRefreshZaloToken(): Promise<void> {

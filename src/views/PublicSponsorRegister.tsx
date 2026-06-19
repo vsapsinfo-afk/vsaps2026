@@ -232,14 +232,31 @@ const BENEFITS_TABLE = [
   { labelVi: 'Giấy cảm ơn và quà lưu niệm', labelEn: 'Appreciation Certificate & Souvenir', valuesVi: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'], valuesEn: ['Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes'] },
 ];
 
-const TIER_HEADERS = [
-  { name: 'Kim cương', nameEn: 'Diamond', color: '#6366f1' },
-  { name: 'Bạch kim', nameEn: 'Platinum', color: '#8b5cf6' },
-  { name: 'Vàng', nameEn: 'Gold', color: '#f59e0b' },
-  { name: 'Bạc', nameEn: 'Silver', color: '#94a3b8' },
-  { name: 'Đồng', nameEn: 'Bronze', color: '#d97706' },
-  { name: 'Tiêu chuẩn', nameEn: 'Standard', color: '#64748b' },
-];
+const extractTaxId = (htmlStr: string | undefined): { taxId: string, cleanNotes: string } => {
+  if (!htmlStr) return { taxId: '', cleanNotes: '' };
+  const regex = /<p><strong>Mã số thuế:<\/strong>\s*([^<]+)<\/p>/;
+  const match = htmlStr.match(regex);
+  if (match) {
+    return {
+      taxId: match[1].trim(),
+      cleanNotes: htmlStr.replace(regex, '').trim()
+    };
+  }
+  return { taxId: '', cleanNotes: htmlStr };
+};
+
+const getBoothLabel = (booth: string, isEn: boolean) => {
+  if (booth.startsWith('A')) {
+    return isEn ? `Booth ${booth} (Diamond Zone)` : `Gian ${booth} (Khu Kim Cương)`;
+  }
+  if (booth.startsWith('B')) {
+    return isEn ? `Booth ${booth} (Platinum/Gold Zone)` : `Gian ${booth} (Khu Bạch Kim/Vàng)`;
+  }
+  if (booth.startsWith('C')) {
+    return isEn ? `Booth ${booth} (Standard Zone)` : `Gian ${booth} (Khu Tiêu chuẩn)`;
+  }
+  return isEn ? `Booth ${booth}` : `Gian ${booth}`;
+};
 
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
   const businessConfig = store.getBusinessConfig();
@@ -249,6 +266,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   // Form States
   const [name, setName] = useState('');
+  const [taxId, setTaxId] = useState('');
   const [tier, setTier] = useState<string>('gold');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -316,21 +334,18 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !contactPerson || !contactEmail || !contactPhone) {
+    if (!name || !contactPerson || !contactEmail || !contactPhone || !taxId) {
       setErrorMsg(nationality === 'vietname'
-        ? 'Vui lòng điền đầy đủ tất cả các trường thông tin liên hệ bắt buộc (*).'
-        : 'Please fill in all required contact fields (*).'
+        ? 'Vui lòng điền đầy đủ tất cả các trường thông tin liên hệ và Mã số thuế bắt buộc (*).'
+        : 'Please fill in all required contact fields and Tax ID (*).'
       );
       return;
     }
     setErrorMsg('');
     setIsSubmitting(true);
 
-    // Split custom benefits by newlines
-    const finalBenefits = customBenefitsText
-      .split('\n')
-      .map(b => b.trim())
-      .filter(b => b.length > 0);
+    const taxIdPara = taxId ? `<p><strong>Mã số thuế:</strong> ${taxId}</p>` : '';
+    const finalNotes = taxIdPara + notes;
 
     const sponsorData: Sponsor = {
       id: 'SPN-' + Math.floor(Math.random() * 900 + 100),
@@ -344,7 +359,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       contactPhone,
       benefitsSigned: finalBenefits.length > 0 ? finalBenefits : currentTierData.benefits,
       logoUrl: logoImage || undefined,
-      notes: notes || undefined,
+      notes: finalNotes || undefined,
       boothLocation: boothLocation === 'other' ? customBoothLocation : boothLocation
     };
 
@@ -438,6 +453,9 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
                 <div className="space-y-2 text-xs text-slate-650 font-medium">
                   <p>• {L.t('Mã đối tác: ', 'Partner ID: ')}<strong className="text-slate-900 font-mono">{createdSponsor.id}</strong></p>
+                  {successTaxId && (
+                    <p>• {L.t('Mã số thuế: ', 'Tax ID: ')}<strong className="text-slate-900 font-mono">{successTaxId}</strong></p>
+                  )}
                   <p>• {L.t('Người liên hệ: ', 'Contact Person: ')}<strong className="text-slate-900">{createdSponsor.contactPerson}</strong></p>
                   <p>• {L.t('Số điện thoại: ', 'Phone Number: ')}<strong className="text-slate-900">{createdSponsor.contactPhone}</strong></p>
                   <p>• {L.t('Hộp thư điện tử: ', 'Email Address: ')}<strong className="text-slate-900">{createdSponsor.contactEmail}</strong></p>
@@ -458,48 +476,75 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 </div>
               </div>
 
-              {/* Right Column: Bank billing transfer instructions */}
+              {/* Right Column: Sponsorship package benefits (replacing bank transfer instructions) */}
               <div className="md:pl-8 space-y-4 pt-6 md:pt-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">{L.t('HƯỚNG DẪN CHUYỂN KHOẢN KINH PHÍ', 'BANK TRANSFER INSTRUCTIONS')}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">
+                  {L.t('QUYỀN LỢI NHÀ TÀI TRỢ THEO GÓI', 'SPONSOR PACKAGE BENEFITS')}
+                </span>
                 
-                <div className="p-4 bg-slate-50 border border-slate-250 rounded-2xl space-y-3.5 text-xs text-slate-700 font-sans shadow-inner">
-                  <div className="flex items-center gap-2 text-indigo-900 border-b border-slate-200 pb-2">
-                    <Landmark className="w-5 h-5 text-indigo-600" />
-                    <span className="font-bold text-xs uppercase tracking-wider">{L.t('Tài khoản ngân hàng của BTC', 'BTC Bank Account Details')}</span>
+                <div className="p-5 bg-gradient-to-br from-slate-50 to-indigo-50/20 border border-slate-200 rounded-3xl space-y-3.5 shadow-sm">
+                  <div className="flex items-center gap-2 text-indigo-900 border-b border-slate-200/60 pb-3">
+                    <HeartHandshake className="w-5 h-5 text-indigo-600 shrink-0" />
+                    <span className="font-bold text-xs uppercase tracking-wider">
+                      {L.t(`Hạng mức ${matchedTier?.name || createdSponsor.tier.toUpperCase()}`, `${matchedTier?.nameEn || createdSponsor.tier.toUpperCase()} Level`)}
+                    </span>
                   </div>
                   
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{L.t('Ngân hàng thụ hưởng:', 'Beneficiary Bank:')}</span>
-                      <strong className="text-slate-900 text-right">VIETCOMBANK - Hanoi Branch</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{L.t('Tên tài khoản hưởng:', 'Account Name:')}</span>
-                      <strong className="text-slate-900 text-right">HIEP HOI PHAU THUAT THAM MY VSAPS</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{L.t('Số tài khoản:', 'Account Number:')}</span>
-                      <strong className="text-slate-900 text-right font-mono text-sm tracking-wide">0011 0042 99999</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">{L.t('Số tiền chuyển khoản:', 'Transfer Amount:')}</span>
-                      <strong className="text-indigo-755 text-sm font-black font-mono">{(createdSponsor.pledgedAmount).toLocaleString()} {L.t('VNĐ', 'VND')}</strong>
-                    </div>
-                    <div className="flex flex-col gap-1 bg-white p-2.5 rounded-xl border border-slate-200 mt-2">
-                      <span className="text-[9.5px] font-bold text-rose-500 uppercase tracking-wide">{L.t('Cú pháp chuyển tiền chính xác (MEMO):', 'Exact Transfer Description (MEMO):')}</span>
-                      <p className="font-mono text-xs font-black text-slate-900 tracking-tight bg-slate-50 p-2 rounded border text-center select-all">
-                        {createdSponsor.id} {createdSponsor.name.toUpperCase().replace(/[^A-Z0-9 ]/g, '')} {L.t('TAI TRO VSAPS2026', 'SPONSOR VSAPS2026')}
-                      </p>
-                    </div>
+                  <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                    {benefitsList && benefitsList.map((benefit: string, idx: number) => (
+                      <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 leading-relaxed">
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5 bg-emerald-50 rounded-full p-0.5 border border-emerald-100" />
+                        <span>{benefit}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex gap-2 text-[10.5px] text-slate-500 leading-snug">
-                  <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
-                  <span>{L.t('Cổng thanh toán tự động ghi nhận Realtime. Ngay khi chuyển khoản thành công, bút toán đối soát sẽ tự động kích hoạt hiển thị Logo Doanh nghiệp tại trang chủ lễ bế mạc và sảnh vinh danh.', 'Automated real-time payment gateway. Upon successful transfer, the reconciliation entry will trigger the auto-display of the Company Logo on the closing ceremony screen and the hall of honor.')}</span>
                 </div>
               </div>
             </div>
+
+            {/* List of occupied booths at the bottom of the success page */}
+            {occupiedSponsors.length > 0 && (
+              <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-5 shadow-inner">
+                <h3 className="text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+                  {L.t('Sơ đồ phân bổ gian hàng đã chọn', 'Occupied Booth Assignments')}
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-[11px] border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                        <th className="py-2 px-2">{L.t('Vị trí gian hàng', 'Booth Location')}</th>
+                        <th className="py-2 px-2">{L.t('Đơn vị tài trợ', 'Sponsor Company')}</th>
+                        <th className="py-2 px-2">{L.t('Gói tài trợ', 'Package Tier')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {occupiedSponsors.map(s => {
+                        const matchedT = sponsorTiers.find(t => t.id === s.tier);
+                        const tName = nationality === 'vietname' ? matchedT?.name : matchedT?.nameEn;
+                        return (
+                          <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-100 transition-colors">
+                            <td className="py-2 px-2 font-bold text-teal-700 font-mono">{s.boothLocation}</td>
+                            <td className="py-2 px-2 font-bold text-slate-800">{s.name}</td>
+                            <td className="py-2 px-2">
+                              <span
+                                className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                                style={{
+                                  backgroundColor: (matchedT?.color || '#cbd5e1') + '15',
+                                  color: matchedT?.color || '#475569'
+                                }}
+                              >
+                                {tName || s.tier.toUpperCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             <div className="pt-6 border-t border-slate-100 text-center">
               <button
@@ -704,6 +749,20 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
               <div>
                 <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                  {L.t('Mã số thuế *', 'Tax ID / Business Registration Number *')}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value)}
+                  placeholder={L.p('ví dụ: 0101234567', 'e.g. 0101234567')}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-500 block mb-1">
                   {L.f('companyName', 'Tên Thương hiệu / Doanh nghiệp đăng ký *', 'Brand / Registered Company Name *')}
                 </label>
                 <input
@@ -760,6 +819,17 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               </div>
 
               <div>
+                <label className="text-[11px] font-bold text-slate-500 block mb-2">
+                  {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm *', 'Exhibition Booth Layout Map *')}
+                </label>
+                <div className="mb-3 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center p-2">
+                  <img
+                    src="/booth_layout_map.png"
+                    alt="Sơ đồ bố trí gian hàng VSAPS 2026"
+                    className="max-h-80 object-contain rounded-xl hover:scale-105 transition-all duration-300"
+                  />
+                </div>
+
                 <label className="text-[11px] font-bold text-slate-500 block mb-1">
                   {L.t('Vị trí gian hàng mong muốn *', 'Preferred Booth Location *')}
                 </label>
@@ -770,14 +840,11 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                     className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="auto">{L.t('Ban Tổ Chức tự sắp xếp / Tự chọn sau', 'Organizer assigns / Choose later')}</option>
-                    <option value="A1">{L.t('Gian A1 (Khu Kim Cương)', 'Booth A1 (Diamond Zone)')}</option>
-                    <option value="A2">{L.t('Gian A2 (Khu Kim Cương)', 'Booth A2 (Diamond Zone)')}</option>
-                    <option value="A3">{L.t('Gian A3 (Khu Kim Cương)', 'Booth A3 (Diamond Zone)')}</option>
-                    <option value="B1">{L.t('Gian B1 (Khu Bạch Kim/Vàng)', 'Booth B1 (Platinum/Gold Zone)')}</option>
-                    <option value="B2">{L.t('Gian B2 (Khu Bạch Kim/Vàng)', 'Booth B2 (Platinum/Gold Zone)')}</option>
-                    <option value="B3">{L.t('Gian B3 (Khu Bạch Kim/Vàng)', 'Booth B3 (Platinum/Gold Zone)')}</option>
-                    <option value="C1">{L.t('Gian C1 (Khu Tiêu chuẩn)', 'Booth C1 (Standard Zone)')}</option>
-                    <option value="C2">{L.t('Gian C2 (Khu Tiêu chuẩn)', 'Booth C2 (Standard Zone)')}</option>
+                    {availableBooths.map(b => (
+                      <option key={b} value={b}>
+                        {getBoothLabel(b, nationality === 'foreign')}
+                      </option>
+                    ))}
                     <option value="other">{L.t('Khác / Vị trí đặc biệt...', 'Other / Special location...')}</option>
                   </select>
 
@@ -883,6 +950,49 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
           </div>
         </div>
       </form>
+
+      {occupiedSponsors.length > 0 && (
+        <div className="mt-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+          <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+            {L.t('BẢN ĐỒ PHÂN BỔ GIAN HÀNG ĐÃ ĐĂNG KÝ', 'REGISTERED EXHIBITION BOOTH ASSIGNMENTS')}
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                  <th className="py-2.5 px-3">{L.t('Vị trí gian hàng', 'Booth Location')}</th>
+                  <th className="py-2.5 px-3">{L.t('Đơn vị tài trợ', 'Sponsor Company')}</th>
+                  <th className="py-2.5 px-3">{L.t('Hạng mức tài trợ', 'Sponsorship Tier')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {occupiedSponsors.map(s => {
+                  const matchedT = sponsorTiers.find(t => t.id === s.tier);
+                  const tName = nationality === 'vietname' ? matchedT?.name : matchedT?.nameEn;
+                  return (
+                    <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="py-3 px-3 font-bold text-teal-700 font-mono">{s.boothLocation}</td>
+                      <td className="py-3 px-3 font-bold text-slate-800">{s.name}</td>
+                      <td className="py-3 px-3">
+                        <span
+                          className="px-2 py-0.5 rounded text-[9px] font-bold"
+                          style={{
+                            backgroundColor: (matchedT?.color || '#cbd5e1') + '15',
+                            color: matchedT?.color || '#475569'
+                          }}
+                        >
+                          {tName || s.tier.toUpperCase()}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {formCfg?.footerNote && (
         <div className="mt-6">
