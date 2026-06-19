@@ -435,6 +435,8 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   };
 
   if (isSubmitted && createdSponsor) {
+    const { taxId: successTaxId } = extractTaxId(createdSponsor.notes);
+
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 font-sans text-slate-900">
         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-2xl">
