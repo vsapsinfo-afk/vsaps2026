@@ -173,7 +173,12 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       try {
         store.sendWhatsappToSpeaker(saved);
       } catch (err) {
-        console.error('Lỗi khi gửi thông báo tự động:', err);
+        console.error('Lỗi khi gửi thông báo tự động (WhatsApp):', err);
+      }
+      try {
+        store.sendEmailToSpeaker(saved);
+      } catch (err) {
+        console.error('Lỗi khi gửi thông báo tự động (Email):', err);
       }
 
       setCreatedSpeaker(saved);
@@ -193,12 +198,12 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
     return (
       <div className="bg-slate-50 min-h-screen py-12 px-4">
         <div className="max-w-xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-teal-800 to-indigo-900 text-white p-8 text-center relative">
+          <div className="bg-[#0b1a30] text-white p-8 text-center relative">
             <div className="absolute top-4 left-4">
               <button 
                 id="btn-back-event-details"
                 onClick={() => onNavigate('event-details')}
-                className="p-1 px-3 rounded-lg bg-indigo-950/50 hover:bg-indigo-950 text-xs font-semibold flex items-center gap-1 text-teal-150"
+                className="p-1 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center gap-1 text-white border border-white/10 transition-all cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 {L.t('Quay lại', 'Back')}
@@ -208,51 +213,61 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
               <CheckCircle className="w-8 h-8 text-teal-300" />
             </div>
             <h2 className="text-2xl font-bold mb-1">{L.t('Đệ Trình Báo Cáo Thành Công!', 'Presentation Submitted Successfully!')}</h2>
-            <p className="text-xs text-indigo-200 uppercase tracking-widest font-mono">{L.t('Mã hồ sơ: ', 'Submission ID: ')}{createdSpeaker.id}</p>
+            <p className="text-xs text-slate-300 uppercase tracking-widest font-mono mt-1">{L.t('Mã hồ sơ: ', 'Submission ID: ')}{createdSpeaker.id}</p>
           </div>
 
           <div className="p-8 space-y-6">
-            <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-200 text-slate-700 text-xs space-y-2 text-center">
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200/60 text-slate-600 text-xs space-y-2 text-center">
               <Sparkles className="w-4 h-4 text-indigo-600 mx-auto" />
               <p className="font-bold text-slate-900">{L.t('Thông báo liên thông hệ thống tự động đã phát tín:', 'Automated system notifications have been dispatched:')}</p>
               <p>
-                {L.t('Email tự động đã được lập trình gửi tới báo cáo viên: ', 'Automated email has been scheduled for the speaker: ')}<strong className="text-slate-950">{createdSpeaker.email}</strong>.
+                {L.t('Email tự động đã được lập trình gửi tới báo cáo viên: ', 'Automated email has been scheduled for the speaker: ')}<strong className="text-slate-950 font-bold">{createdSpeaker.email}</strong>.
               </p>
               {createdSpeaker.calendarSynced && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-200/50">
                   {L.t('📅 Đã đồng bộ Google Calendar lân cận: Token lịch trích xuất thành công. Lịch trình thuyết trình sẽ tự cập nhật vào thiết bị cá nhân của bác sĩ khi có phê duyệt.', '📅 Google Calendar Sync Enabled: Calendar token generated. The presentation schedule will automatically sync to your personal calendar upon approval.')}
                 </p>
               )}
             </div>
 
-            <div className="border border-slate-100 p-6 rounded-2xl bg-slate-50/50 space-y-4">
-              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block font-mono">{L.t('Chi tiết hồ sơ đệ trình của bạn:', 'Your Submission Details:')}</span>
+            <div className="border border-slate-200 p-6 rounded-2xl bg-white space-y-4">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">{L.t('CHI TIẾT HỒ SƠ ĐỆ TRÌNH CỦA BẠN:', 'YOUR SUBMISSION DETAILS:')}</span>
               
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center gap-3 pb-2 border-b border-slate-200/50">
-                  {createdSpeaker.avatarUrl && (
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                  {createdSpeaker.avatarUrl ? (
                     <img 
                       src={createdSpeaker.avatarUrl} 
                       alt="Avatar" 
                       className="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm shrink-0" 
                     />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0 border border-slate-200 font-bold uppercase text-sm">
+                      {createdSpeaker.fullName.charAt(0)}
+                    </div>
                   )}
                   <div>
                     <span className="text-slate-400 font-medium">{L.t('Báo cáo viên:', 'Speaker:')}</span>
-                    <p className="font-bold text-slate-900 text-sm mt-0.5">{createdSpeaker.title} {createdSpeaker.fullName}</p>
+                    <p className="font-bold text-slate-900 text-sm mt-0.5 uppercase">{createdSpeaker.title} {createdSpeaker.fullName}</p>
                   </div>
                 </div>
-                <div className="pt-1">
+                
+                <div className="py-3 border-b border-slate-100">
                   <span className="text-slate-400 font-medium">{L.t('Đơn vị:', 'Institution:')}</span>
-                  <p className="font-semibold text-slate-800 mt-0.5">{createdSpeaker.organization} ({createdSpeaker.department})</p>
+                  <p className="font-semibold text-slate-800 mt-0.5">
+                    {createdSpeaker.organization}
+                    {createdSpeaker.department ? ` (${createdSpeaker.department})` : ''}
+                  </p>
                 </div>
-                <div className="border-t border-slate-200/60 pt-2">
+                
+                <div className="py-3 border-b border-slate-100">
                   <span className="text-slate-400 font-medium">{L.t('Đề tài báo cáo đăng ký:', 'Registered Presentation Title:')}</span>
-                  <p className="font-bold text-slate-905 mt-0.5 leading-relaxed text-teal-850">“{createdSpeaker.presentationTitle}”</p>
+                  <p className="font-bold text-slate-900 mt-0.5 leading-relaxed">“{createdSpeaker.presentationTitle}”</p>
                 </div>
-                <div>
-                  <span className="text-slate-400 font-medium">{L.t('Chuyên mục:', 'Category:')}</span>
-                  <p className="font-semibold text-slate-800 mt-0.5 bg-indigo-50 inline-block px-2 py-0.5 rounded text-[11px]">
+                
+                <div className="py-3 border-b border-slate-100">
+                  <span className="text-slate-400 font-medium">{L.t('Chuyên đề:', 'Specialty Track:')}</span>
+                  <p className="font-semibold text-slate-800 mt-0.5">
                     {getTrackDisplayName(
                       createdSpeaker.presentationTrack,
                       nationality === 'foreign',
@@ -260,32 +275,34 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                     )}
                   </p>
                 </div>
-                <div>
+                
+                <div className="py-3 border-b border-slate-100">
                   <span className="text-slate-400 font-medium">{L.t('Tài liệu đính kèm:', 'Attached Document:')}</span>
-                  <p className="font-semibold text-teal-700 mt-0.5 flex items-center gap-1">
-                    <FileText className="w-3.5 h-3.5" />
-                    {createdSpeaker.documentName}
+                  <p className="font-semibold text-teal-600 mt-0.5 flex items-center gap-1.5 break-all">
+                    <FileText className="w-4 h-4 shrink-0 text-teal-500" />
+                    {createdSpeaker.documentName || L.t('Chưa đính kèm', 'No attachment')}
                   </p>
                 </div>
-                <div className="border-t border-slate-200/60 pt-2">
-                  <span className="text-slate-400 font-medium font-mono">{L.t('TRẠNG THÁI KIỂM DUYỆT ACADEMIC:', 'ACADEMIC REVIEW STATUS:')}</span>
-                  <span className="inline-flex items-center gap-1 ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 font-mono">
+                
+                <div className="pt-3 flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-slate-400 font-bold text-[10px] tracking-wider font-mono">{L.t('TRẠNG THÁI KIỂM DUYỆT ACADEMIC:', 'ACADEMIC REVIEW STATUS:')}</span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100 font-mono">
                     {L.t('ĐANG THẨM ĐỊNH (PENDING)', 'REVIEW PENDING')}
                   </span>
                 </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 text-center italic mt-4 leading-relaxed">
+            <p className="text-[11px] text-slate-500 text-center italic mt-4 leading-relaxed px-2">
               {L.t('Hội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua email cá nhân.', 'The VSAPS 2026 Scientific Committee will review your abstract within 5 working days. You can track the status of your submission or receive revision feedback via your email.')}
             </p>
 
             <button
               id="btn-speaker-return-home"
               onClick={() => onNavigate('event-details')}
-              className="w-full py-3.5 rounded-xl bg-slate-900 hover:bg-slate-950 text-white font-bold text-xs uppercase tracking-widest transition-all"
+              className="w-full py-4 rounded-xl bg-[#0b1a30] hover:bg-[#081324] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-md active:scale-[0.98]"
             >
-              {L.t('Quay lại Trang Chủ Sự Kiện', 'Back to Event Homepage')}
+              {L.t('QUAY LẠI TRANG CHỦ SỰ KIỆN', 'RETURN TO EVENT HOMEPAGE')}
             </button>
           </div>
         </div>

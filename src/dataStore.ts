@@ -2842,6 +2842,116 @@ export class DataStore {
     return log;
   }
 
+  async sendEmailToSpeaker(speaker: SpeakerRegistration, templateId?: string): Promise<SentNotificationLog> {
+    let template = templateId ? this.templates.find(t => t.id === templateId) : null;
+    if (!template) {
+      template = {
+        id: 'tmpl-speaker-registered',
+        name: 'Xác Nhận Nộp Báo Cáo Thành Công (Email)',
+        type: 'speaker_registered',
+        channel: 'email',
+        subject: '🎯 Xác nhận đệ trình đề tài báo cáo khoa học VSAPS 2026',
+        content: 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng thông báo: Đề tài báo cáo khoa học của Quý vị đã được ghi nhận thành công trên hệ thống.\n\nTHÔNG TIN ĐỀ TRÌNH CHI TIẾT:\n• Mã hồ sơ: {{code}}\n• Báo cáo viên: {{title}} {{fullname}}\n• Đơn vị công tác: {{organization}} ({{department}})\n• Tên đề tài báo cáo: "{{presentation_title}}"\n• Chuyên đề đệ trình: {{track}}\n• Trạng thái kiểm duyệt: ĐANG CHỜ BAN KHOA HỌC XÉT DUYỆT (PENDING)\n\nHội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua tài khoản cá nhân hoặc email liên hệ.\n\nTrân trọng cảm ơn sự tham gia và đóng góp khoa học của Quý vị cho thành công của Hội nghị VSAPS 2026!\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+      };
+    }
+
+    const rawContent = template.content || '';
+    const content = rawContent
+      .replace(/\{\{title\}\}/g, speaker.title || '')
+      .replace(/\{\{fullname\}\}/g, speaker.fullName || '')
+      .replace(/\{\{code\}\}/g, speaker.id || '')
+      .replace(/\{\{organization\}\}/g, speaker.organization || '')
+      .replace(/\{\{department\}\}/g, speaker.department || '')
+      .replace(/\{\{presentation_title\}\}/g, speaker.presentationTitle || '')
+      .replace(/\{\{track\}\}/g, speaker.presentationTrack || '');
+
+    const finalSubject = (template.subject || "Xác nhận đệ trình báo cáo VSAPS 2026")
+      .replace(/\{\{title\}\}/g, speaker.title || '')
+      .replace(/\{\{fullname\}\}/g, speaker.fullName || '')
+      .replace(/\{\{organization\}\}/g, speaker.organization || '')
+      .replace(/\{\{presentation_title\}\}/g, speaker.presentationTitle || '')
+      .replace(/\{\{track\}\}/g, speaker.presentationTrack || '');
+
+    const payload = {
+      to: speaker.email,
+      from: `${this.emailConfig.senderName} <${this.emailConfig.senderEmail}>`,
+      subject: finalSubject,
+      body: content
+    };
+
+    let status: 'success' | 'failed' = 'success';
+    let responseObj: any = { message: "Email báo cáo viên đã gửi thành công giả lập" };
+
+    const isRealSmtp = this.emailConfig.smtpHost && 
+                       this.emailConfig.smtpPass && 
+                       this.emailConfig.smtpPass !== '*************' &&
+                       this.emailConfig.smtpPass !== '';
+
+    const canSend = isRealSmtp || isSupabaseConfigured();
+
+    if (canSend) {
+      try {
+        const isHtml = /<[a-z][\s\S]*>/i.test(content);
+        const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+            <div style="text-align: center; border-bottom: 2px solid #0f766e; padding-bottom: 15px; margin-bottom: 20px;">
+              <h2 style="color: #1e1b4b; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;">Hội Nghị VSAPS 2026</h2>
+              <p style="color: #0f766e; font-size: 11px; margin: 5px 0 0 0; font-weight: bold;">Hội Nghị Khoa Học Thẩm Mỹ Quốc Tế Thường Niên</p>
+            </div>
+            
+            <p style="font-size: 14px; color: #334155; line-height: 1.6;">
+              ${formattedBody}
+            </p>
+          </div>
+        `;
+
+        const response = await fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            config: this.emailConfig,
+            payload: {
+              to: speaker.email,
+              subject: finalSubject,
+              body: emailHtml
+            }
+          })
+        });
+
+        const resData = await response.json();
+        if (resData.success) {
+          responseObj = {
+            message: "Email báo cáo viên gửi thành công qua SMTP/Supabase Edge Function",
+            messageId: resData.messageId
+          };
+        } else {
+          status = 'failed';
+          responseObj = { error: resData.error || "Gửi email thất bại qua API" };
+        }
+      } catch (err: any) {
+        status = 'failed';
+        responseObj = { error: err.message || err };
+      }
+    }
+
+    const log: SentNotificationLog = {
+      id: 'NTF-' + Math.floor(Math.random() * 90000 + 10000),
+      recipient: speaker.email,
+      type: 'email',
+      templateId: template.id,
+      templateName: template.name,
+      sender: `${this.emailConfig.senderName} <${this.emailConfig.senderEmail}>`,
+      sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      status,
+      payload,
+      response: responseObj
+    };
+
+    this.addNotificationLog(log);
+    return log;
+  }
+
   // Clear data and reset mock defaults
   resetToDefaults() {
     localStorage.removeItem(DataStore.KEY_ATTENDEES);
