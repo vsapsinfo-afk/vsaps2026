@@ -512,6 +512,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   // Rich Text Editor & Preview States
   const [editorMode, setEditorMode] = useState<'visual' | 'code'>('visual');
   const [editTab, setEditTab] = useState<'edit' | 'preview'>('edit');
+  const [phCat, setPhCat] = useState<'common' | 'delegate' | 'speaker' | 'sponsor'>('common');
   const editorRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const lastLoadedTemplateId = React.useRef<string | null>(null);
@@ -1474,21 +1475,74 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
               {/* Quick Placeholder Inserter Buttons */}
               {editTab === 'edit' && (
-                <div className="flex items-center gap-2 mb-2 bg-slate-55 p-2.5 border border-slate-150 rounded-xl">
-                  <span className="text-[9.5px] font-bold text-slate-500 select-none shrink-0">Chèn nhanh biến:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { code: 'title', label: 'Danh xưng (ví dụ: BS.)' },
-                      { code: 'fullname', label: 'Họ & Tên' },
-                      { code: 'code', label: 'Mã Đại biểu' },
-                      { code: 'package', label: 'Gói đăng ký' },
+                <div className="mb-3 bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 select-none">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-1 flex-wrap gap-2">
+                    <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-teal-600" />
+                      Chèn nhanh biến (Merge Tags):
+                    </span>
+                    <div className="flex gap-1 flex-wrap">
+                      {[
+                        { id: 'common', label: 'Chung' },
+                        { id: 'delegate', label: 'Đại biểu' },
+                        { id: 'speaker', label: 'Báo cáo viên' },
+                        { id: 'sponsor', label: 'Nhà tài trợ' }
+                      ].map(cat => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setPhCat(cat.id as any)}
+                          className={`px-2 py-0.5 rounded text-[8.5px] font-bold transition-all cursor-pointer border ${
+                            phCat === cat.id 
+                              ? 'bg-teal-600 border-teal-600 text-white shadow-sm font-extrabold' 
+                              : 'bg-white border-slate-205 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    {(phCat === 'common' ? [
+                      { code: 'title', label: 'Danh xưng (BS., PGS., ...)' },
+                      { code: 'fullname', label: 'Họ và tên' },
+                      { code: 'email', label: 'Địa chỉ Email' },
+                      { code: 'phone', label: 'Số điện thoại' },
+                      { code: 'organization', label: 'Cơ quan / Đơn vị' },
+                      { code: 'department', label: 'Khoa / Phòng ban' }
+                    ] : phCat === 'delegate' ? [
+                      { code: 'code', label: 'Mã đại biểu' },
+                      { code: 'package', label: 'Tên gói đăng ký' },
+                      { code: 'package_fee', label: 'Lệ phí đăng ký' },
                       { code: 'payment_status', label: 'Trạng thái thanh toán' },
-                      { code: 'organization', label: 'Đơn vị công tác' },
-                      { code: 'presentation_title', label: 'Đề tài báo cáo' },
-                      { code: 'track', label: 'Chuyên khoa/Chương trình' },
-                      { code: 'email', label: 'Email đại biểu' },
-                      { code: 'phone', label: 'Số điện thoại' }
-                    ].map(ph => (
+                      { code: 'payment_method', label: 'Phương thức thanh toán' },
+                      { code: 'registration_date', label: 'Ngày đăng ký tham dự' },
+                      { code: 'address', label: 'Địa chỉ đại biểu' },
+                      { code: 'yearOfBirth', label: 'Năm sinh' },
+                      { code: 'gender', label: 'Giới tính' },
+                      { code: 'cmeIdentityNo', label: 'Số CCCD để cấp CME' }
+                    ] : phCat === 'speaker' ? [
+                      { code: 'code', label: 'Mã hồ sơ báo cáo' },
+                      { code: 'presentation_title', label: 'Tên đề tài báo cáo khoa học' },
+                      { code: 'track', label: 'Chuyên khoa/Chương trình báo cáo' },
+                      { code: 'abstract_text', label: 'Tóm tắt bài báo cáo (Abstract)' },
+                      { code: 'document_url', label: 'Đường dẫn slide/tài liệu' },
+                      { code: 'status', label: 'Trạng thái kiểm duyệt đề tài' }
+                    ] : [
+                      { code: 'code', label: 'Mã nhà tài trợ' },
+                      { code: 'company_name', label: 'Tên doanh nghiệp tài trợ' },
+                      { code: 'sponsor_package', label: 'Gói tài trợ (Kim Cương, Vàng,...)' },
+                      { code: 'package_fee', label: 'Kinh phí cam kết tài trợ' },
+                      { code: 'paid_amount', label: 'Kinh phí đã đóng góp' },
+                      { code: 'payment_status', label: 'Trạng thái đóng kinh phí' },
+                      { code: 'contact_name', label: 'Người liên hệ đại diện' },
+                      { code: 'booth_location', label: 'Vị trí gian hàng phân bổ' },
+                      { code: 'tax_id', label: 'Mã số thuế doanh nghiệp' },
+                      { code: 'contract_no', label: 'Số hợp đồng' },
+                      { code: 'contract_status', label: 'Trạng thái ký kết hợp đồng' }
+                    ]).map(ph => (
                       <button
                         key={ph.code}
                         type="button"
@@ -1687,8 +1741,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               <div className="bg-slate-55 p-3.5 rounded-xl border border-slate-200 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-slate-450 shrink-0 mt-0.5" />
                 <div className="text-[10px] text-slate-600 leading-normal">
-                  <span className="font-bold text-slate-800 block">Danh mục Placeholder đính được:</span>
-                  <span>{"{{title}}"} (Danh xưng Bác sĩ), {"{{fullname}}"} (Tên), {"{{code}}"} (Mã ATT-ID), {"{{package}}"} (Tên gói đăng ký), {"{{payment_status}}"} (Nộp phí), {"{{presentation_title}}"} (Tên đề tài), {"{{email}}"} (Email), {"{{phone}}"} (Số điện thoại).</span>
+                  <span className="font-bold text-slate-800 block font-sans">Danh mục Placeholder sử dụng được:</span>
+                  <span>Sử dụng bảng chèn nhanh ở trên để chọn các biến của Đại biểu, Báo cáo viên, và Nhà tài trợ. Hệ thống tự động thay đổi dữ liệu chính xác theo thông tin đăng ký thực tế khi gửi thư.</span>
                 </div>
               </div>
 

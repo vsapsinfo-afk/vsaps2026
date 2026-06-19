@@ -47,6 +47,19 @@ import {
   mapContactToDb, mapDbToContact,
 } from './lib/mappers';
 
+const extractTaxId = (htmlStr: string | undefined): { taxId: string, cleanNotes: string } => {
+  if (!htmlStr) return { taxId: '', cleanNotes: '' };
+  const regex = /<p><strong>Mã số thuế:<\/strong>\s*([^<]+)<\/p>/;
+  const match = htmlStr.match(regex);
+  if (match) {
+    return {
+      taxId: match[1].trim(),
+      cleanNotes: htmlStr.replace(regex, '').trim()
+    };
+  }
+  return { taxId: '', cleanNotes: htmlStr };
+};
+
 // Empty fallbacks to remove mock data from source code
 const INITIAL_TRACKS: SpecialtyTrack[] = [];
 const INITIAL_PACKAGES: RegistrationPackage[] = [];
@@ -2538,37 +2551,68 @@ export class DataStore {
     const rawContent = customBody || template.content || '';
     const attAny = attendee as any;
 
-    const content = rawContent
-      .replace(/\{\{title\}\}/g, attendee.title || '')
-      .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
-      .replace(/\{\{package\}\}/g, attendee.packageName || '')
-      .replace(/\{\{code\}\}/g, attendee.id || '')
-      .replace(/\{\{payment_status\}\}/g, payStatusText)
-      .replace(/\{\{organization\}\}/g, attendee.organization || '')
-      .replace(/\{\{email\}\}/g, attendee.email || '')
-      .replace(/\{\{phone\}\}/g, attendee.phone || '')
-      .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
-      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '')
-      .replace(/\{\{pledged_amount\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : '')
-      .replace(/\{\{paid_amount\}\}/g, attAny.paidAmount !== undefined ? attAny.paidAmount.toLocaleString() : '')
-      .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
-      .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '')
-      .replace(/\{\{package_fee\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : (attendee.packageFee ? attendee.packageFee.toLocaleString() : '0'))
-      .replace(/\{\{company_name\}\}/g, attendee.organization || '')
-      .replace(/\{\{contact_name\}\}/g, attendee.fullName || '')
-      .replace(/\{\{sponsor_package\}\}/g, attendee.packageName || '');
+    const replaceAllPlaceholders = (text: string) => {
+      if (!text) return '';
+      let res = text;
+      
+      // 1. Direct backward-compatible mappings
+      res = res
+        .replace(/\{\{title\}\}/g, attendee.title || '')
+        .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
+        .replace(/\{\{package\}\}/g, attendee.packageName || '')
+        .replace(/\{\{code\}\}/g, attendee.id || '')
+        .replace(/\{\{payment_status\}\}/g, payStatusText)
+        .replace(/\{\{organization\}\}/g, attendee.organization || '')
+        .replace(/\{\{email\}\}/g, attendee.email || '')
+        .replace(/\{\{phone\}\}/g, attendee.phone || '')
+        .replace(/\{\{company_name\}\}/g, attendee.organization || '')
+        .replace(/\{\{contact_name\}\}/g, attendee.fullName || '')
+        .replace(/\{\{sponsor_package\}\}/g, attendee.packageName || '')
+        .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
+        .replace(/\{\{track\}\}/g, attAny.presentationTrack || '')
+        .replace(/\{\{pledged_amount\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : '')
+        .replace(/\{\{paid_amount\}\}/g, attAny.paidAmount !== undefined ? attAny.paidAmount.toLocaleString() : '')
+        .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
+        .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '')
+        .replace(/\{\{package_fee\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : (attendee.packageFee ? attendee.packageFee.toLocaleString() : '0'));
 
-    const finalSubject = (customSubject || template.subject || "Xác nhận đăng ký VSAPS 2026")
-      .replace(/\{\{title\}\}/g, attendee.title || '')
-      .replace(/\{\{fullname\}\}/g, attendee.fullName || '')
-      .replace(/\{\{organization\}\}/g, attendee.organization || '')
-      .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
-      .replace(/\{\{track\}\}/g, attAny.presentationTrack || '')
-      .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
-      .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '')
-      .replace(/\{\{company_name\}\}/g, attendee.organization || '')
-      .replace(/\{\{contact_name\}\}/g, attendee.fullName || '')
-      .replace(/\{\{sponsor_package\}\}/g, attendee.packageName || '');
+      // 2. Loop through all fields of attendee object to dynamically match camelCase, lowercase, snake_case
+      Object.keys(attAny).forEach(key => {
+        const val = attAny[key];
+        if (val !== undefined && val !== null && typeof val !== 'object') {
+          let valStr = String(val);
+          // Format numeric values that sound like currency / fees
+          if (typeof val === 'number' && (key.toLowerCase().includes('fee') || key.toLowerCase().includes('amount') || key.toLowerCase().includes('value'))) {
+            valStr = val.toLocaleString();
+          } else if (typeof val === 'boolean') {
+            valStr = val ? 'Có' : 'Không';
+          }
+
+          // Exact key, e.g. {{fullName}}
+          res = res.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), valStr);
+          // Lowercase key, e.g. {{fullname}}
+          res = res.replace(new RegExp(`\\{\\{${key.toLowerCase()}\\}\\}`, 'g'), valStr);
+          // snake_case key, e.g. {{full_name}}
+          const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          res = res.replace(new RegExp(`\\{\\{${snakeKey}\\}\\}`, 'g'), valStr);
+        }
+      });
+
+      // Special case for Sponsor Tax ID since it's inside notes html
+      if (attAny.notes) {
+        const { taxId: extractedTaxId } = extractTaxId(attAny.notes);
+        if (extractedTaxId) {
+          res = res.replace(/\{\{tax_id\}\}/g, extractedTaxId);
+          res = res.replace(/\{\{taxId\}\}/g, extractedTaxId);
+          res = res.replace(/\{\{tax_code\}\}/g, extractedTaxId);
+        }
+      }
+
+      return res;
+    };
+
+    const content = replaceAllPlaceholders(rawContent);
+    const finalSubject = replaceAllPlaceholders(customSubject || template.subject || "Xác nhận đăng ký VSAPS 2026");
 
     const payload = {
       to: attendee.email,
@@ -2967,21 +3011,42 @@ export class DataStore {
     console.log(`✉️ Sending speaker registration confirmation email using template: "${template.name}" (${template.id})`);
 
     const rawContent = template.content || '';
-    const content = rawContent
-      .replace(/\{\{title\}\}/g, speaker.title || '')
-      .replace(/\{\{fullname\}\}/g, speaker.fullName || '')
-      .replace(/\{\{code\}\}/g, speaker.id || '')
-      .replace(/\{\{organization\}\}/g, speaker.organization || '')
-      .replace(/\{\{department\}\}/g, speaker.department || '')
-      .replace(/\{\{presentation_title\}\}/g, speaker.presentationTitle || '')
-      .replace(/\{\{track\}\}/g, speaker.presentationTrack || '');
+    const spkAny = speaker as any;
 
-    const finalSubject = (template.subject || "Xác nhận đệ trình báo cáo VSAPS 2026")
-      .replace(/\{\{title\}\}/g, speaker.title || '')
-      .replace(/\{\{fullname\}\}/g, speaker.fullName || '')
-      .replace(/\{\{organization\}\}/g, speaker.organization || '')
-      .replace(/\{\{presentation_title\}\}/g, speaker.presentationTitle || '')
-      .replace(/\{\{track\}\}/g, speaker.presentationTrack || '');
+    const replaceSpeakerPlaceholders = (text: string) => {
+      if (!text) return '';
+      let res = text;
+      
+      // 1. Direct backward-compatible mappings
+      res = res
+        .replace(/\{\{title\}\}/g, speaker.title || '')
+        .replace(/\{\{fullname\}\}/g, speaker.fullName || '')
+        .replace(/\{\{code\}\}/g, speaker.id || '')
+        .replace(/\{\{organization\}\}/g, speaker.organization || '')
+        .replace(/\{\{department\}\}/g, speaker.department || '')
+        .replace(/\{\{presentation_title\}\}/g, speaker.presentationTitle || '')
+        .replace(/\{\{track\}\}/g, speaker.presentationTrack || '');
+
+      // 2. Loop through all fields of speaker object to dynamically match camelCase, lowercase, snake_case
+      Object.keys(spkAny).forEach(key => {
+        const val = spkAny[key];
+        if (val !== undefined && val !== null && typeof val !== 'object') {
+          let valStr = String(val);
+          if (typeof val === 'boolean') {
+            valStr = val ? 'Có' : 'Không';
+          }
+          res = res.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), valStr);
+          res = res.replace(new RegExp(`\\{\\{${key.toLowerCase()}\\}\\}`, 'g'), valStr);
+          const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+          res = res.replace(new RegExp(`\\{\\{${snakeKey}\\}\\}`, 'g'), valStr);
+        }
+      });
+
+      return res;
+    };
+
+    const content = replaceSpeakerPlaceholders(rawContent);
+    const finalSubject = replaceSpeakerPlaceholders(template.subject || "Xác nhận đệ trình báo cáo VSAPS 2026");
 
     const payload = {
       to: speaker.email,
