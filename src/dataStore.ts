@@ -2843,11 +2843,19 @@ export class DataStore {
   }
 
   async sendEmailToSpeaker(speaker: SpeakerRegistration, templateId?: string): Promise<SentNotificationLog> {
-    let template = templateId ? this.templates.find(t => t.id === templateId) : null;
+    let template = templateId ? this.templates.find(t => t.id === templateId || t.name === templateId) : null;
+    if (!template) {
+      // Tìm theo tên mẫu do người dùng yêu cầu
+      template = this.templates.find(t => 
+        t.channel === 'email' && 
+        t.name && 
+        t.name.includes('Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026')
+      );
+    }
     if (!template) {
       template = {
         id: 'tmpl-speaker-registered',
-        name: 'Xác Nhận Nộp Báo Cáo Thành Công (Email)',
+        name: '📚 Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026',
         type: 'speaker_registered',
         channel: 'email',
         subject: '🎯 Xác nhận đệ trình đề tài báo cáo khoa học VSAPS 2026',
