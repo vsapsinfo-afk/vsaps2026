@@ -2528,6 +2528,8 @@ export class DataStore {
         const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
         const hideQrSection = template?.type === 'abstract_approved' || 
                               template?.id === 'tmpl-speaker-email' || 
+                              template?.id === 'tmpl-speaker-registered' ||
+                              template?.id === 'tmpl-speaker-submitted-email' ||
                               template?.id === 'tmpl-speaker-approved' ||
                               template?.type?.includes('sponsor') ||
                               template?.id?.includes('sponsor') ||
@@ -2845,11 +2847,13 @@ export class DataStore {
   async sendEmailToSpeaker(speaker: SpeakerRegistration, templateId?: string): Promise<SentNotificationLog> {
     let template = templateId ? this.templates.find(t => t.id === templateId || t.name === templateId) : null;
     if (!template) {
-      // Tìm theo tên mẫu do người dùng yêu cầu
+      // Tìm theo các ID liên kết hoặc tên mẫu do người dùng yêu cầu
       template = this.templates.find(t => 
         t.channel === 'email' && 
-        t.name && 
-        t.name.includes('Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026')
+        (t.id === 'tmpl-speaker-registered' || 
+         t.id === 'tmpl-speaker-email' || 
+         t.id === 'tmpl-speaker-submitted-email' ||
+         (t.name && t.name.includes('Thư xác nhận đăng ký báo cáo chuyên đề')))
       );
     }
     if (!template) {

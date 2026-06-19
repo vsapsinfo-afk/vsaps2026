@@ -798,6 +798,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const getTemplateForFlow = (categoryCode: string, itemCode: string, channel: 'email' | 'zalo' | 'whatsapp') => {
     if (categoryCode === 'speaker') {
       if (itemCode === 'submitted') {
+        if (channel === 'email') {
+          return templates.find(t => t.channel === 'email' && (t.id === 'tmpl-speaker-registered' || t.id === 'tmpl-speaker-email' || t.id === 'tmpl-speaker-submitted-email' || (t.name && t.name.includes('Thư xác nhận đăng ký báo cáo chuyên đề'))));
+        }
         return templates.find(t => t.channel === channel && (t.id === 'tmpl-speaker-email' || t.id === 'tmpl-speaker-wa' || (t.type === 'abstract_approved' && (t.id.includes('submit') || t.id === 'tmpl-speaker-email' || t.id === 'tmpl-speaker-wa'))));
       }
       if (itemCode === 'approved') {
@@ -852,8 +855,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     itemCode === 'contract' ? 'Ký hợp đồng thành công' :
                     itemCode === 'survey' ? 'Cảm ơn & Khảo sát' : 'Nhắc nhở lịch trình';
                     
-    const newId = `tmpl-${categoryCode}-${itemCode}-${channel}`;
-    const newName = `${subName} (${categoryName} - ${channel.toUpperCase()})`;
+    let newId = `tmpl-${categoryCode}-${itemCode}-${channel}`;
+    let newName = `${subName} (${categoryName} - ${channel.toUpperCase()})`;
+    if (categoryCode === 'speaker' && itemCode === 'submitted' && channel === 'email') {
+      newId = 'tmpl-speaker-registered';
+      newName = '📚 Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026';
+    }
     
     setSelectedTemplate({
       id: newId,
