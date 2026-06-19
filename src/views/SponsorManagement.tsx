@@ -88,6 +88,8 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   const [newBoothName, setNewBoothName] = useState('');
   const [editingBoothIndex, setEditingBoothIndex] = useState<number | null>(null);
   const [editingBoothName, setEditingBoothName] = useState('');
+  const [layoutMapUrl, setLayoutMapUrl] = useState<string>(store.getBoothLayoutMap());
+  const [isLayoutUploading, setIsLayoutUploading] = useState(false);
 
   // --- New fields for contract inputs in NEW sponsor form ---
   const [formContractNo, setFormContractNo] = useState('');
@@ -507,6 +509,33 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       return;
     }
     setDeleteConfirmId(id);
+  };
+
+  const handleOpenBoothManager = () => {
+    setBooths(store.getBooths());
+    setLayoutMapUrl(store.getBoothLayoutMap());
+    setShowBoothManager(true);
+  };
+
+  const handleLayoutUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsLayoutUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const uploadedUrl = await store.saveBoothLayoutMap(reader.result as string);
+          setLayoutMapUrl(uploadedUrl);
+          alert('Cập nhật sơ đồ thiết kế gian hàng triển lãm thành công!');
+        } catch (err) {
+          console.error(err);
+          alert('Lỗi tải sơ đồ thiết kế lên hệ thống.');
+        } finally {
+          setIsLayoutUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Detailed report file download simulator
@@ -1749,6 +1778,29 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Sơ đồ thiết kế gian hàng */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Sơ đồ bố trí gian hàng</h4>
+                <div className="border border-slate-250 rounded-xl overflow-hidden bg-white p-2 flex items-center justify-center relative min-h-[120px]">
+                  {isLayoutUploading ? (
+                    <div className="text-xs text-slate-500 animate-pulse font-bold">Đang tải sơ đồ lên...</div>
+                  ) : (
+                    <img
+                      src={layoutMapUrl}
+                      alt="Sơ đồ bố trí gian hàng"
+                      className="max-h-40 object-contain rounded-lg"
+                    />
+                  )}
+                </div>
+                <div className="flex justify-end">
+                  <label className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-[11px] font-bold rounded-xl cursor-pointer transition-all flex items-center gap-1 select-none">
+                    <Upload className="w-3.5 h-3.5 text-slate-600" />
+                    Thay đổi sơ đồ layout
+                    <input type="file" accept="image/*" onChange={handleLayoutUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Thêm Gian Hàng Mới</h4>
                 <div className="flex gap-2">

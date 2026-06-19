@@ -475,6 +475,7 @@ export class DataStore {
   private static KEY_ONESIGNAL = 'vsaps_config_onesignal';
   private static KEY_CONTACTS = 'vsaps_contacts';
   private static KEY_BOOTHS = 'vsaps_booths';
+  private static KEY_BOOTH_LAYOUT_MAP = 'vsaps_booth_layout_map';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -504,6 +505,7 @@ export class DataStore {
   private virtualSections: VirtualSection[] = [];
   private contacts: Contact[] = [];
   private booths: string[] = [];
+  private boothLayoutMap: string = '/booth_layout_map.png';
 
   constructor() {
     this.loadLocalStorage();
@@ -572,6 +574,7 @@ export class DataStore {
     this.oneSignalConfig = this.getLocalStorage(DataStore.KEY_ONESIGNAL, DEFAULT_ONESIGNAL_CONFIG);
     this.contacts = this.getLocalStorage(DataStore.KEY_CONTACTS, []);
     this.booths = this.getLocalStorage(DataStore.KEY_BOOTHS, ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2']);
+    this.boothLayoutMap = this.getLocalStorage(DataStore.KEY_BOOTH_LAYOUT_MAP, '/booth_layout_map.png');
   }
 
   /**
@@ -758,6 +761,11 @@ export class DataStore {
         if (boothsConfig) {
           this.booths = boothsConfig.value;
           this.saveToLocalStorage(DataStore.KEY_BOOTHS, this.booths);
+        }
+        const layoutMapConfig = configs.find(c => c.key === 'booth_layout_map_config');
+        if (layoutMapConfig) {
+          this.boothLayoutMap = layoutMapConfig.value;
+          this.saveToLocalStorage(DataStore.KEY_BOOTH_LAYOUT_MAP, this.boothLayoutMap);
         }
       }
 
@@ -1860,6 +1868,34 @@ export class DataStore {
       });
     }
     return booths;
+  }
+
+  getBoothLayoutMap() {
+    return this.boothLayoutMap;
+  }
+
+  async saveBoothLayoutMap(url: string) {
+    let finalUrl = url;
+    if (isSupabaseConfigured() && url.startsWith('data:')) {
+      try {
+        const ext = url.split(';')[0].split('/')[1] || 'png';
+        const path = `layouts/booth_layout_map-${Date.now()}.${ext}`;
+        const publicUrl = await uploadToSupabaseStorage(path, url);
+        if (publicUrl) {
+          finalUrl = publicUrl;
+        }
+      } catch (err) {
+        console.error('Error uploading booth layout map to Supabase:', err);
+      }
+    }
+
+    this.boothLayoutMap = finalUrl;
+    this.saveToLocalStorage(DataStore.KEY_BOOTH_LAYOUT_MAP, finalUrl);
+
+    if (isSupabaseConfigured()) {
+      await supabase.from('system_config').upsert({ key: 'booth_layout_map_config', value: finalUrl });
+    }
+    return finalUrl;
   }
 
   async checkAndAutoRefreshZaloToken(): Promise<void> {

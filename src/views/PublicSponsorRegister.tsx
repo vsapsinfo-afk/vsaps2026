@@ -824,7 +824,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 </label>
                 <div className="mb-3 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center p-2">
                   <img
-                    src="/booth_layout_map.png"
+                    src={store.getBoothLayoutMap()}
                     alt="Sơ đồ bố trí gian hàng VSAPS 2026"
                     className="max-h-80 object-contain rounded-xl hover:scale-105 transition-all duration-300"
                   />
