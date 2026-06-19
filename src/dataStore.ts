@@ -2845,9 +2845,38 @@ export class DataStore {
   }
 
   async sendEmailToSpeaker(speaker: SpeakerRegistration, templateId?: string): Promise<SentNotificationLog> {
-    let template = templateId ? this.templates.find(t => t.id === templateId || t.name === templateId) : null;
+    let template: NotificationTemplate | null = null;
+
+    // Luôn cố gắng fetch trực tiếp từ Supabase để lấy mẫu mới nhất vừa được chỉnh sửa
+    if (isSupabaseConfigured()) {
+      try {
+        const { data } = await supabase
+          .from('notification_templates')
+          .select('*')
+          .eq('channel', 'email');
+        
+        if (data && data.length > 0) {
+          const matched = data.find(t => 
+            t.id === 'tmpl-speaker-registered' || 
+            t.id === 'tmpl-speaker-email' || 
+            t.id === 'tmpl-speaker-submitted-email' ||
+            (t.name && t.name.includes('Thư xác nhận đăng ký báo cáo chuyên đề'))
+          );
+          if (matched) {
+            template = mapDbToTemplate(matched);
+            console.log('✅ Found latest speaker registration template from Supabase:', template.name);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching latest template from Supabase in sendEmailToSpeaker:', err);
+      }
+    }
+
+    // Nếu không fetch được từ Supabase, fallback tìm trong cache bộ nhớ
     if (!template) {
-      // Tìm theo các ID liên kết hoặc tên mẫu do người dùng yêu cầu
+      template = templateId ? this.templates.find(t => t.id === templateId || t.name === templateId) : null;
+    }
+    if (!template) {
       template = this.templates.find(t => 
         t.channel === 'email' && 
         (t.id === 'tmpl-speaker-registered' || 
@@ -2856,6 +2885,8 @@ export class DataStore {
          (t.name && t.name.includes('Thư xác nhận đăng ký báo cáo chuyên đề')))
       );
     }
+
+    // Fallback cuối cùng
     if (!template) {
       template = {
         id: 'tmpl-speaker-registered',
@@ -2866,6 +2897,8 @@ export class DataStore {
         content: 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng thông báo: Đề tài báo cáo khoa học của Quý vị đã được ghi nhận thành công trên hệ thống.\n\nTHÔNG TIN ĐỀ TRÌNH CHI TIẾT:\n• Mã hồ sơ: {{code}}\n• Báo cáo viên: {{title}} {{fullname}}\n• Đơn vị công tác: {{organization}} ({{department}})\n• Tên đề tài báo cáo: "{{presentation_title}}"\n• Chuyên đề đệ trình: {{track}}\n• Trạng thái kiểm duyệt: ĐANG CHỜ BAN KHOA HỌC XÉT DUYỆT (PENDING)\n\nHội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua tài khoản cá nhân hoặc email liên hệ.\n\nTrân trọng cảm ơn sự tham gia và đóng góp khoa học của Quý vị cho thành công của Hội nghị VSAPS 2026!\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
       };
     }
+
+    console.log(`✉️ Sending speaker registration confirmation email using template: "${template.name}" (${template.id})`);
 
     const rawContent = template.content || '';
     const content = rawContent
