@@ -364,6 +364,11 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
     setErrorMsg('');
     setIsSubmitting(true);
 
+    const finalBenefits = customBenefitsText
+      .split('\n')
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
+
     const taxIdPara = taxId ? `<p><strong>Mã số thuế:</strong> ${taxId}</p>` : '';
     const finalNotes = taxIdPara + notes;
 
