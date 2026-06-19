@@ -287,7 +287,19 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   // Custom logo image state
   const [logoImage, setLogoImage] = useState<string | null>(null);
   const [isLogoUploading, setIsLogoUploading] = useState(false);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   
+  // ESC key handler to close lightbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMapFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Custom benefits editing (pre-populated when tier changes)
   const [customBenefits, setCustomBenefits] = useState<string[]>([]);
   const [customBenefitsText, setCustomBenefitsText] = useState('');
@@ -851,12 +863,21 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 <label className="text-[11px] font-bold text-slate-500 block mb-2">
                   {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm *', 'Exhibition Booth Layout Map *')}
                 </label>
-                <div className="mb-3 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center p-2">
+                <div 
+                  className="mb-3 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center p-2 cursor-zoom-in group relative"
+                  onClick={() => setIsMapFullscreen(true)}
+                  title={L.t('Click để phóng to sơ đồ', 'Click to enlarge layout map')}
+                >
                   <img
                     src={store.getBoothLayoutMap()}
                     alt="Sơ đồ bố trí gian hàng VSAPS 2026"
                     className="max-h-80 object-contain rounded-xl hover:scale-105 transition-all duration-300"
                   />
+                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300 rounded-2xl">
+                    <span className="bg-black/60 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl backdrop-blur-sm shadow-md">
+                      🔍 {L.t('Phóng to Sơ đồ', 'Enlarge Layout Map')}
+                    </span>
+                  </div>
                 </div>
 
                 <label className="text-[11px] font-bold text-slate-500 block mb-1">
@@ -1026,6 +1047,31 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
       {formCfg?.footerNote && (
         <div className="mt-6">
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10.5px] text-slate-600 text-center leading-relaxed">{formCfg.footerNote}</div>
+        </div>
+      )}
+
+      {/* Fullscreen Lightbox Modal */}
+      {isMapFullscreen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setIsMapFullscreen(false)}
+        >
+          <div className="absolute top-4 right-4 text-white text-xs bg-black/50 px-3 py-1.5 rounded-xl font-bold hover:bg-black/80 transition-all select-none">
+            {L.t('Đóng [ESC] / Nhấp ra ngoài để quay lại', 'Close [ESC] / Click outside to return')}
+          </div>
+          <div 
+            className="max-w-7xl max-h-[90vh] bg-white rounded-3xl p-4 relative shadow-2xl overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={store.getBoothLayoutMap()} 
+              alt="Sơ đồ bố trí gian hàng" 
+              className="max-w-full max-h-[80vh] object-contain rounded-xl select-none cursor-default"
+            />
+            <div className="mt-3 text-center text-xs font-bold text-slate-755">
+              {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm VSAPS 2026', 'Exhibition Booth Layout Map VSAPS 2026')}
+            </div>
+          </div>
         </div>
       )}
 
