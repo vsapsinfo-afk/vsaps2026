@@ -2553,7 +2553,10 @@ export class DataStore {
       .replace(/\{\{paid_amount\}\}/g, attAny.paidAmount !== undefined ? attAny.paidAmount.toLocaleString() : '')
       .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
       .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '')
-      .replace(/\{\{package_fee\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : (attendee.packageFee ? attendee.packageFee.toLocaleString() : '0'));
+      .replace(/\{\{package_fee\}\}/g, attAny.pledgedAmount !== undefined ? attAny.pledgedAmount.toLocaleString() : (attendee.packageFee ? attendee.packageFee.toLocaleString() : '0'))
+      .replace(/\{\{company_name\}\}/g, attendee.organization || '')
+      .replace(/\{\{contact_name\}\}/g, attendee.fullName || '')
+      .replace(/\{\{sponsor_package\}\}/g, attendee.packageName || '');
 
     const finalSubject = (customSubject || template.subject || "Xác nhận đăng ký VSAPS 2026")
       .replace(/\{\{title\}\}/g, attendee.title || '')
@@ -2562,7 +2565,10 @@ export class DataStore {
       .replace(/\{\{presentation_title\}\}/g, attAny.presentationTitle || '')
       .replace(/\{\{track\}\}/g, attAny.presentationTrack || '')
       .replace(/\{\{booth_location\}\}/g, attAny.boothLocation || 'BTC sắp xếp sau')
-      .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '');
+      .replace(/\{\{contract_no\}\}/g, attAny.contractNo || '')
+      .replace(/\{\{company_name\}\}/g, attendee.organization || '')
+      .replace(/\{\{contact_name\}\}/g, attendee.fullName || '')
+      .replace(/\{\{sponsor_package\}\}/g, attendee.packageName || '');
 
     const payload = {
       to: attendee.email,
