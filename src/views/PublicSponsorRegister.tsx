@@ -232,6 +232,15 @@ const BENEFITS_TABLE = [
   { labelVi: 'Giấy cảm ơn và quà lưu niệm', labelEn: 'Appreciation Certificate & Souvenir', valuesVi: ['Có', 'Có', 'Có', 'Có', 'Có', 'Có'], valuesEn: ['Yes', 'Yes', 'Yes', 'Yes', 'Yes', 'Yes'] },
 ];
 
+const TIER_HEADERS = [
+  { name: 'Kim cương', nameEn: 'Diamond', color: '#6366f1' },
+  { name: 'Bạch kim', nameEn: 'Platinum', color: '#8b5cf6' },
+  { name: 'Vàng', nameEn: 'Gold', color: '#f59e0b' },
+  { name: 'Bạc', nameEn: 'Silver', color: '#94a3b8' },
+  { name: 'Đồng', nameEn: 'Bronze', color: '#d97706' },
+  { name: 'Tiêu chuẩn', nameEn: 'Standard', color: '#64748b' },
+];
+
 const extractTaxId = (htmlStr: string | undefined): { taxId: string, cleanNotes: string } => {
   if (!htmlStr) return { taxId: '', cleanNotes: '' };
   const regex = /<p><strong>Mã số thuế:<\/strong>\s*([^<]+)<\/p>/;
