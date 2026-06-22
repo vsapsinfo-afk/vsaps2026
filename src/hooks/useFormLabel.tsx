@@ -82,3 +82,15 @@ export function useFormLabel(formCfg?: PublicFormConfig, overrideLang?: LangMode
 
   return { section, t, f, p, lang, showVi, showEn };
 }
+
+// Đọc ?lang= từ URL (hỗ trợ nhúng iframe trong WordPress)
+export const getInitialLang = (): 'vietname' | 'foreign' => {
+  try {
+    const lang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase();
+    if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
+    if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
+  } catch {
+    /* ignore */
+  }
+  return 'vietname'; // mặc định tiếng Việt
+};

@@ -11,7 +11,7 @@ import { Attendee, RegistrationPackage, AddOnService } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { getProvinceList, getDistrictsOf, getWardsOf } from '../data/vnProvinces';
 import SepayPaymentChecker from '../components/SepayPaymentChecker';
-import { useFormLabel } from '../hooks/useFormLabel';
+import { useFormLabel, getInitialLang } from '../hooks/useFormLabel';
 
 interface FormStepperProps {
   currentStep: number;
@@ -104,16 +104,16 @@ interface PublicDelegateRegisterProps {
   onNavigate: (view: string) => void;
 }
 
-const getInitialLang = (): 'vietname' | 'foreign' => {
-  try {
-    const lang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase();
-    if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
-    if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
-  } catch {
-    /* ignore */
-  }
-  return 'vietname'; // mặc định tiếng Việt
-};
+// const getInitialLang = (): 'vietname' | 'foreign' => {
+//   try {
+//     const lang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase();
+//     if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
+//     if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
+//   } catch {
+//     /* ignore */
+//   }
+//   return 'vietname'; // mặc định tiếng Việt
+// };
 
 export default function PublicDelegateRegister({ onNavigate }: PublicDelegateRegisterProps) {
   const packages = store.getPackages().filter(p => p.isActive);
@@ -680,7 +680,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 {L.t('Sau khi quét mã QR thanh toán phía trên, đại biểu vui lòng tải lên hình ảnh biên nhận chuyển khoản thành công. Ban thư ký sẽ đối soát giao dịch và phê duyệt hồ sơ của đại biểu tức thì.', 'After scanning the VietQR code above, please upload the payment receipt. The secretariat will verify the transaction and approve your registration immediately.')}
               </p>
               <div className="flex items-center gap-3">
-                <div 
+                <div
                   role="button"
                   onClick={() => fileInputRef.current?.click()}
                   className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-350 cursor-pointer text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-all w-fit select-none"
@@ -902,18 +902,18 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                             {L.t('Khuyên dùng ảnh chân dung rõ mặt để check-in nhận diện khuôn mặt tức thì.', 'Recommended clear face portrait for instant facial recognition check-in.')}
                           </p>
                           <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
-                            <div 
+                            <div
                               role="button"
                               onClick={() => avatarInputRef.current?.click()}
                               className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none"
                             >
                               {L.t('Tải ảnh chân dung', 'Upload Portrait')}
-                              <input 
+                              <input
                                 ref={avatarInputRef}
-                                type="file" 
-                                accept="image/*" 
-                                onChange={handleAvatarUpload} 
-                                className="hidden" 
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarUpload}
+                                className="hidden"
                               />
                             </div>
                             {avatarImage && (
@@ -953,18 +953,18 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                             {L.t('Tải ảnh Thẻ bác sĩ, bằng cấp chuyên khoa, hoặc chứng chỉ hành nghề.', 'Upload doctor ID card, specialty degree, or practicing certificate.')}
                           </p>
                           <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
-                            <div 
+                            <div
                               role="button"
                               onClick={() => doctorProofInputRef.current?.click()}
                               className="px-3 py-1 bg-white hover:bg-slate-105 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none"
                             >
                               {L.t('Tải ảnh minh chứng', 'Upload Credentials')}
-                              <input 
+                              <input
                                 ref={doctorProofInputRef}
-                                type="file" 
-                                accept="image/*" 
-                                onChange={handleDoctorProofUpload} 
-                                className="hidden" 
+                                type="file"
+                                accept="image/*"
+                                onChange={handleDoctorProofUpload}
+                                className="hidden"
                               />
                             </div>
                             {doctorProofImage && (

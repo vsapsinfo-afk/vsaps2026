@@ -9,7 +9,7 @@ import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { Sponsor } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
-import { useFormLabel } from '../hooks/useFormLabel';
+import { useFormLabel, getInitialLang } from '../hooks/useFormLabel';
 
 interface PublicSponsorRegisterProps {
   onNavigate: (view: string) => void;
@@ -267,17 +267,7 @@ const getBoothLabel = (booth: string, isEn: boolean) => {
   return isEn ? `Booth ${booth}` : `Gian ${booth}`;
 };
 
-// Đọc ?lang= từ URL (hỗ trợ nhúng iframe trong WordPress)
-const getInitialLang = (): 'vietname' | 'foreign' => {
-  try {
-    const lang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase();
-    if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
-    if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
-  } catch {
-    /* ignore */
-  }
-  return 'vietname'; // mặc định tiếng Việt
-};
+
 
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
   const businessConfig = store.getBusinessConfig();
