@@ -267,11 +267,24 @@ const getBoothLabel = (booth: string, isEn: boolean) => {
   return isEn ? `Booth ${booth}` : `Gian ${booth}`;
 };
 
+// Đọc ?lang= từ URL (hỗ trợ nhúng iframe trong WordPress)
+const getInitialLang = (): 'vietname' | 'foreign' => {
+  try {
+    const lang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase();
+    if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
+    if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
+  } catch {
+    /* ignore */
+  }
+  return 'vietname'; // mặc định tiếng Việt
+};
+
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.sponsorFormConfig;
   const sponsorTiers = store.getSponsorPackages();
-  const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
+  // const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
+  const [nationality, setNationality] = useState<'vietname' | 'foreign'>(getInitialLang);
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   // Form States
   const [name, setName] = useState('');
@@ -283,12 +296,12 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
   const [notes, setNotes] = useState('');
   const [boothLocation, setBoothLocation] = useState('auto');
   const [customBoothLocation, setCustomBoothLocation] = useState('');
-  
+
   // Custom logo image state
   const [logoImage, setLogoImage] = useState<string | null>(null);
   const [isLogoUploading, setIsLogoUploading] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
-  
+
   // ESC key handler to close lightbox
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -316,7 +329,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
     .filter((loc): loc is string => !!loc && loc !== 'auto' && loc !== 'other');
   const boothsList = store.getBooths();
   const availableBooths = boothsList.filter(b => !occupiedBooths.includes(b));
-  
+
   const occupiedSponsors = allSponsors
     .filter(s => !!s.boothLocation && s.boothLocation !== 'auto' && s.boothLocation !== 'other')
     .sort((a, b) => (a.boothLocation || '').localeCompare(b.boothLocation || ''));
@@ -402,7 +415,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
     try {
       const saved = await store.saveSponsorAsync(sponsorData);
-      
+
       // Broadcast realtime push notification to administrators
       await sendRealtimeNotification(
         'Nhà tài trợ Đăng ký mới',
@@ -471,13 +484,13 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               {/* Left Column: Sponsor profile details */}
               <div className="space-y-4">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">{L.t('CHI TIẾT ĐĂNG KÝ HỒ SƠ', 'REGISTRATION DOSSIER DETAILS')}</span>
-                
+
                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-150">
                   {createdSponsor.logoUrl ? (
-                    <img 
-                      src={createdSponsor.logoUrl} 
-                      alt="Logo Doanh nghiệp" 
-                      className="w-14 h-14 object-contain rounded-lg bg-white border p-1" 
+                    <img
+                      src={createdSponsor.logoUrl}
+                      alt="Logo Doanh nghiệp"
+                      className="w-14 h-14 object-contain rounded-lg bg-white border p-1"
                     />
                   ) : (
                     <div className="w-14 h-14 rounded-lg bg-slate-200 border border-slate-300 flex items-center justify-center font-bold text-xs text-slate-500">
@@ -522,7 +535,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">
                   {L.t('QUYỀN LỢI NHÀ TÀI TRỢ THEO GÓI', 'SPONSOR PACKAGE BENEFITS')}
                 </span>
-                
+
                 <div className="p-5 bg-gradient-to-br from-slate-50 to-indigo-50/20 border border-slate-200 rounded-3xl space-y-3.5 shadow-sm">
                   <div className="flex items-center gap-2 text-indigo-900 border-b border-slate-200/60 pb-3">
                     <HeartHandshake className="w-5 h-5 text-indigo-600 shrink-0" />
@@ -530,7 +543,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
                       {L.t(`Hạng mức ${matchedTier?.name || createdSponsor.tier.toUpperCase()}`, `${matchedTier?.nameEn || createdSponsor.tier.toUpperCase()} Level`)}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
                     {benefitsList && benefitsList.map((benefit: string, idx: number) => (
                       <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 leading-relaxed">
@@ -616,33 +629,33 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
 
       {formCfg?.isOpen !== false && (<>
 
-      {/* Header section */}
-      {!formCfg?.hideHeader && (
-        <div
-          className="p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden"
-          style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}
-        >
-          <div className="absolute top-0 right-0 p-3 opacity-15">
-            <HeartHandshake className="w-32 h-32 text-white" />
+        {/* Header section */}
+        {!formCfg?.hideHeader && (
+          <div
+            className="p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden"
+            style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}
+          >
+            <div className="absolute top-0 right-0 p-3 opacity-15">
+              <HeartHandshake className="w-32 h-32 text-white" />
+            </div>
+
+            {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-12 object-contain mx-auto mb-2 rounded" />}
+
+            <span className="px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider inline-block"
+              style={{ backgroundColor: `${formCfg?.accentColor || '#f59e0b'}20`, color: formCfg?.accentColor || '#f59e0b', border: `1px solid ${formCfg?.accentColor || '#f59e0b'}40` }}>
+              {formCfg?.organizerLabel || L.t('ĐĂNG KÝ ĐỒNG HÀNH & TÀI TRỢ - VSAPS 2026', 'VSAPS 2026 PARTNER & SPONSOR REGISTRATION')}
+            </span>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white uppercase tracking-tight">
+              {formCfg?.formTitle || L.t('Đăng Ký Đồng Hành & Tài Trợ Hội Nghị', 'Conference Partnership & Sponsorship Registration')}
+            </h1>
+            <p className="text-xs md:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: `${formCfg?.accentColor || '#ffffff'}b0` }}>
+              {formCfg?.formDescription || L.t('Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.', 'Expose your medical brand and devices directly to 1,000+ leading industry specialists.')}
+            </p>
           </div>
+        )}
 
-          {formCfg?.bannerImageUrl && <img src={formCfg.bannerImageUrl} alt="Banner" className="h-12 object-contain mx-auto mb-2 rounded" />}
-
-          <span className="px-3 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider inline-block"
-            style={{ backgroundColor: `${formCfg?.accentColor || '#f59e0b'}20`, color: formCfg?.accentColor || '#f59e0b', border: `1px solid ${formCfg?.accentColor || '#f59e0b'}40` }}>
-            {formCfg?.organizerLabel || L.t('ĐĂNG KÝ ĐỒNG HÀNH & TÀI TRỢ - VSAPS 2026', 'VSAPS 2026 PARTNER & SPONSOR REGISTRATION')}
-          </span>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white uppercase tracking-tight">
-            {formCfg?.formTitle || L.t('Đăng Ký Đồng Hành & Tài Trợ Hội Nghị', 'Conference Partnership & Sponsorship Registration')}
-          </h1>
-          <p className="text-xs md:text-sm max-w-2xl mx-auto leading-relaxed" style={{ color: `${formCfg?.accentColor || '#ffffff'}b0` }}>
-            {formCfg?.formDescription || L.t('Đưa thương hiệu thiết bị y tế của bạn tiếp cận trực tiếp đến 1,000+ chuyên gia đầu ngành.', 'Expose your medical brand and devices directly to 1,000+ leading industry specialists.')}
-          </p>
-        </div>
-      )}
-
-      {/* Language Selector */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-6">
+        {/* Language Selector */}
+        {/* <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm mb-6">
         <label className="block text-xs font-extrabold text-slate-800 mb-2 uppercase">
           {L.f('nationality', 'Chọn ngôn ngữ *', 'Select Language *')}
         </label>
@@ -666,416 +679,414 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
             International
           </button>
         </div>
-      </div>
+      </div> */}
 
-      {/* ═══════ BENEFITS COMPARISON TABLE ═══════ */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        {/* Table Header */}
-        <div className="bg-gradient-to-r from-[#2c3e6b] to-[#3b5998] px-6 py-4 text-center">
-          <h2 className="text-white font-extrabold text-lg md:text-xl tracking-wide uppercase" style={{ fontStyle: 'italic' }}>
-            {L.t('Phí và quyền lợi nhà tài trợ', 'Sponsorship Fees & Benefits')}
-          </h2>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-[11px] md:text-xs border-collapse min-w-[700px]">
-            {/* Column Headers */}
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-[28%] border-r border-slate-100">
-                  {L.t('Quyền lợi nhà tài trợ', 'Sponsor Benefits')}
-                </th>
-                {TIER_HEADERS.map((h, i) => (
-                  <th key={i} className="py-3 px-2 text-center font-extrabold uppercase tracking-wide text-[10px] border-r border-slate-100 last:border-r-0" style={{ color: h.color }}>
-                    {nationality === 'vietname' ? h.name : h.nameEn}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {BENEFITS_TABLE.map((row, rowIdx) => {
-                const label = nationality === 'vietname' ? row.labelVi : row.labelEn;
-                const values = nationality === 'vietname' ? row.valuesVi : row.valuesEn;
-                return (
-                  <tr key={rowIdx} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
-                    <td className={`py-2.5 px-4 text-slate-700 border-r border-slate-100 leading-snug ${row.isBold ? 'font-extrabold text-slate-900' : 'font-semibold'}`}>
-                      {label}
-                    </td>
-                    {values.map((val, colIdx) => {
-                      const isEmpty = val === '-' || val === 'Không' || val === 'No';
-                      return (
-                        <td key={colIdx} className={`py-2.5 px-2 text-center border-r border-slate-100 last:border-r-0 ${
-                          row.isBold ? 'font-extrabold text-slate-900' : isEmpty ? 'text-slate-300 font-medium' : 'font-semibold text-slate-700'
-                        }`}>
-                          {val}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-center">
-          <p className="text-[10px] text-slate-400 font-semibold tracking-wide">
-            {L.t(
-              'HỘI NGHỊ KHOA HỌC THƯỜNG NIÊN LẦN THỨ 10 CỦA HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS) — TP. HỒ CHÍ MINH 2026',
-              'THE 10TH ANNUAL SCIENTIFIC CONFERENCE OF THE VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS) — HO CHI MINH CITY 2026'
-            )}
-          </p>
-          <p className="text-[9px] text-slate-350 mt-0.5">
-            Website: vsaps.vn &nbsp;—&nbsp; Email: vsapsevents@gmail.com &nbsp;—&nbsp; Hotline: +84964551151
-          </p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Register profile data */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                <span className="w-1.5 h-3.5 bg-teal-600 rounded"></span>
-                {L.section('sponsorProfile', '1. Hồ Sơ Doanh Nghiệp Tài Trợ', '1. Sponsor / Company Profile')}
-              </h3>
-
-              {/* Logo upload block */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-500 block uppercase tracking-wide">
-                  {L.f('logo', 'Logo Thương Hiệu / Doanh Nghiệp *', 'Brand / Company Logo *')}
-                </label>
-                <div 
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  className="border-2 border-dashed border-slate-200 hover:border-teal-400 rounded-2xl p-4 bg-slate-50/50 flex flex-col items-center justify-center text-center transition-all min-h-[140px]"
-                >
-                  {logoImage ? (
-                    <div className="relative group w-32 h-32 bg-white rounded-xl border p-2 flex items-center justify-center shadow-inner">
-                      <img src={logoImage} alt="Brand Logo Preview" className="max-w-full max-h-full object-contain" />
-                      <button
-                        type="button"
-                        onClick={() => setLogoImage(null)}
-                        className="absolute -top-2 -right-2 bg-rose-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow hover:bg-rose-600 cursor-pointer border-none"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="w-12 h-12 bg-white border border-slate-200 rounded-full flex items-center justify-center mx-auto shadow-sm text-slate-400">
-                        <Upload className="w-5 h-5" />
-                      </div>
-                      <p className="text-xs font-medium text-slate-600">
-                        {L.t('Kéo thả logo doanh nghiệp vào đây hoặc', 'Drag and drop your logo here or')}
-                      </p>
-                      <label className="inline-block px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 text-[10.5px] font-bold text-slate-700 cursor-pointer transition-all">
-                        {L.t('Duyệt tìm tệp ảnh', 'Browse image file')}
-                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                      </label>
-                      <p className="text-[9.5px] text-slate-400">
-                        {L.t('Khuyên dùng logo định dạng PNG nền trong suốt (Transparent), độ phân giải cao', 'High-res transparent background PNG logo is highly recommended')}
-                      </p>
-                    </div>
-                  )}
-                  {isLogoUploading && (
-                    <div className="text-[10px] text-slate-400 mt-2 font-mono">
-                      {L.t('Đang tải và xử lý...', 'Uploading & processing...')}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                  {L.t('Mã số thuế *', 'Tax ID / Business Registration Number *')}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={taxId}
-                  onChange={(e) => setTaxId(e.target.value)}
-                  placeholder={L.p('ví dụ: 0101234567', 'e.g. 0101234567')}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                  {L.f('companyName', 'Tên Thương hiệu / Doanh nghiệp đăng ký *', 'Brand / Registered Company Name *')}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={L.p('ví dụ: Công ty Cổ phần Boston Pharma Việt Nam', 'e.g. Boston Pharma Joint Stock Company')}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                    {L.f('contactName', 'Họ & Tên Đại diện liên hệ *', 'Contact Person Name *')}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={contactPerson}
-                    onChange={(e) => setContactPerson(e.target.value)}
-                    placeholder={L.p('ví dụ: Nguyễn Minh Thư', 'e.g. Ms. Jane Smith')}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                    {L.f('contactPhone', 'Số điện thoại liên hệ *', 'Contact Phone Number *')}
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder={L.p('ví dụ: 0977889900', 'e.g. 0977889900')}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold font-mono text-slate-900 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                  {L.f('contactEmail', 'Email nhận thư báo ký kết & tài liệu *', 'Email for Contracts & Documents *')}
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder={L.p('ví dụ: minhthu.nguyen@bostonpharma.com', 'e.g. jane.smith@bostonpharma.com')}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-500 block mb-2">
-                  {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm *', 'Exhibition Booth Layout Map *')}
-                </label>
-                <div 
-                  className="mb-3 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center p-2 cursor-zoom-in group relative"
-                  onClick={() => setIsMapFullscreen(true)}
-                  title={L.t('Click để phóng to sơ đồ', 'Click to enlarge layout map')}
-                >
-                  <img
-                    src={store.getBoothLayoutMap()}
-                    alt="Sơ đồ bố trí gian hàng VSAPS 2026"
-                    className="max-h-80 object-contain rounded-xl hover:scale-105 transition-all duration-300"
-                  />
-                  <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300 rounded-2xl">
-                    <span className="bg-black/60 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl backdrop-blur-sm shadow-md">
-                      🔍 {L.t('Phóng to Sơ đồ', 'Enlarge Layout Map')}
-                    </span>
-                  </div>
-                </div>
-
-                <label className="text-[11px] font-bold text-slate-500 block mb-1">
-                  {L.t('Vị trí gian hàng mong muốn *', 'Preferred Booth Location *')}
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <select
-                    value={boothLocation}
-                    onChange={(e) => setBoothLocation(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="auto">{L.t('Ban Tổ Chức tự sắp xếp / Tự chọn sau', 'Organizer assigns / Choose later')}</option>
-                    {availableBooths.map(b => (
-                      <option key={b} value={b}>
-                        {getBoothLabel(b, nationality === 'foreign')}
-                      </option>
-                    ))}
-                    <option value="other">{L.t('Khác / Vị trí đặc biệt...', 'Other / Special location...')}</option>
-                  </select>
-
-                  {boothLocation === 'other' && (
-                    <input
-                      type="text"
-                      required
-                      value={customBoothLocation}
-                      onChange={(e) => setCustomBoothLocation(e.target.value)}
-                      placeholder={L.p('Nhập vị trí mong muốn (ví dụ: D4)', 'Enter preferred location (e.g., D4)')}
-                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-teal-500"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <RichTextEditor
-                  value={notes}
-                  onChange={setNotes}
-                  label={L.f('notes', 'Ghi chú hoặc yêu cầu đặc biệt của Doanh nghiệp', 'Company requests or special notes')}
-                  placeholder={L.p('Yêu cầu sơ đồ gian hàng, mong muốn ghép chung, thời hạn ký hợp hợp hạch toán...', 'Booth layout requirements, co-branding request, accounting deadlines...')}
-                  id="sponsor-notes"
-                />
-              </div>
-            </div>
+        {/* ═══════ BENEFITS COMPARISON TABLE ═══════ */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+          {/* Table Header */}
+          <div className="bg-gradient-to-r from-[#2c3e6b] to-[#3b5998] px-6 py-4 text-center">
+            <h2 className="text-white font-extrabold text-lg md:text-xl tracking-wide uppercase" style={{ fontStyle: 'italic' }}>
+              {L.t('Phí và quyền lợi nhà tài trợ', 'Sponsorship Fees & Benefits')}
+            </h2>
           </div>
 
-          {/* Right Column: Sponsor Tiers option */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                <span className="w-1.5 h-3.5 bg-teal-600 rounded"></span>
-                {L.section('tierSelect', '2. Lựa Chọn Phân Khúc Đồng Hành', '2. Sponsorship Package Selection')}
-              </h3>
-
-              <div className="col-span-1 space-y-2">
-                {sponsorTiers.map((t) => (
-                  <label 
-                    key={t.id}
-                    className={`p-3 border rounded-2xl flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all select-none relative ${
-                      tier === t.id ? 'border-indigo-600 bg-indigo-50/30 shadow-sm' : 'border-slate-200 bg-white'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="sponsorTier"
-                      checked={tier === t.id}
-                      onChange={() => setTier(t.id)}
-                      className="mt-0.5 text-indigo-600 focus:ring-indigo-55 shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
-                        <p className="font-extrabold text-slate-900 text-[12px] truncate">
-                          {L.t(t.name, t.nameEn)}
-                        </p>
-                      </div>
-                      <p className="text-[11px] font-black font-mono text-indigo-700 mt-0.5 ml-4">{(t.fee).toLocaleString()}đ</p>
-                    </div>
-                    {tier === t.id && (
-                      <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0">
-                        ✓
-                      </span>
-                    )}
-                  </label>
-                ))}
-              </div>
-
-              {/* Dynamic Benefits Checklist Panel */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 space-y-2">
-                <span className="text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono block">
-                  {L.t('DỰ KIẾN QUYỀN LỢI ĐỒNG HÀNH CHÍNH', 'PROSPECTIVE KEY SPONSOR BENEFITS')}
-                </span>
-                <p className="text-[9.5px] text-slate-400 leading-tight">
-                  {L.t('Quyền lợi chuẩn theo quy định bảo trợ. Doanh nghiệp có thể điều chỉnh hoặc ghi chú thêm ở mục bên dưới:', 'Standard package benefits. You may modify or add notes in the editor below:')}
-                </p>
-                
-                <textarea
-                  value={customBenefitsText}
-                  onChange={(e) => setCustomBenefitsText(e.target.value)}
-                  placeholder={L.p('Danh sách quyền lợi chính thức được phân cách bằng dòng...', 'List of official benefits separated by lines...')}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 bg-white focus:outline-none focus:border-indigo-500 tracking-tight"
-                  rows={6}
-                />
-              </div>
-            </div>
-
-            {errorMsg && (
-              <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl text-center text-xs font-bold text-rose-600">
-                ⚠️ {errorMsg}
-              </div>
-            )}
-
-            <button
-              id="btn-submit-sponsor-register"
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-4 text-sm font-extrabold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 rounded-2xl cursor-pointer transition-all shadow-lg hover:shadow-teal-600/20 uppercase tracking-wider border-none text-center"
-            >
-              {isSubmitting ? L.t('Đang gửi hồ sơ tài trợ...', 'Submitting sponsorship request...') : L.t('Gửi Đăng Ký Tài Trợ & Nhận Hợp Đồng', 'Submit Sponsorship & Request Contract')}
-            </button>
-          </div>
-        </div>
-      </form>
-
-      {occupiedSponsors.length > 0 && (
-        <div className="mt-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-          <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-teal-500"></span>
-            {L.t('BẢN ĐỒ PHÂN BỔ GIAN HÀNG ĐÃ ĐĂNG KÝ', 'REGISTERED EXHIBITION BOOTH ASSIGNMENTS')}
-          </h3>
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-[11px] border-collapse">
+            <table className="w-full text-[11px] md:text-xs border-collapse min-w-[700px]">
+              {/* Column Headers */}
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
-                  <th className="py-2.5 px-3">{L.t('Vị trí gian hàng', 'Booth Location')}</th>
-                  <th className="py-2.5 px-3">{L.t('Đơn vị tài trợ', 'Sponsor Company')}</th>
-                  <th className="py-2.5 px-3">{L.t('Hạng mức tài trợ', 'Sponsorship Tier')}</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-[10px] w-[28%] border-r border-slate-100">
+                    {L.t('Quyền lợi nhà tài trợ', 'Sponsor Benefits')}
+                  </th>
+                  {TIER_HEADERS.map((h, i) => (
+                    <th key={i} className="py-3 px-2 text-center font-extrabold uppercase tracking-wide text-[10px] border-r border-slate-100 last:border-r-0" style={{ color: h.color }}>
+                      {nationality === 'vietname' ? h.name : h.nameEn}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {occupiedSponsors.map(s => {
-                  const matchedT = sponsorTiers.find(t => t.id === s.tier);
-                  const tName = nationality === 'vietname' ? matchedT?.name : matchedT?.nameEn;
+                {BENEFITS_TABLE.map((row, rowIdx) => {
+                  const label = nationality === 'vietname' ? row.labelVi : row.labelEn;
+                  const values = nationality === 'vietname' ? row.valuesVi : row.valuesEn;
                   return (
-                    <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-3 font-bold text-teal-700 font-mono">{s.boothLocation}</td>
-                      <td className="py-3 px-3 font-bold text-slate-800">{s.name}</td>
-                      <td className="py-3 px-3">
-                        <span
-                          className="px-2 py-0.5 rounded text-[9px] font-bold"
-                          style={{
-                            backgroundColor: (matchedT?.color || '#cbd5e1') + '15',
-                            color: matchedT?.color || '#475569'
-                          }}
-                        >
-                          {tName || s.tier.toUpperCase()}
-                        </span>
+                    <tr key={rowIdx} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/60 ${rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-25'}`}>
+                      <td className={`py-2.5 px-4 text-slate-700 border-r border-slate-100 leading-snug ${row.isBold ? 'font-extrabold text-slate-900' : 'font-semibold'}`}>
+                        {label}
                       </td>
+                      {values.map((val, colIdx) => {
+                        const isEmpty = val === '-' || val === 'Không' || val === 'No';
+                        return (
+                          <td key={colIdx} className={`py-2.5 px-2 text-center border-r border-slate-100 last:border-r-0 ${row.isBold ? 'font-extrabold text-slate-900' : isEmpty ? 'text-slate-300 font-medium' : 'font-semibold text-slate-700'
+                            }`}>
+                            {val}
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
 
-      {formCfg?.footerNote && (
-        <div className="mt-6">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10.5px] text-slate-600 text-center leading-relaxed">{formCfg.footerNote}</div>
-        </div>
-      )}
-
-      {/* Fullscreen Lightbox Modal */}
-      {isMapFullscreen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
-          onClick={() => setIsMapFullscreen(false)}
-        >
-          <div className="absolute top-4 right-4 text-white text-xs bg-black/50 px-3 py-1.5 rounded-xl font-bold hover:bg-black/80 transition-all select-none">
-            {L.t('Đóng [ESC] / Nhấp ra ngoài để quay lại', 'Close [ESC] / Click outside to return')}
+          {/* Footer */}
+          <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-center">
+            <p className="text-[10px] text-slate-400 font-semibold tracking-wide">
+              {L.t(
+                'HỘI NGHỊ KHOA HỌC THƯỜNG NIÊN LẦN THỨ 10 CỦA HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS) — TP. HỒ CHÍ MINH 2026',
+                'THE 10TH ANNUAL SCIENTIFIC CONFERENCE OF THE VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS) — HO CHI MINH CITY 2026'
+              )}
+            </p>
+            <p className="text-[9px] text-slate-350 mt-0.5">
+              Website: vsaps.vn &nbsp;—&nbsp; Email: vsapsevents@gmail.com &nbsp;—&nbsp; Hotline: +84964551151
+            </p>
           </div>
-          <div 
-            className="max-w-7xl max-h-[90vh] bg-white rounded-3xl p-4 relative shadow-2xl overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img 
-              src={store.getBoothLayoutMap()} 
-              alt="Sơ đồ bố trí gian hàng" 
-              className="max-w-full max-h-[80vh] object-contain rounded-xl select-none cursor-default"
-            />
-            <div className="mt-3 text-center text-xs font-bold text-slate-755">
-              {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm VSAPS 2026', 'Exhibition Booth Layout Map VSAPS 2026')}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: Register profile data */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 bg-teal-600 rounded"></span>
+                  {L.section('sponsorProfile', '1. Hồ Sơ Doanh Nghiệp Tài Trợ', '1. Sponsor / Company Profile')}
+                </h3>
+
+                {/* Logo upload block */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-500 block uppercase tracking-wide">
+                    {L.f('logo', 'Logo Thương Hiệu / Doanh Nghiệp *', 'Brand / Company Logo *')}
+                  </label>
+                  <div
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    className="border-2 border-dashed border-slate-200 hover:border-teal-400 rounded-2xl p-4 bg-slate-50/50 flex flex-col items-center justify-center text-center transition-all min-h-[140px]"
+                  >
+                    {logoImage ? (
+                      <div className="relative group w-32 h-32 bg-white rounded-xl border p-2 flex items-center justify-center shadow-inner">
+                        <img src={logoImage} alt="Brand Logo Preview" className="max-w-full max-h-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={() => setLogoImage(null)}
+                          className="absolute -top-2 -right-2 bg-rose-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow hover:bg-rose-600 cursor-pointer border-none"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="w-12 h-12 bg-white border border-slate-200 rounded-full flex items-center justify-center mx-auto shadow-sm text-slate-400">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <p className="text-xs font-medium text-slate-600">
+                          {L.t('Kéo thả logo doanh nghiệp vào đây hoặc', 'Drag and drop your logo here or')}
+                        </p>
+                        <label className="inline-block px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 text-[10.5px] font-bold text-slate-700 cursor-pointer transition-all">
+                          {L.t('Duyệt tìm tệp ảnh', 'Browse image file')}
+                          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                        </label>
+                        <p className="text-[9.5px] text-slate-400">
+                          {L.t('Khuyên dùng logo định dạng PNG nền trong suốt (Transparent), độ phân giải cao', 'High-res transparent background PNG logo is highly recommended')}
+                        </p>
+                      </div>
+                    )}
+                    {isLogoUploading && (
+                      <div className="text-[10px] text-slate-400 mt-2 font-mono">
+                        {L.t('Đang tải và xử lý...', 'Uploading & processing...')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                    {L.t('Mã số thuế *', 'Tax ID / Business Registration Number *')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={taxId}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    placeholder={L.p('ví dụ: 0101234567', 'e.g. 0101234567')}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                    {L.f('companyName', 'Tên Thương hiệu / Doanh nghiệp đăng ký *', 'Brand / Registered Company Name *')}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={L.p('ví dụ: Công ty Cổ phần Boston Pharma Việt Nam', 'e.g. Boston Pharma Joint Stock Company')}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                      {L.f('contactName', 'Họ & Tên Đại diện liên hệ *', 'Contact Person Name *')}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={contactPerson}
+                      onChange={(e) => setContactPerson(e.target.value)}
+                      placeholder={L.p('ví dụ: Nguyễn Minh Thư', 'e.g. Ms. Jane Smith')}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                      {L.f('contactPhone', 'Số điện thoại liên hệ *', 'Contact Phone Number *')}
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={contactPhone}
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      placeholder={L.p('ví dụ: 0977889900', 'e.g. 0977889900')}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold font-mono text-slate-900 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                    {L.f('contactEmail', 'Email nhận thư báo ký kết & tài liệu *', 'Email for Contracts & Documents *')}
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder={L.p('ví dụ: minhthu.nguyen@bostonpharma.com', 'e.g. jane.smith@bostonpharma.com')}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 block mb-2">
+                    {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm *', 'Exhibition Booth Layout Map *')}
+                  </label>
+                  <div
+                    className="mb-3 border border-slate-200 rounded-2xl overflow-hidden bg-slate-50 flex items-center justify-center p-2 cursor-zoom-in group relative"
+                    onClick={() => setIsMapFullscreen(true)}
+                    title={L.t('Click để phóng to sơ đồ', 'Click to enlarge layout map')}
+                  >
+                    <img
+                      src={store.getBoothLayoutMap()}
+                      alt="Sơ đồ bố trí gian hàng VSAPS 2026"
+                      className="max-h-80 object-contain rounded-xl hover:scale-105 transition-all duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all duration-300 rounded-2xl">
+                      <span className="bg-black/60 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl backdrop-blur-sm shadow-md">
+                        🔍 {L.t('Phóng to Sơ đồ', 'Enlarge Layout Map')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <label className="text-[11px] font-bold text-slate-500 block mb-1">
+                    {L.t('Vị trí gian hàng mong muốn *', 'Preferred Booth Location *')}
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <select
+                      value={boothLocation}
+                      onChange={(e) => setBoothLocation(e.target.value)}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none bg-white cursor-pointer"
+                    >
+                      <option value="auto">{L.t('Ban Tổ Chức tự sắp xếp / Tự chọn sau', 'Organizer assigns / Choose later')}</option>
+                      {availableBooths.map(b => (
+                        <option key={b} value={b}>
+                          {getBoothLabel(b, nationality === 'foreign')}
+                        </option>
+                      ))}
+                      <option value="other">{L.t('Khác / Vị trí đặc biệt...', 'Other / Special location...')}</option>
+                    </select>
+
+                    {boothLocation === 'other' && (
+                      <input
+                        type="text"
+                        required
+                        value={customBoothLocation}
+                        onChange={(e) => setCustomBoothLocation(e.target.value)}
+                        placeholder={L.p('Nhập vị trí mong muốn (ví dụ: D4)', 'Enter preferred location (e.g., D4)')}
+                        className="w-full px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-teal-500"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <RichTextEditor
+                    value={notes}
+                    onChange={setNotes}
+                    label={L.f('notes', 'Ghi chú hoặc yêu cầu đặc biệt của Doanh nghiệp', 'Company requests or special notes')}
+                    placeholder={L.p('Yêu cầu sơ đồ gian hàng, mong muốn ghép chung, thời hạn ký hợp hợp hạch toán...', 'Booth layout requirements, co-branding request, accounting deadlines...')}
+                    id="sponsor-notes"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Sponsor Tiers option */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-3.5 bg-teal-600 rounded"></span>
+                  {L.section('tierSelect', '2. Lựa Chọn Phân Khúc Đồng Hành', '2. Sponsorship Package Selection')}
+                </h3>
+
+                <div className="col-span-1 space-y-2">
+                  {sponsorTiers.map((t) => (
+                    <label
+                      key={t.id}
+                      className={`p-3 border rounded-2xl flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-all select-none relative ${tier === t.id ? 'border-indigo-600 bg-indigo-50/30 shadow-sm' : 'border-slate-200 bg-white'
+                        }`}
+                    >
+                      <input
+                        type="radio"
+                        name="sponsorTier"
+                        checked={tier === t.id}
+                        onChange={() => setTier(t.id)}
+                        className="mt-0.5 text-indigo-600 focus:ring-indigo-55 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                          <p className="font-extrabold text-slate-900 text-[12px] truncate">
+                            {L.t(t.name, t.nameEn)}
+                          </p>
+                        </div>
+                        <p className="text-[11px] font-black font-mono text-indigo-700 mt-0.5 ml-4">{(t.fee).toLocaleString()}đ</p>
+                      </div>
+                      {tier === t.id && (
+                        <span className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                          ✓
+                        </span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+
+                {/* Dynamic Benefits Checklist Panel */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-150 space-y-2">
+                  <span className="text-[10px] font-bold text-slate-450 uppercase tracking-widest font-mono block">
+                    {L.t('DỰ KIẾN QUYỀN LỢI ĐỒNG HÀNH CHÍNH', 'PROSPECTIVE KEY SPONSOR BENEFITS')}
+                  </span>
+                  <p className="text-[9.5px] text-slate-400 leading-tight">
+                    {L.t('Quyền lợi chuẩn theo quy định bảo trợ. Doanh nghiệp có thể điều chỉnh hoặc ghi chú thêm ở mục bên dưới:', 'Standard package benefits. You may modify or add notes in the editor below:')}
+                  </p>
+
+                  <textarea
+                    value={customBenefitsText}
+                    onChange={(e) => setCustomBenefitsText(e.target.value)}
+                    placeholder={L.p('Danh sách quyền lợi chính thức được phân cách bằng dòng...', 'List of official benefits separated by lines...')}
+                    className="w-full p-3 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 bg-white focus:outline-none focus:border-indigo-500 tracking-tight"
+                    rows={6}
+                  />
+                </div>
+              </div>
+
+              {errorMsg && (
+                <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl text-center text-xs font-bold text-rose-600">
+                  ⚠️ {errorMsg}
+                </div>
+              )}
+
+              <button
+                id="btn-submit-sponsor-register"
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 text-sm font-extrabold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 rounded-2xl cursor-pointer transition-all shadow-lg hover:shadow-teal-600/20 uppercase tracking-wider border-none text-center"
+              >
+                {isSubmitting ? L.t('Đang gửi hồ sơ tài trợ...', 'Submitting sponsorship request...') : L.t('Gửi Đăng Ký Tài Trợ & Nhận Hợp Đồng', 'Submit Sponsorship & Request Contract')}
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        </form>
 
-      </> )}
+        {occupiedSponsors.length > 0 && (
+          <div className="mt-8 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-xs font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+              {L.t('BẢN ĐỒ PHÂN BỔ GIAN HÀNG ĐÃ ĐĂNG KÝ', 'REGISTERED EXHIBITION BOOTH ASSIGNMENTS')}
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[11px] border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase text-[9px]">
+                    <th className="py-2.5 px-3">{L.t('Vị trí gian hàng', 'Booth Location')}</th>
+                    <th className="py-2.5 px-3">{L.t('Đơn vị tài trợ', 'Sponsor Company')}</th>
+                    <th className="py-2.5 px-3">{L.t('Hạng mức tài trợ', 'Sponsorship Tier')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {occupiedSponsors.map(s => {
+                    const matchedT = sponsorTiers.find(t => t.id === s.tier);
+                    const tName = nationality === 'vietname' ? matchedT?.name : matchedT?.nameEn;
+                    return (
+                      <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-3 font-bold text-teal-700 font-mono">{s.boothLocation}</td>
+                        <td className="py-3 px-3 font-bold text-slate-800">{s.name}</td>
+                        <td className="py-3 px-3">
+                          <span
+                            className="px-2 py-0.5 rounded text-[9px] font-bold"
+                            style={{
+                              backgroundColor: (matchedT?.color || '#cbd5e1') + '15',
+                              color: matchedT?.color || '#475569'
+                            }}
+                          >
+                            {tName || s.tier.toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {formCfg?.footerNote && (
+          <div className="mt-6">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-[10.5px] text-slate-600 text-center leading-relaxed">{formCfg.footerNote}</div>
+          </div>
+        )}
+
+        {/* Fullscreen Lightbox Modal */}
+        {isMapFullscreen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+            onClick={() => setIsMapFullscreen(false)}
+          >
+            <div className="absolute top-4 right-4 text-white text-xs bg-black/50 px-3 py-1.5 rounded-xl font-bold hover:bg-black/80 transition-all select-none">
+              {L.t('Đóng [ESC] / Nhấp ra ngoài để quay lại', 'Close [ESC] / Click outside to return')}
+            </div>
+            <div
+              className="max-w-7xl max-h-[90vh] bg-white rounded-3xl p-4 relative shadow-2xl overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={store.getBoothLayoutMap()}
+                alt="Sơ đồ bố trí gian hàng"
+                className="max-w-full max-h-[80vh] object-contain rounded-xl select-none cursor-default"
+              />
+              <div className="mt-3 text-center text-xs font-bold text-slate-755">
+                {L.t('Sơ đồ thiết kế và bố trí gian hàng triển lãm VSAPS 2026', 'Exhibition Booth Layout Map VSAPS 2026')}
+              </div>
+            </div>
+          </div>
+        )}
+
+      </>)}
     </div>
   );
 }
