@@ -636,7 +636,7 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
         {!formCfg?.hideHeader && (
           <div
             className="p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2 mb-8 text-center relative overflow-hidden"
-            style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917' }}
+            style={{ backgroundColor: formCfg?.headerBgColor || '#1c1917', display: 'none' }}
           >
             <div className="absolute top-0 right-0 p-3 opacity-15">
               <HeartHandshake className="w-32 h-32 text-white" />
