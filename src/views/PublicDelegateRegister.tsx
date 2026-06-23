@@ -801,6 +801,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   style={{
                     backgroundColor: formCfg?.headerBgColor || '#042f2e',
                     borderBottomColor: formCfg?.accentColor || '#fbbf24',
+                    display: 'none'
                   }}
                 >
                   <div className="absolute right-4 top-4 hidden md:block">
