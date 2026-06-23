@@ -499,7 +499,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
     setZaloTesting(true);
     setZaloTestResult(null);
     try {
-      const response = await fetch('/api/zalo/verify-token', {
+      const response = await fetch('/api/zalo?action=verify-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: zaloConfig.accessToken })
@@ -527,7 +527,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
     setZaloTesting(true);
     setZaloTestResult(null);
     try {
-      const response = await fetch('/api/zalo/refresh-token', {
+      const response = await fetch('/api/zalo?action=refresh-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -580,7 +580,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
         phoneWithPrefix = '84' + phoneWithPrefix.substring(1);
       }
       const targetTemplate = store.getTemplates().find(t => t.id === 'tmpl-reg-zalo');
-      const response = await fetch('/api/zalo/send', {
+      const response = await fetch('/api/zalo?action=send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

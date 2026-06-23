@@ -1922,7 +1922,7 @@ export class DataStore {
     if (ageHrs >= 23 || updatedAt === 0) {
       try {
         console.log(`Auto-refreshing Zalo Token (${ageHrs.toFixed(1)} hrs old)...`);
-        const response = await fetch('/api/zalo/refresh-token', {
+        const response = await fetch('/api/zalo?action=refresh-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2435,7 +2435,7 @@ export class DataStore {
 
     if (isRealZalo) {
       try {
-        const response = await fetch('/api/zalo/send', {
+        const response = await fetch('/api/zalo?action=send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

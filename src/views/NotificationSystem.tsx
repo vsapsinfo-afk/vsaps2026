@@ -429,7 +429,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
             const znsTemplateId = selectedZaloTemplate?.znsTemplateId || selectedZaloTemplate?.id || 'tmpl-reg-zalo';
 
-            const response = await fetch('/api/zalo/send', {
+            const response = await fetch('/api/zalo?action=send', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
