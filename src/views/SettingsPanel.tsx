@@ -4004,24 +4004,49 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                 </form>
 
                 {/* Quick links */}
-                <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-[10.5px] text-violet-900 space-y-2">
-                  <p className="font-black text-[11px]">📌 Link trực tiếp tới từng form public:</p>
+                <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-[10.5px] text-violet-900 space-y-4">
+                  <p className="font-black text-[11px]">📌 Link trực tiếp tới các Form Public theo ngôn ngữ:</p>
                   {[
                     { key: 'register-delegate', label: '🎫 Đăng ký Đại biểu' },
                     { key: 'register-speaker', label: '🎤 Đăng ký Báo cáo viên' },
                     { key: 'register-sponsor', label: '🏆 Đăng ký Nhà tài trợ' },
                   ].map(({ key, label }) => {
                     const base = businessConfig.appUrl?.replace(/\/$/, '') || window.location.origin;
-                    const url = `${base}?view=${key}`;
+                    const urlDefault = `${base}?view=${key}`;
+                    const urlVi = `${base}?view=${key}/vn`;
+                    const urlEn = `${base}?view=${key}/en`;
                     return (
-                      <div key={key} className="flex gap-2 items-center">
-                        <code className="flex-1 bg-white border border-violet-200 px-2 py-1 rounded-lg font-mono text-[10px] text-violet-700 overflow-x-auto">{url}</code>
-                        <button type="button" onClick={() => { navigator.clipboard.writeText(url); alert('Đã copy!'); }}
-                          className="px-2.5 py-1 bg-violet-600 text-white text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap">Copy</button>
-                        <a href={url} target="_blank" rel="noreferrer"
-                          className="px-2.5 py-1 bg-white border border-violet-300 text-violet-700 text-[10px] font-bold rounded-lg no-underline whitespace-nowrap">
-                          {label}
-                        </a>
+                      <div key={key} className="space-y-2 border-b border-violet-100 pb-3 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-center">
+                          <span className="font-black text-slate-800 text-[10px] uppercase">{label}</span>
+                        </div>
+                        {/* Default Link */}
+                        <div className="flex gap-2 items-center">
+                          <span className="w-16 text-slate-500 text-[9.5px] font-bold">Mặc định:</span>
+                          <code className="flex-1 bg-white border border-violet-200 px-2 py-1 rounded-lg font-mono text-[9.5px] text-violet-700 overflow-x-auto">{urlDefault}</code>
+                          <button type="button" onClick={() => { navigator.clipboard.writeText(urlDefault); alert('Đã copy!'); }}
+                            className="px-2 py-0.5 bg-violet-600 text-white text-[9px] font-bold rounded-md border-none cursor-pointer whitespace-nowrap">Copy</button>
+                          <a href={urlDefault} target="_blank" rel="noreferrer"
+                            className="px-2 py-0.5 bg-white border border-violet-300 text-violet-700 text-[9px] font-bold rounded-md no-underline whitespace-nowrap font-sans">Mở</a>
+                        </div>
+                        {/* Vietnamese Link */}
+                        <div className="flex gap-2 items-center">
+                          <span className="w-16 text-emerald-600 text-[9.5px] font-bold">Tiếng Việt:</span>
+                          <code className="flex-1 bg-white border border-violet-200 px-2 py-1 rounded-lg font-mono text-[9.5px] text-emerald-700 overflow-x-auto">{urlVi}</code>
+                          <button type="button" onClick={() => { navigator.clipboard.writeText(urlVi); alert('Đã copy!'); }}
+                            className="px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-bold rounded-md border-none cursor-pointer whitespace-nowrap">Copy</button>
+                          <a href={urlVi} target="_blank" rel="noreferrer"
+                            className="px-2 py-0.5 bg-white border border-emerald-300 text-emerald-700 text-[9px] font-bold rounded-md no-underline whitespace-nowrap font-sans">Mở</a>
+                        </div>
+                        {/* English Link */}
+                        <div className="flex gap-2 items-center">
+                          <span className="w-16 text-indigo-600 text-[9.5px] font-bold">Tiếng Anh:</span>
+                          <code className="flex-1 bg-white border border-violet-200 px-2 py-1 rounded-lg font-mono text-[9.5px] text-indigo-700 overflow-x-auto">{urlEn}</code>
+                          <button type="button" onClick={() => { navigator.clipboard.writeText(urlEn); alert('Đã copy!'); }}
+                            className="px-2 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-md border-none cursor-pointer whitespace-nowrap">Copy</button>
+                          <a href={urlEn} target="_blank" rel="noreferrer"
+                            className="px-2 py-0.5 bg-white border border-indigo-300 text-indigo-700 text-[9px] font-bold rounded-md no-underline whitespace-nowrap font-sans">Mở</a>
+                        </div>
                       </div>
                     );
                   })}
