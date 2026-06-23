@@ -9,7 +9,7 @@ import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { Sponsor } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
-import { useFormLabel, getInitialLang } from '../hooks/useFormLabel';
+import { useFormLabel } from '../hooks/useFormLabel';
 
 interface PublicSponsorRegisterProps {
   onNavigate: (view: string) => void;

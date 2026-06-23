@@ -11,7 +11,7 @@ import { Attendee, RegistrationPackage, AddOnService } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { getProvinceList, getDistrictsOf, getWardsOf } from '../data/vnProvinces';
 import SepayPaymentChecker from '../components/SepayPaymentChecker';
-import { useFormLabel, getInitialLang } from '../hooks/useFormLabel';
+import { useFormLabel } from '../hooks/useFormLabel';
 
 interface FormStepperProps {
   currentStep: number;
