@@ -73,8 +73,8 @@ async function handleSend(req: VercelRequest, res: VercelResponse) {
     const proxyUrl = process.env.ZALO_PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
     if (proxyUrl) {
       try {
-        const { ProxyAgent } = require('undici');
-        fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        const undici = await import('undici');
+        fetchOptions.dispatcher = new undici.ProxyAgent(proxyUrl);
         console.log('[Zalo Send API] Routing via proxy:', proxyUrl);
       } catch (proxyErr) {
         console.error('[Zalo Send API] Failed to initialize ProxyAgent:', proxyErr);
@@ -117,8 +117,8 @@ async function handleVerifyToken(req: VercelRequest, res: VercelResponse) {
     const proxyUrl = process.env.ZALO_PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
     if (proxyUrl) {
       try {
-        const { ProxyAgent } = require('undici');
-        fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        const undici = await import('undici');
+        fetchOptions.dispatcher = new undici.ProxyAgent(proxyUrl);
         console.log('[Zalo Verify API] Routing via proxy:', proxyUrl);
       } catch (proxyErr) {
         console.error('[Zalo Verify API] Failed to initialize ProxyAgent:', proxyErr);
@@ -188,8 +188,8 @@ async function handleRefreshToken(req: VercelRequest, res: VercelResponse) {
     const proxyUrl = process.env.ZALO_PROXY_URL || process.env.HTTP_PROXY || process.env.HTTPS_PROXY;
     if (proxyUrl) {
       try {
-        const { ProxyAgent } = require('undici');
-        fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        const undici = await import('undici');
+        fetchOptions.dispatcher = new undici.ProxyAgent(proxyUrl);
         console.log('[Zalo OAuth API] Routing via proxy:', proxyUrl);
       } catch (proxyErr) {
         console.error('[Zalo OAuth API] Failed to initialize ProxyAgent:', proxyErr);
