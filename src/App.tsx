@@ -61,8 +61,11 @@ function AppContent() {
         'overview', 'attendees', 'speakers', 'schedule', 'tasks', 'finances', 'sponsors', 'notifications', 'bulk-send', 'settings',
         'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'
       ];
-      if (viewParam && validViews.includes(viewParam)) {
-        return viewParam;
+      if (viewParam) {
+        const baseView = viewParam.replace(/\/(vn|vi|en)$/i, '');
+        if (validViews.includes(baseView)) {
+          return baseView;
+        }
       }
     } catch (e) {
       console.error('Error parsing view parameter:', e);

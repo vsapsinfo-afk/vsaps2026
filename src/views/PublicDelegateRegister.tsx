@@ -104,16 +104,21 @@ interface PublicDelegateRegisterProps {
   onNavigate: (view: string) => void;
 }
 
-// const getInitialLang = (): 'vietname' | 'foreign' => {
-//   try {
-//     const lang = (new URLSearchParams(window.location.search).get('lang') || '').toLowerCase();
-//     if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
-//     if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
-//   } catch {
-//     /* ignore */
-//   }
-//   return 'vietname'; // mặc định tiếng Việt
-// };
+const getInitialLang = (): 'vietname' | 'foreign' => {
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const view = (searchParams.get('view') || '').toLowerCase();
+    if (view.endsWith('/en')) return 'foreign';
+    if (view.endsWith('/vn') || view.endsWith('/vi')) return 'vietname';
+
+    const lang = (searchParams.get('lang') || '').toLowerCase();
+    if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
+    if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
+  } catch {
+    /* ignore */
+  }
+  return 'vietname'; // mặc định tiếng Việt
+};
 
 export default function PublicDelegateRegister({ onNavigate }: PublicDelegateRegisterProps) {
   const packages = store.getPackages().filter(p => p.isActive);

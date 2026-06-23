@@ -267,13 +267,26 @@ const getBoothLabel = (booth: string, isEn: boolean) => {
   return isEn ? `Booth ${booth}` : `Gian ${booth}`;
 };
 
+const getInitialLang = (): 'vietname' | 'foreign' => {
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const view = (searchParams.get('view') || '').toLowerCase();
+    if (view.endsWith('/en')) return 'foreign';
+    if (view.endsWith('/vn') || view.endsWith('/vi')) return 'vietname';
 
+    const lang = (searchParams.get('lang') || '').toLowerCase();
+    if (['en', 'foreign', 'international'].includes(lang)) return 'foreign';
+    if (['vi', 'vn', 'vietnam', 'vietname'].includes(lang)) return 'vietname';
+  } catch {
+    /* ignore */
+  }
+  return 'vietname'; // mặc định tiếng Việt
+};
 
 export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegisterProps) {
   const businessConfig = store.getBusinessConfig();
   const formCfg = businessConfig.sponsorFormConfig;
   const sponsorTiers = store.getSponsorPackages();
-  // const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>(getInitialLang);
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
   // Form States
