@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Eraser, Eye, Edit3 } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Eraser, Eye, Edit3, Image } from 'lucide-react';
 
 interface RichTextEditorProps {
   value: string;
@@ -45,6 +45,27 @@ export default function RichTextEditor({
     document.execCommand(command, false, value);
     if (editorRef.current) {
       onChange(editorRef.current.innerHTML);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result;
+        if (base64 && typeof base64 === 'string') {
+          execCommand('insertImage', base64);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const promptImageUrl = () => {
+    const url = prompt('Nhập đường dẫn hình ảnh (URL):');
+    if (url) {
+      execCommand('insertImage', url);
     }
   };
 
@@ -173,6 +194,27 @@ export default function RichTextEditor({
               >
                 <AlignRight className="w-3.5 h-3.5" />
               </button>
+              <span className="w-[1px] h-4 bg-slate-200 mx-1"></span>
+              <button
+                type="button"
+                onClick={promptImageUrl}
+                className="p-1 hover:bg-slate-100 hover:text-slate-900 rounded cursor-pointer border-none bg-transparent transition-all"
+                title="Chèn ảnh từ URL"
+              >
+                <Image className="w-3.5 h-3.5" />
+              </button>
+              <label
+                className="p-1 hover:bg-slate-100 hover:text-slate-900 rounded cursor-pointer transition-all flex items-center justify-center"
+                title="Tải ảnh lên từ máy tính"
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <span className="text-[10px] font-bold text-slate-500 font-mono">UP</span>
+              </label>
               <span className="w-[1px] h-4 bg-slate-200 mx-1"></span>
               <button
                 type="button"
