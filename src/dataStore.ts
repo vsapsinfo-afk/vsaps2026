@@ -2648,7 +2648,7 @@ export class DataStore {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="${this.businessConfig.appUrl || 'https://vsaps2026.vercel.app'}/email_header.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
+              <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
             </div>
             
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
@@ -3071,7 +3071,7 @@ export class DataStore {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="${this.businessConfig.appUrl || 'https://vsaps2026.vercel.app'}/email_header.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
+              <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
             </div>
             
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
