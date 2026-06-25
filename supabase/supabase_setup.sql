@@ -165,6 +165,7 @@ CREATE TABLE public.speakers (
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
     scheduled_session_id TEXT REFERENCES public.sessions(id) ON DELETE SET NULL,
     avatar_url TEXT,
+    nationality TEXT DEFAULT 'vietname',
     registration_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
