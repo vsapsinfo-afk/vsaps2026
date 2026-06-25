@@ -340,7 +340,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'D')
     .replace(/[^A-Z0-9\s]/g, '');
-  const transferMessage = `${cleanFullNameAscii} ${cleanPhoneInput}`;
+  const transferMessage = `VSAPS26-${cleanFullNameAscii} ${cleanPhoneInput}`;
 
   // Official interactive pricing matrix
   const PRICING = {
@@ -549,7 +549,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[đĐ]/g, 'D')
       .replace(/[^A-Z0-9\s]/g, '');
-    const transferMessageSub = `${cleanFullNameAsciiSub} ${createdAttendee.phone}`;
+    const transferMessageSub = `VSAPS26-${cleanFullNameAsciiSub} ${createdAttendee.phone}`;
     const vietQrSuccessUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${createdAttendee.packageFee}&addInfo=${encodeURIComponent(transferMessageSub)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
 
     return (
