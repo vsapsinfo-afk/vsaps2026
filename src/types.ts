@@ -68,6 +68,7 @@ export interface SpeakerRegistration {
   scheduledSessionId?: string;
   registrationDate: string;
   avatarUrl?: string;
+  nationality?: 'vietname' | 'foreign';
 }
 
 export interface SpecialtyTrack {

@@ -105,6 +105,7 @@ export function mapSpeakerToDb(s: SpeakerRegistration): Record<string, any> {
     scheduled_session_id: s.scheduledSessionId || null,
     registration_date: s.registrationDate,
     avatar_url: s.avatarUrl || null,
+    nationality: s.nationality || null,
   };
 }
 
@@ -128,6 +129,7 @@ export function mapDbToSpeaker(row: any): SpeakerRegistration {
     scheduledSessionId: row.scheduled_session_id || undefined,
     registrationDate: row.registration_date || new Date().toISOString(),
     avatarUrl: row.avatar_url || undefined,
+    nationality: row.nationality || undefined,
   };
 }
 

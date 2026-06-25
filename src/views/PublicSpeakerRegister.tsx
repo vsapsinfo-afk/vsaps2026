@@ -188,6 +188,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
         status: 'pending',
         registrationDate: new Date().toISOString().split('T')[0],
         avatarUrl: avatarImage || undefined,
+        nationality,
       };
 
       const saved = await store.saveSpeakerAsync(speakerData);

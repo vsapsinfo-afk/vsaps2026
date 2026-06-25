@@ -3010,7 +3010,27 @@ export class DataStore {
     console.log(`✉️ Sending speaker registration confirmation email using template: "${template.name}" (${template.id})`);
 
     const rawContent = template.content || '';
-    const spkAny = speaker as any;
+    
+    // Translate title to English if speaker is foreign
+    let speakerTitle = speaker.title || '';
+    if (speaker.nationality === 'foreign') {
+      const titleMapping: { [key: string]: string } = {
+        'GS.TS.BS': 'Prof. Dr. Med.',
+        'PGS.TS.BS': 'Assoc. Prof. Dr. Med.',
+        'TS.BS': 'Dr. Med. / PhD',
+        'ThS.BS': 'M.Med. / Master',
+        'BSCK1': 'Specialist I',
+        'BSCK2': 'Specialist II',
+        'BSNT': 'Resident Physician',
+        'BS': 'MD (Medical Doctor)',
+      };
+      const trimmed = speakerTitle.trim();
+      if (titleMapping[trimmed]) {
+        speakerTitle = titleMapping[trimmed];
+      }
+    }
+
+    const spkAny = { ...speaker, title: speakerTitle } as any;
 
     const replaceSpeakerPlaceholders = (text: string) => {
       if (!text) return '';
@@ -3018,7 +3038,7 @@ export class DataStore {
       
       // 1. Direct backward-compatible mappings
       res = res
-        .replace(/\{\{title\}\}/g, speaker.title || '')
+        .replace(/\{\{title\}\}/g, speakerTitle)
         .replace(/\{\{fullname\}\}/g, speaker.fullName || '')
         .replace(/\{\{code\}\}/g, speaker.id || '')
         .replace(/\{\{organization\}\}/g, speaker.organization || '')
