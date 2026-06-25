@@ -560,16 +560,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
           {/* Header alert */}
           <div className="bg-teal-900 text-amber-400 p-8 text-center relative border-b border-teal-800">
-            <div className="absolute top-4 left-4">
-              <button
-                id="btn-confirm-return"
-                onClick={() => onNavigate('event-details')}
-                className="p-1 px-3 rounded-lg bg-teal-850 hover:bg-teal-800 text-xs font-semibold flex items-center gap-1 text-teal-200 border border-teal-800/60 cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Về trang chủ
-              </button>
-            </div>
             <div className="w-14 h-14 rounded-full bg-amber-400/10 flex items-center justify-center mx-auto mb-3 border border-amber-400/25">
               <CheckCircle className="w-7 h-7 text-amber-400" />
             </div>
@@ -750,14 +740,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
             <div className="pt-4 flex flex-col md:flex-row gap-3">
               <button
-                onClick={() => window.location.href = 'https://vsaps.vn'}
-                className="flex-1 py-3 text-xs bg-slate-900 hover:bg-slate-950 text-white font-black uppercase text-center rounded-xl tracking-wider transition-all cursor-pointer"
-              >
-                Quay về trang chủ: Vsaps.vn
-              </button>
-              <button
                 onClick={() => window.print()}
-                className="px-6 py-3 text-xs bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold uppercase rounded-xl tracking-wider transition-all cursor-pointer"
+                className="w-full py-3 text-xs bg-slate-900 hover:bg-slate-950 text-white font-black uppercase rounded-xl tracking-wider transition-all cursor-pointer"
               >
                 In Thẻ & Hóa Đơn 🖨️
               </button>

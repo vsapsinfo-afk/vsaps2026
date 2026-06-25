@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { store } from '../dataStore';
 import { Role } from '../types';
+import { formatDate, formatDateTime } from '../lib/dateUtils';
 
 interface DashboardOverviewProps {
   role: Role;
@@ -378,10 +379,10 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-slate-800 truncate">{log.templateName}</p>
-                    <p className="text-[10px] text-slate-505 mt-0.5 truncate leading-normal">
+                    <p className="text-[10px] text-slate-555 mt-0.5 truncate leading-normal">
                       {log.type === 'zalo' ? 'Zalo ZNS' : 'Email'}: {log.recipient}
                     </p>
-                    <span className="text-[9px] text-slate-404 block mt-1">{log.sentAt}</span>
+                    <span className="text-[9px] text-slate-404 block mt-1">{formatDateTime(log.sentAt)}</span>
                   </div>
                 </div>
               ))
@@ -543,7 +544,7 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
               ) : (
                 recentRegistrations.map((reg) => (
                   <tr key={reg.id} className="hover:bg-slate-50/40 transition-colors">
-                    <td className="px-5 py-3.5 text-slate-400">{reg.date}</td>
+                    <td className="px-5 py-3.5 text-slate-400">{formatDate(reg.date)}</td>
                     <td className="px-5 py-3.5 font-bold text-slate-900">{reg.name}</td>
                     <td className="px-5 py-3.5 text-slate-600 font-semibold">{reg.org}</td>
                     <td className="px-5 py-3.5">

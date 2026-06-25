@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Search, ListFilter, CheckCircle, XCircle, Clock, FileText, Calendar, Eye, UserCheck, Sparkles, Table, LayoutGrid, FileSpreadsheet, Printer, ArrowUpDown, Download, AlertTriangle, ShieldCheck, Layers, Plus, Trash2, Edit2, X, Check, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Palette, Code, Upload } from 'lucide-react';
 import { store } from '../dataStore';
 import { SpeakerRegistration, Role, SpecialtyTrack } from '../types';
+import { formatDate } from '../lib/dateUtils';
 
 interface SpeakerManagementProps {
   role: Role;
@@ -679,7 +680,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                               
                               <div className="flex flex-wrap items-center gap-2 mt-2 select-none">
                                 <span className="text-[9px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-lg border border-slate-200">
-                                  📅 Đệ trình: {spk.registrationDate}
+                                  📅 Đệ trình: {formatDate(spk.registrationDate)}
                                 </span>
                                 {spk.documentName && (
                                   <span className="text-[9px] bg-teal-50 text-teal-750 border border-teal-150 px-2 py-0.5 rounded-lg font-bold flex items-center gap-0.5" title={spk.documentName}>
@@ -865,7 +866,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 flex items-center justify-between mt-auto">
-                      <span className="text-[8.5px] text-slate-400 font-semibold font-mono">📅 {spk.registrationDate}</span>
+                      <span className="text-[8.5px] text-slate-400 font-semibold font-mono">📅 {formatDate(spk.registrationDate)}</span>
                       
                       {/* Action Icon buttons to preserve mobile space */}
                       <div className="flex items-center gap-1">

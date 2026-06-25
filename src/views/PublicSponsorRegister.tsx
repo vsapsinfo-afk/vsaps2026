@@ -603,14 +603,6 @@ export default function PublicSponsorRegister({ onNavigate }: PublicSponsorRegis
               </div>
             )}
 
-            <div className="pt-6 border-t border-slate-100 text-center">
-              <button
-                onClick={() => onNavigate('event-details')}
-                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all text-xs"
-              >
-                {L.t('Quay Lại Trang Chủ Hội Nghị', 'Back to Event Homepage')}
-              </button>
-            </div>
           </div>
         </div>
       </div>

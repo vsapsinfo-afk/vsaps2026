@@ -705,9 +705,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff; text-align: left; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
-        <div style="text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 15px; margin-bottom: 20px;">
-          <h2 style="color: #1e1b4b; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;">Hội Nghị VSAPS 2026</h2>
-          <p style="color: #4f46e5; font-size: 11px; margin: 5px 0 0 0; font-weight: bold;">Hội Nghị Khoa Học Thẩm Mỹ Quốc Tế Thường Niên</p>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="${businessConfig.appUrl || 'https://vsaps2026.vercel.app'}/email_header.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
         </div>
         
         <div class="rich-editor-content" style="font-size: 14px; color: #334155; line-height: 1.6;">

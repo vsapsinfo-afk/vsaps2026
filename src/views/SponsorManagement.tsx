@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Award, Plus, Coins, Play, FileDown, CheckCircle, Trash, ShoppingBag, ShieldCheck, Mail, Phone, Users, Landmark, FileText, Calendar, Upload, Link, AlertCircle, AlertTriangle, Edit3, FileCheck, Check, Eye, Download, X, MapPin } from 'lucide-react';
 import { store } from '../dataStore';
 import { Sponsor, Role, SponsorPackage } from '../types';
+import { formatDate, formatDateTime } from '../lib/dateUtils';
 
 interface SponsorManagementProps {
   role: Role;
@@ -261,7 +262,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
       docContent += `HỢP ĐỒNG KHAI THÁC QUYỀN LỢI TÀI TRỢ & ĐỒNG HÀNH SỰ KIỆN KHCS\n`;
       docContent += `Số hiệu: ${sponsor.contractNo || 'HD-' + sponsor.id + '/VSAPS'}\n`;
       docContent += `Về việc: Đồng hành tài trợ Hội Nghị Thẩm Mỹ Quốc Tế VSAPS 2026\n\n`;
-      docContent += `Hôm nay, ngày ${sponsor.contractSignDate || '.../.../2026'}, tại văn phòng Ban điều hành, chúng tôi gồm:\n\n`;
+      docContent += `Hôm nay, ngày ${formatDate(sponsor.contractSignDate) || '.../.../2026'}, tại văn phòng Ban điều hành, chúng tôi gồm:\n\n`;
       docContent += `BÊN A: BAN TỔ CHỨC HỘI NGHỊ VSAPS 2026\n`;
       docContent += `- Đại diện: GS.TS. Phạm Minh Chi\n`;
       docContent += `- Chức vụ: Trưởng Ban tổ chức hội nghị khoa học\n`;
@@ -541,7 +542,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
   // Detailed report file download simulator
   const handleExportReport = () => {
     let reportContent = 'BÁO CÁO PHÂN TÍCH TÀI TRỢ CHUYÊN SÂU - VSAPS 2026\n';
-    reportContent += `Ngày trích xuất dữ liệu: ${new Date().toISOString().replace('T', ' ').substring(0, 16)}\n`;
+    reportContent += `Ngày trích xuất dữ liệu: ${formatDateTime(new Date().toISOString())}\n`;
     reportContent += '=============================================\n\n';
     
     let totalPledged = 0;
@@ -727,7 +728,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
                         <span className="text-slate-400">Ngày ký:</span>
                         <span className="font-semibold text-slate-700 flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
-                          {sponsor.contractSignDate || 'N/A'}
+                          {formatDate(sponsor.contractSignDate) || 'N/A'}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -1621,7 +1622,7 @@ export default function SponsorManagement({ role, onNavigate }: SponsorManagemen
 
                 {/* Contract info body */}
                 <div className="space-y-4 text-slate-705 text-[11px]">
-                  <p>Hôm nay, ngày {previewSponsor.contractSignDate || '.../.../2026'}, tại văn phòng Ban điều hành, chúng tôi gồm:</p>
+                  <p>Hôm nay, ngày {formatDate(previewSponsor.contractSignDate) || '.../.../2026'}, tại văn phòng Ban điều hành, chúng tôi gồm:</p>
                   
                   <div className="space-y-1.5">
                     <p className="font-extrabold text-slate-900 uppercase">BÊN A: BAN TỔ CHỨC HỘI NGHỊ VSAPS 2026</p>

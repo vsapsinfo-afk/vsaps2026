@@ -9,6 +9,7 @@ import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye
 import * as XLSX from 'xlsx';
 import { store, DEFAULT_CME_TEMPLATE_CONFIG } from '../dataStore';
 import { Attendee, Role } from '../types';
+import { formatDateTime } from '../lib/dateUtils';
 
 interface AttendeeManagementProps {
   role: Role;
@@ -1547,7 +1548,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                         </span>
                       </label>
                       {att.isCheckedIn && att.checkInTime && (
-                        <span className="text-[8px] text-slate-400 block mt-0.5 font-mono">{att.checkInTime}</span>
+                        <span className="text-[8px] text-slate-400 block mt-0.5 font-mono">{formatDateTime(att.checkInTime)}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -1711,7 +1712,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                         </span>
                       </label>
                       {att.isCheckedIn && att.checkInTime && (
-                        <span className="text-[8px] text-slate-400 font-mono">({att.checkInTime})</span>
+                        <span className="text-[8px] text-slate-400 font-mono">({formatDateTime(att.checkInTime)})</span>
                       )}
                     </div>
                   </div>
@@ -4478,7 +4479,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     <span className={`w-2.5 h-2.5 rounded-full ${kioskCheckInAttendee.isCheckedIn ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                     <strong className={kioskCheckInAttendee.isCheckedIn ? 'text-emerald-700' : 'text-slate-600'}>
                       {kioskCheckInAttendee.isCheckedIn 
-                        ? `ĐÃ CÓ MẶT (Lúc ${kioskCheckInAttendee.checkInTime || 'Không rõ'})` 
+                        ? `ĐÃ CÓ MẶT (Lúc ${formatDateTime(kioskCheckInAttendee.checkInTime) || 'Không rõ'})` 
                         : 'CHƯA ĐIỂM DANH'}
                     </strong>
                   </div>
@@ -4571,7 +4572,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           onClick={() => {
                             let csvContent = 'ID,Danh xưng,Họ và tên,Cơ quan,Số ĐT,Email,Gói Đăng Ký,Phí (VNĐ),Thanh Toán,Check In,Thời gian Check In\n';
                             filtered.forEach(a => {
-                              csvContent += `"${a.id}","${a.title}","${a.fullName}","${a.organization}","${a.phone}","${a.email}","${a.packageName}",${a.packageFee},"${a.paymentStatus}","${a.isCheckedIn ? 'Đã có mặt' : 'Chưa'}","${a.checkInTime || ''}"\n`;
+                              csvContent += `"${a.id}","${a.title}","${a.fullName}","${a.organization}","${a.phone}","${a.email}","${a.packageName}",${a.packageFee},"${a.paymentStatus}","${a.isCheckedIn ? 'Đã có mặt' : 'Chưa'}","${formatDateTime(a.checkInTime) || ''}"\n`;
                             });
                             const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
                             const url = URL.createObjectURL(blob);

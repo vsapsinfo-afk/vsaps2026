@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Plus, CheckSquare, Clock, AlertTriangle, User, Play, CheckCircle, Trash, LayoutGrid, List, Edit2 } from 'lucide-react';
 import { store } from '../dataStore';
 import { InternalTask, UserAccount, Role } from '../types';
+import { formatDate } from '../lib/dateUtils';
 
 interface InternalTasksProps {
   role: Role;
@@ -403,7 +404,7 @@ export default function InternalTasks({ role }: InternalTasksProps) {
                         <td className="p-3.5 text-[11px] font-mono font-bold text-slate-600">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            {task.deadline}
+                            {formatDate(task.deadline)}
                           </span>
                         </td>
                         <td className="p-3.5">
@@ -655,7 +656,7 @@ function TaskCard({
       <div className="mt-4 pt-2.5 border-t border-slate-100 flex items-center justify-between">
         <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
           <Clock className="w-3.5 h-3.5" />
-          HL: {task.deadline}
+          HL: {formatDate(task.deadline)}
         </div>
 
         <div className="flex gap-1">

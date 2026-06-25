@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Landmark, Search, Filter, Plus, FileDown, CheckSquare, Trash, Check, AlertCircle, Edit2 } from 'lucide-react';
 import { store } from '../dataStore';
 import { FinanceTransaction, Role } from '../types';
+import { formatDateTime } from '../lib/dateUtils';
 
 interface FinanceReconciliationProps {
   role: Role;
@@ -121,7 +122,7 @@ export default function FinanceReconciliation({ role }: FinanceReconciliationPro
     let csvContent = 'ID,Thời gian,Loại,Hạng mục,Số tiền (VNĐ),Nội dung,Hình thức,Người đối soát,Trạng thái\n';
     
     filteredRows.forEach(r => {
-      csvContent += `"${r.id}","${r.date}","${r.type === 'income' ? 'Thu' : 'Chi'}","${r.category}",${r.amount},"${r.description}","${r.paymentMethod}","${r.verifiedBy || 'Không có'}","${r.isVerified ? 'Đã đối soát' : 'Chờ duyệt'}"\n`;
+      csvContent += `"${r.id}","${formatDateTime(r.date)}","${r.type === 'income' ? 'Thu' : 'Chi'}","${r.category}",${r.amount},"${r.description}","${r.paymentMethod}","${r.verifiedBy || 'Không có'}","${r.isVerified ? 'Đã đối soát' : 'Chờ duyệt'}"\n`;
     });
 
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -264,7 +265,7 @@ export default function FinanceReconciliation({ role }: FinanceReconciliationPro
                 filteredData.map((txn) => (
                   <tr key={txn.id} className="hover:bg-slate-50/40">
                     <td className="px-6 py-4 font-mono font-bold text-slate-900">{txn.id}</td>
-                    <td className="px-6 py-4 font-mono text-slate-400">{txn.date}</td>
+                    <td className="px-6 py-4 font-mono text-slate-400">{formatDateTime(txn.date)}</td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-0.5 bg-slate-100 text-slate-750 rounded text-[10px] font-bold">
                         {txn.category}
@@ -363,7 +364,7 @@ export default function FinanceReconciliation({ role }: FinanceReconciliationPro
                 <div className="p-2.5 bg-slate-50 rounded-lg space-y-1.5 text-[10px] text-slate-600">
                   <div className="flex justify-between font-mono">
                     <span>Thời gian:</span>
-                    <span className="text-slate-800 font-medium">{txn.date}</span>
+                    <span className="text-slate-800 font-medium">{formatDateTime(txn.date)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Hạng mục:</span>

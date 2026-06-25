@@ -229,16 +229,6 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       <div className="bg-slate-50 min-h-screen py-12 px-4">
         <div className="max-w-xl mx-auto bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
           <div className="bg-[#0b1a30] text-white p-8 text-center relative">
-            <div className="absolute top-4 left-4">
-              <button
-                id="btn-back-event-details"
-                onClick={() => onNavigate('event-details')}
-                className="p-1 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold flex items-center gap-1 text-white border border-white/10 transition-all cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                {L.t('Quay lại', 'Back')}
-              </button>
-            </div>
             <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4 border border-white/20">
               <CheckCircle className="w-8 h-8 text-teal-300" />
             </div>
@@ -326,14 +316,6 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
             <p className="text-[11px] text-slate-500 text-center italic mt-4 leading-relaxed px-2">
               {L.t('Hội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua email cá nhân.', 'The VSAPS 2026 Scientific Committee will review your abstract within 5 working days. You can track the status of your submission or receive revision feedback via your email.')}
             </p>
-
-            <button
-              id="btn-speaker-return-home"
-              onClick={() => onNavigate('event-details')}
-              className="w-full py-4 rounded-xl bg-[#0b1a30] hover:bg-[#081324] text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer shadow-md active:scale-[0.98]"
-            >
-              {L.t('QUAY LẠI TRANG CHỦ SỰ KIỆN', 'RETURN TO EVENT HOMEPAGE')}
-            </button>
           </div>
         </div>
       </div>
