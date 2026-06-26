@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Plus, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare } from 'lucide-react';
+import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Plus, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare, Save } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
@@ -38,6 +38,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [bulkBody, setBulkBody] = useState('<p>Kính gửi anh/chị <strong>{{Tên}}</strong>,</p>\n<p>Ban tổ chức Hội nghị Khoa học Thẩm mỹ Quốc tế Thường niên VSAPS 2026 trân trọng xác nhận thông tin đăng ký của anh/chị.</p>\n<p>Thông tin chi tiết:</p>\n<ul>\n<li>Hộp thư: {{Email}}</li>\n<li>Điện thoại: {{Số điện thoại}}</li>\n</ul>\n<p>Hệ thống tự động đã kích hoạt vé tham dự của anh/chị. Vui lòng mang theo email này để quét mã QR check-in tại sảnh chính.</p>\n<p>Trân trọng,<br>Ban tổ chức VSAPS 2026</p>');
   const [bulkEditorMode, setBulkEditorMode] = useState<'visual' | 'code'>('visual');
   const bulkEditorRef = React.useRef<HTMLDivElement>(null);
+  const [selectedEmailTemplateId, setSelectedEmailTemplateId] = useState<string>('');
 
   // Zalo bulk templates
   const [zaloTemplates, setZaloTemplates] = useState<NotificationTemplate[]>(() =>
@@ -667,6 +668,75 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       } else {
         setBulkBody(prev => prev + textToInsert);
       }
+    }
+  };
+
+  const handleLoadEmailTemplate = (templateId: string) => {
+    setSelectedEmailTemplateId(templateId);
+    if (!templateId) return;
+
+    const tmpl = templates.find(t => t.id === templateId);
+    if (tmpl) {
+      setBulkSubject(tmpl.subject || '');
+      setBulkBody(tmpl.content);
+      if (bulkEditorMode === 'visual' && bulkEditorRef.current) {
+        bulkEditorRef.current.innerHTML = tmpl.content;
+      }
+    }
+  };
+
+  const handleSaveAsNewTemplate = () => {
+    if (!bulkSubject.trim()) {
+      alert('Vui lòng điền Tiêu đề thư trước khi lưu mẫu.');
+      return;
+    }
+    const templateName = prompt('Nhập tên cho mẫu thư mới:', 'Mẫu thư gửi hàng loạt');
+    if (!templateName || !templateName.trim()) {
+      return;
+    }
+
+    const newId = `tmpl-bulk-email-${Date.now()}`;
+    const newTmpl: NotificationTemplate = {
+      id: newId,
+      name: templateName.trim(),
+      channel: 'email',
+      subject: bulkSubject,
+      content: bulkBody,
+      type: 'registration_success'
+    };
+
+    try {
+      store.saveTemplate(newTmpl);
+      setTemplates([...store.getTemplates()]);
+      setSelectedEmailTemplateId(newId);
+      alert(`Đã lưu mẫu thư "${templateName}" thành công!`);
+    } catch (err) {
+      console.error('Lỗi khi lưu mẫu thư:', err);
+      alert('Không thể lưu mẫu thư.');
+    }
+  };
+
+  const handleOverwriteTemplate = () => {
+    if (!selectedEmailTemplateId) return;
+    const existing = templates.find(t => t.id === selectedEmailTemplateId);
+    if (!existing) return;
+
+    const confirmSave = window.confirm(`Bạn có chắc chắn muốn lưu đè (cập nhật) nội dung soạn thảo hiện tại vào mẫu thư "${existing.name}" không?`);
+    if (!confirmSave) return;
+
+    const updated: NotificationTemplate = {
+      ...existing,
+      subject: bulkSubject,
+      content: bulkBody
+    };
+
+    try {
+      store.saveTemplate(updated);
+      setTemplates([...store.getTemplates()]);
+      alert(`Đã cập nhật mẫu thư "${existing.name}" thành công!`);
+    } catch (err) {
+      console.error('Lỗi khi cập nhật mẫu thư:', err);
+      alert('Không thể lưu mẫu thư.');
     }
   };
 
@@ -2448,6 +2518,43 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 </div>
                 
                 <div className="space-y-4 text-xs">
+                  {/* Select Template & Save Template Actions */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl mb-2 items-end">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Mẫu thư sẵn có (Email Templates)</label>
+                      <select
+                        value={selectedEmailTemplateId || ''}
+                        onChange={(e) => handleLoadEmailTemplate(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold"
+                      >
+                        <option value="">-- Chọn mẫu thư sẵn có hoặc soạn mới --</option>
+                        {templates.filter(t => t.channel === 'email').map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        type="button"
+                        onClick={handleSaveAsNewTemplate}
+                        className="px-3 py-1.5 rounded-lg bg-teal-650 hover:bg-teal-750 text-white font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none shadow-sm"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Lưu mẫu thư mới
+                      </button>
+                      {selectedEmailTemplateId && (
+                        <button
+                          type="button"
+                          onClick={handleOverwriteTemplate}
+                          className="px-3 py-1.5 rounded-lg bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none shadow-sm"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          Lưu đè mẫu đang chọn
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 block mb-1">Tiêu đề thư (Email Subject)</label>
                     <input
