@@ -151,14 +151,18 @@ export const DEFAULT_EVENT_DETAILS_CONFIG: EventDetailsConfig = {
       id: "spk-1",
       name: "PGS.TS.BS. Trần Quốc Bảo",
       title: "Trưởng khoa Ngoại Lồng Ngực - Bệnh viện 108",
+      titleEn: "Head of Thoracic Surgery Department - 108 Hospital",
       topic: "Phẫu thuật Robot điều trị u trung thất trước: Kinh nghiệm tại Việt Nam",
+      topicEn: "Robotic Surgery for Anterior Mediastinal Tumors: Experience in Vietnam",
       avatarUrl: ""
     },
     {
       id: "spk-2",
       name: "PGS.TS.BS. Lê Hoàng Mỹ",
       title: "Giảng viên bộ môn Thần Kinh - ĐH Y Dược TP.HCM",
+      titleEn: "Lecturer of Neurology Department - HCMC University of Medicine and Pharmacy",
       topic: "Cập nhật liệu pháp kháng thể đơn dòng trong điều trị bệnh Alzheimer giai đoạn sớm",
+      topicEn: "Updates on Monoclonal Antibody Therapy for Early-Stage Alzheimer's Disease",
       avatarUrl: ""
     }
   ],
@@ -173,7 +177,30 @@ export const DEFAULT_EVENT_DETAILS_CONFIG: EventDetailsConfig = {
   posterImageUrl: "",
   seoTitle: "VSAPS 2026 - Đại Hội Nhiệm Kỳ III & Hội Nghị Khoa Học Thường Niên Lần Thứ 10",
   seoDescription: "Hội nghị khoa học thường niên VSAPS 2026 là điểm hẹn học thuật uy tín dành cho giới y khoa tạo hình thẩm mỹ toàn quốc.",
-  seoKeywords: "VSAPS 2026, hội nghị thẩm mỹ, phẫu thuật thẩm mỹ, hội thảo y khoa, tạo hình thẩm mỹ, cme phẫu thuật thẩm mỹ"
+  seoKeywords: "VSAPS 2026, hội nghị thẩm mỹ, phẫu thuật thẩm mỹ, hội thảo y khoa, tạo hình thẩm mỹ, cme phẫu thuật thẩm mỹ",
+
+  heroTitleEn: "10th Annual Conference & Term III General Assembly of VSAPS",
+  heroSubtitleEn: "Shaping the future of Aesthetic Plastic Surgery together",
+  eventDatesEn: "December 11 - 13, 2026",
+  eventLocationEn: "175 Military Hospital, Ho Chi Minh City",
+  eventScaleEn: "1200 - 1500 Delegates",
+
+  introTitleEn: "Key Objectives of VSAPS 2026",
+  introParagraph1En: "The VSAPS 2026 Annual Scientific Conference is a prestigious academic event for the medical community nationwide. In the context of rapid digital technology advancement, VSAPS 2026 is committed to improving patient safety standards, sharing excellent evidence-based clinical outcomes, and combining artificial intelligence with minimally invasive procedures.",
+  introParagraph2En: "We focus on four core topics: Precision Robotic Surgery, High-Tech Anesthesia for ERAS, Advanced Diagnostic Imaging, and Safe Aesthetic Plastic Surgery.",
+
+  feature1TitleEn: "Official CME Certification",
+  feature1DescEn: "Issued by a prestigious Medical University for doctors participating in required hours.",
+  feature2TitleEn: "Global Business Networking",
+  feature2DescEn: "Access 30+ exhibition booths featuring new-generation medical equipment and diagnostic imaging.",
+
+  contactOrganizerEn: "VIETNAM SOCIETY OF AESTHETIC PLASTIC SURGERY (VSAPS)",
+  contactPresidentEn: "ASSOC. PROF. DR. LE HANH",
+  contactSecretaryEn: "Thai Vo Ngoc Thu",
+
+  seoTitleEn: "VSAPS 2026 - 10th Annual Scientific Conference & Meeting",
+  seoDescriptionEn: "VSAPS 2026 annual scientific conference is a prestigious academic event for aesthetic plastic surgery.",
+  seoKeywordsEn: "VSAPS 2026, aesthetic surgery conference, plastic surgery, medical seminar, CME aesthetic plastic surgery"
 };
 
 const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {

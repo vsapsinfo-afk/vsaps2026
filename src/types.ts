@@ -345,6 +345,8 @@ export interface HighlightSpeaker {
   name: string;
   title: string;
   topic: string;
+  titleEn?: string;
+  topicEn?: string;
   avatarUrl?: string;
 }
 
@@ -379,6 +381,29 @@ export interface EventDetailsConfig {
   seoTitle?: string;
   seoDescription?: string;
   seoKeywords?: string;
+
+  heroTitleEn?: string;
+  heroSubtitleEn?: string;
+  eventDatesEn?: string;
+  eventLocationEn?: string;
+  eventScaleEn?: string;
+
+  introTitleEn?: string;
+  introParagraph1En?: string;
+  introParagraph2En?: string;
+
+  feature1TitleEn?: string;
+  feature1DescEn?: string;
+  feature2TitleEn?: string;
+  feature2DescEn?: string;
+
+  contactOrganizerEn?: string;
+  contactPresidentEn?: string;
+  contactSecretaryEn?: string;
+
+  seoTitleEn?: string;
+  seoDescriptionEn?: string;
+  seoKeywordsEn?: string;
 }
 
 export interface BusinessConfig {

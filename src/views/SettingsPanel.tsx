@@ -86,6 +86,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Business Config state
   const [businessConfig, setBusinessConfig] = useState<BusinessConfig>(store.getBusinessConfig());
   const [isSaving, setIsSaving] = useState(false);
+  const [eventEditingLang, setEventEditingLang] = useState<'vi' | 'en'>('vi');
 
   // Packages state
   const [packages, setPackages] = useState<RegistrationPackage[]>(store.getPackages());
@@ -4554,30 +4555,53 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                   </button>
                 </div>
 
+                <div className="flex gap-2 bg-slate-100 p-1 rounded-xl w-fit border border-slate-200 select-none">
+                  <button
+                    type="button"
+                    onClick={() => setEventEditingLang('vi')}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                      eventEditingLang === 'vi' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    Tiếng Việt 🇻🇳
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEventEditingLang('en')}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
+                      eventEditingLang === 'en' ? 'bg-white text-slate-900 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    English 🇬🇧
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   
                   {/* Section 1: Hero Banner & General Info */}
                   <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
-                      🎨 HERO & BANNER ĐẦU TRANG
+                      🎨 HERO & BANNER ĐẦU TRANG ({eventEditingLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH'})
                     </span>
                     <div className="space-y-3.5">
                       <div>
                         <label className="text-[9px] font-black text-slate-400 block mb-1">TIÊU ĐỀ LỚN HERO</label>
                         <input
                           type="text"
-                          value={edc.heroTitle}
-                          onChange={(e) => updateEdc({ heroTitle: e.target.value })}
+                          value={eventEditingLang === 'vi' ? edc.heroTitle : (edc.heroTitleEn || '')}
+                          onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { heroTitle: e.target.value } : { heroTitleEn: e.target.value })}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                          placeholder={eventEditingLang === 'en' ? 'Enter English hero title' : ''}
                         />
                       </div>
                       <div>
                         <label className="text-[9px] font-black text-slate-400 block mb-1">CHỦ ĐỀ / KHẨU HIỆU CHÍNH</label>
                         <input
                           type="text"
-                          value={edc.heroSubtitle}
-                          onChange={(e) => updateEdc({ heroSubtitle: e.target.value })}
+                          value={eventEditingLang === 'vi' ? edc.heroSubtitle : (edc.heroSubtitleEn || '')}
+                          onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { heroSubtitle: e.target.value } : { heroSubtitleEn: e.target.value })}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          placeholder={eventEditingLang === 'en' ? 'Enter English subtheme/subtitle' : ''}
                         />
                       </div>
                       <div className="grid grid-cols-3 gap-3">
@@ -4585,27 +4609,30 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                           <label className="text-[9px] font-black text-slate-400 block mb-1">THỜI GIAN</label>
                           <input
                             type="text"
-                            value={edc.eventDates}
-                            onChange={(e) => updateEdc({ eventDates: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.eventDates : (edc.eventDatesEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { eventDates: e.target.value } : { eventDatesEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            placeholder={eventEditingLang === 'en' ? 'Dates (EN)' : ''}
                           />
                         </div>
                         <div>
                           <label className="text-[9px] font-black text-slate-400 block mb-1">ĐỊA ĐIỂM</label>
                           <input
                             type="text"
-                            value={edc.eventLocation}
-                            onChange={(e) => updateEdc({ eventLocation: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.eventLocation : (edc.eventLocationEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { eventLocation: e.target.value } : { eventLocationEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            placeholder={eventEditingLang === 'en' ? 'Location (EN)' : ''}
                           />
                         </div>
                         <div>
                           <label className="text-[9px] font-black text-slate-400 block mb-1">QUY MÔ</label>
                           <input
                             type="text"
-                            value={edc.eventScale}
-                            onChange={(e) => updateEdc({ eventScale: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.eventScale : (edc.eventScaleEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { eventScale: e.target.value } : { eventScaleEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            placeholder={eventEditingLang === 'en' ? 'Scale (EN)' : ''}
                           />
                         </div>
                       </div>
@@ -4663,7 +4690,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                   {/* Section 2: Contact Info */}
                   <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                     <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
-                      📞 THÔNG TIN LIÊN HỆ BAN TỔ CHỨC (SIDEBAR)
+                      📞 THÔNG TIN LIÊN HỆ BAN TỔ CHỨC (SIDEBAR) ({eventEditingLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH'})
                     </span>
                     <div className="space-y-3.5">
                       <div className="grid grid-cols-2 gap-3">
@@ -4671,18 +4698,20 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                           <label className="text-[9px] font-black text-slate-400 block mb-1">ĐƠN VỊ CHỦ TRÌ</label>
                           <input
                             type="text"
-                            value={edc.contactOrganizer}
-                            onChange={(e) => updateEdc({ contactOrganizer: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.contactOrganizer : (edc.contactOrganizerEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { contactOrganizer: e.target.value } : { contactOrganizerEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            placeholder={eventEditingLang === 'en' ? 'Organizer (EN)' : ''}
                           />
                         </div>
                         <div>
                           <label className="text-[9px] font-black text-slate-400 block mb-1">CHỦ TỊCH HIỆP HỘI</label>
                           <input
                             type="text"
-                            value={edc.contactPresident}
-                            onChange={(e) => updateEdc({ contactPresident: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.contactPresident : (edc.contactPresidentEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { contactPresident: e.target.value } : { contactPresidentEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            placeholder={eventEditingLang === 'en' ? 'President (EN)' : ''}
                           />
                         </div>
                       </div>
@@ -4691,9 +4720,10 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                           <label className="text-[9px] font-black text-slate-400 block mb-1">THƯ KÝ LIÊN HỆ CHÍNH</label>
                           <input
                             type="text"
-                            value={edc.contactSecretary}
-                            onChange={(e) => updateEdc({ contactSecretary: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.contactSecretary : (edc.contactSecretaryEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { contactSecretary: e.target.value } : { contactSecretaryEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            placeholder={eventEditingLang === 'en' ? 'Secretary (EN)' : ''}
                           />
                         </div>
                         <div>
@@ -4741,7 +4771,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                   {/* Section 3: Intro & Features */}
                   <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 lg:col-span-2">
                     <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
-                      📝 NỘI DUNG GIỚI THIỆU & MỤC TIÊU SỰ KIỆN
+                      📝 NỘI DUNG GIỚI THIỆU & MỤC TIÊU SỰ KIỆN ({eventEditingLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH'})
                     </span>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       <div className="space-y-3.5">
@@ -4749,27 +4779,30 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                           <label className="text-[9px] font-black text-slate-400 block mb-1">TIÊU ĐỀ GIỚI THIỆU</label>
                           <input
                             type="text"
-                            value={edc.introTitle}
-                            onChange={(e) => updateEdc({ introTitle: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.introTitle : (edc.introTitleEn || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { introTitle: e.target.value } : { introTitleEn: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                            placeholder={eventEditingLang === 'en' ? 'Intro Title (EN)' : ''}
                           />
                         </div>
                         <div>
                           <label className="text-[9px] font-black text-slate-400 block mb-1">ĐOẠN VĂN GIỚI THIỆU 1</label>
                           <textarea
-                            value={edc.introParagraph1}
-                            onChange={(e) => updateEdc({ introParagraph1: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.introParagraph1 : (edc.introParagraph1En || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { introParagraph1: e.target.value } : { introParagraph1En: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                             rows={3}
+                            placeholder={eventEditingLang === 'en' ? 'Intro Paragraph 1 (EN)' : ''}
                           />
                         </div>
                         <div>
                           <label className="text-[9px] font-black text-slate-400 block mb-1">ĐOẠN VĂN GIỚI THIỆU 2</label>
                           <textarea
-                            value={edc.introParagraph2}
-                            onChange={(e) => updateEdc({ introParagraph2: e.target.value })}
+                            value={eventEditingLang === 'vi' ? edc.introParagraph2 : (edc.introParagraph2En || '')}
+                            onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { introParagraph2: e.target.value } : { introParagraph2En: e.target.value })}
                             className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                             rows={3}
+                            placeholder={eventEditingLang === 'en' ? 'Intro Paragraph 2 (EN)' : ''}
                           />
                         </div>
                       </div>
@@ -4780,18 +4813,20 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                             <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 1 - TIÊU ĐỀ</label>
                             <input
                               type="text"
-                              value={edc.feature1Title}
-                              onChange={(e) => updateEdc({ feature1Title: e.target.value })}
+                              value={eventEditingLang === 'vi' ? edc.feature1Title : (edc.feature1TitleEn || '')}
+                              onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { feature1Title: e.target.value } : { feature1TitleEn: e.target.value })}
                               className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs font-bold"
+                              placeholder={eventEditingLang === 'en' ? 'Feature 1 Title (EN)' : ''}
                             />
                           </div>
                           <div>
                             <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 1 - MÔ TẢ</label>
                             <input
                               type="text"
-                              value={edc.feature1Desc}
-                              onChange={(e) => updateEdc({ feature1Desc: e.target.value })}
+                              value={eventEditingLang === 'vi' ? edc.feature1Desc : (edc.feature1DescEn || '')}
+                              onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { feature1Desc: e.target.value } : { feature1DescEn: e.target.value })}
                               className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs"
+                              placeholder={eventEditingLang === 'en' ? 'Feature 1 Desc (EN)' : ''}
                             />
                           </div>
                         </div>
@@ -4800,18 +4835,20 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                             <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 2 - TIÊU ĐỀ</label>
                             <input
                               type="text"
-                              value={edc.feature2Title}
-                              onChange={(e) => updateEdc({ feature2Title: e.target.value })}
+                              value={eventEditingLang === 'vi' ? edc.feature2Title : (edc.feature2TitleEn || '')}
+                              onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { feature2Title: e.target.value } : { feature2TitleEn: e.target.value })}
                               className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs font-bold"
+                              placeholder={eventEditingLang === 'en' ? 'Feature 2 Title (EN)' : ''}
                             />
                           </div>
                           <div>
                             <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 2 - MÔ TẢ</label>
                             <input
                               type="text"
-                              value={edc.feature2Desc}
-                              onChange={(e) => updateEdc({ feature2Desc: e.target.value })}
+                              value={eventEditingLang === 'vi' ? edc.feature2Desc : (edc.feature2DescEn || '')}
+                              onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { feature2Desc: e.target.value } : { feature2DescEn: e.target.value })}
                               className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs"
+                              placeholder={eventEditingLang === 'en' ? 'Feature 2 Desc (EN)' : ''}
                             />
                           </div>
                         </div>
@@ -4902,21 +4939,23 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                               />
                             </div>
                             <div>
-                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Học hàm / Học vị / Chức vụ *</label>
+                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Học hàm / Học vị / Chức vụ ({eventEditingLang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'}) *</label>
                               <input
                                 type="text"
-                                value={spk.title}
-                                onChange={(e) => handleSpeakerChange(spk.id, { title: e.target.value })}
+                                value={eventEditingLang === 'vi' ? spk.title : (spk.titleEn || '')}
+                                onChange={(e) => handleSpeakerChange(spk.id, eventEditingLang === 'vi' ? { title: e.target.value } : { titleEn: e.target.value })}
                                 className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
+                                placeholder={eventEditingLang === 'en' ? 'Speaker Title (EN)' : ''}
                               />
                             </div>
                             <div>
-                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Tên đề tài chuyên đề báo cáo *</label>
+                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Tên đề tài chuyên đề báo cáo ({eventEditingLang === 'vi' ? 'Tiếng Việt' : 'Tiếng Anh'}) *</label>
                               <input
                                 type="text"
-                                value={spk.topic}
-                                onChange={(e) => handleSpeakerChange(spk.id, { topic: e.target.value })}
+                                value={eventEditingLang === 'vi' ? spk.topic : (spk.topicEn || '')}
+                                onChange={(e) => handleSpeakerChange(spk.id, eventEditingLang === 'vi' ? { topic: e.target.value } : { topicEn: e.target.value })}
                                 className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
+                                placeholder={eventEditingLang === 'en' ? 'Presentation Topic (EN)' : ''}
                               />
                             </div>
                           </div>
@@ -4933,25 +4972,25 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                   {/* Section 5: SEO Configuration */}
                   <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 lg:col-span-2">
                     <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
-                      🔍 Cấu hình SEO cho trang tin sự kiện
+                      🔍 Cấu hình SEO cho trang tin sự kiện ({eventEditingLang === 'vi' ? 'TIẾNG VIỆT' : 'ENGLISH'})
                     </span>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                       <div>
                         <label className="text-[9px] font-black text-slate-400 block mb-1">TIÊU ĐỀ SEO (SEO TITLE)</label>
                         <input
                           type="text"
-                          value={edc.seoTitle || ''}
-                          placeholder="Mặc định sử dụng Tiêu đề Hero"
-                          onChange={(e) => updateEdc({ seoTitle: e.target.value })}
+                          value={eventEditingLang === 'vi' ? (edc.seoTitle || '') : (edc.seoTitleEn || '')}
+                          placeholder={eventEditingLang === 'vi' ? "Mặc định sử dụng Tiêu đề Hero" : "Defaults to English Hero title"}
+                          onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { seoTitle: e.target.value } : { seoTitleEn: e.target.value })}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                         />
                       </div>
                       <div>
                         <label className="text-[9px] font-black text-slate-400 block mb-1">MÔ TẢ SEO (SEO DESCRIPTION)</label>
                         <textarea
-                          value={edc.seoDescription || ''}
-                          placeholder="Nhập mô tả ngắn gọn tối ưu hóa tìm kiếm Google"
-                          onChange={(e) => updateEdc({ seoDescription: e.target.value })}
+                          value={eventEditingLang === 'vi' ? (edc.seoDescription || '') : (edc.seoDescriptionEn || '')}
+                          placeholder={eventEditingLang === 'vi' ? "Nhập mô tả ngắn gọn tối ưu hóa tìm kiếm Google" : "Enter English SEO description"}
+                          onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { seoDescription: e.target.value } : { seoDescriptionEn: e.target.value })}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                           rows={2}
                         />
@@ -4960,9 +4999,9 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                         <label className="text-[9px] font-black text-slate-400 block mb-1">TỪ KHÓA SEO (SEO KEYWORDS - CÁCH NHAU BẰNG DẤU PHẨY)</label>
                         <input
                           type="text"
-                          value={edc.seoKeywords || ''}
+                          value={eventEditingLang === 'vi' ? (edc.seoKeywords || '') : (edc.seoKeywordsEn || '')}
                           placeholder="Ví dụ: phẫu thuật thẩm mỹ, hội thảo y khoa, VSAPS..."
-                          onChange={(e) => updateEdc({ seoKeywords: e.target.value })}
+                          onChange={(e) => updateEdc(eventEditingLang === 'vi' ? { seoKeywords: e.target.value } : { seoKeywordsEn: e.target.value })}
                           className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                         />
                       </div>
