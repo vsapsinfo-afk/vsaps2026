@@ -840,7 +840,24 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                 ].map((d) => (
                   <button
                     key={d.date}
-                    onClick={() => s            {/* MAIN TIMELINE CHART */}
+                    onClick={() => setSelectedDate(d.date)}
+                    className={`p-4 rounded-2xl text-left border transition-all cursor-pointer relative overflow-hidden ${
+                      selectedDate === d.date
+                        ? 'bg-gradient-to-br from-teal-900 to-slate-900 border-teal-600 text-white shadow-md'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-850'
+                    }`}
+                  >
+                    <p className="text-xs font-black tracking-wider opacity-75">{t(d.titleKey)}</p>
+                    <p className="text-sm font-bold mt-1">{t(d.subtitleKey)}</p>
+                    {selectedDate === d.date && (
+                      <div className="absolute right-3 bottom-3 w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* MAIN TIMELINE CHART */}
             {(() => {
               // 1. Filter sessions
               const filteredSessions = sessions.filter((s) => {
@@ -1130,78 +1147,6 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                             {matchingRoom && (
                               <p className="text-[10px] text-slate-450 italic mt-1 leading-none">
                                 {lang === 'en' ? 'Track' : 'Chuyên đề'}: {matchingRoom.subtitle}
-                              </p>
-                            )}
-
-                            <div className="flex items-center gap-2.5 pt-2.5 border-t border-slate-100">
-                              <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center text-teal-800 font-extrabold text-[10px] shrink-0">
-                                {session.speakerName.split(' ').slice(-1)[0].substring(0, 2).toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-slate-800 leading-tight">
-                                  {session.speakerName}
-                                </p>
-                                <p className="text-[10px] text-slate-450 leading-none mt-0.5 font-medium">
-                                  {session.speakerTitle}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}tive ${
-                            isBookmarked 
-                              ? 'bg-amber-50/50 border-amber-300 shadow-xs' 
-                              : 'bg-white border-slate-150 hover:bg-slate-50 shadow-xs'
-                          }`}
-                        >
-                          {/* Star bookmark badge */}
-                          <button
-                            onClick={(e) => handleToggleBookmark(session.id, e)}
-                            className="absolute right-4 top-4 p-1.5 rounded-full bg-slate-100 text-amber-500 transition-all"
-                          >
-                            <Star className={`w-4 h-4 ${isBookmarked ? 'fill-amber-500' : 'text-slate-400'}`} />
-                          </button>
-
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-mono text-[10px] font-black text-teal-850 bg-teal-50 px-2.5 py-1 rounded-md">
-                                {session.startTime} - {session.endTime}
-                              </span>
-                              <span className={`px-2 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider ${
-                                session.track === 'Live Surgery' ? 'bg-rose-50 text-rose-700' :
-                                session.track === 'Hands-on' ? 'bg-indigo-50 text-indigo-700' :
-                                session.track === 'Master Class' ? 'bg-amber-50 text-amber-700' : 'bg-teal-50 text-teal-700'
-                              }`}>
-                                {session.track}
-                              </span>
-                              {matchingRoom ? (
-                                <span className={`px-2 py-0.5 rounded text-[8.5px] font-extrabold uppercase ${matchingRoom.tagBg}`}>
-                                  {matchingRoom.vietnameseName}
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded text-[8.5px] font-bold uppercase bg-slate-100 text-slate-500">
-                                  Hội trường lớn
-                                </span>
-                              )}
-                            </div>
-
-                            <div>
-                              <h4 className="font-extrabold text-slate-900 text-sm leading-snug">
-                                {session.title}
-                              </h4>
-                              <p className="text-xs text-slate-500 mt-1">
-                                {session.description}
-                              </p>
-                            </div>
-
-                            {matchingRoom && (
-                              <p className="text-[10px] text-slate-450 italic mt-1 leading-none">
-                                Chuyên đề: {matchingRoom.subtitle}
                               </p>
                             )}
 
