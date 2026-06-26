@@ -2537,7 +2537,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       <button
                         type="button"
                         onClick={handleSaveAsNewTemplate}
-                        className="px-3 py-1.5 rounded-lg bg-teal-650 hover:bg-teal-750 text-white font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none shadow-sm"
+                        className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none shadow-sm"
                       >
                         <Save className="w-3.5 h-3.5" />
                         Lưu mẫu thư mới
@@ -2546,7 +2546,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         <button
                           type="button"
                           onClick={handleOverwriteTemplate}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none shadow-sm"
+                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] flex items-center gap-1.5 cursor-pointer transition-all border-none shadow-sm"
                         >
                           <Save className="w-3.5 h-3.5" />
                           Lưu đè mẫu đang chọn
