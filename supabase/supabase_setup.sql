@@ -81,6 +81,7 @@ CREATE TABLE public.business_config (
     speaker_form_config JSONB DEFAULT '{}'::jsonb,
     sponsor_form_config JSONB DEFAULT '{}'::jsonb,
     cme_template_config JSONB DEFAULT '{}'::jsonb,
+    event_details_config JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -9,7 +9,7 @@ import {
   FileText, ArrowRight, HeartHandshake, Clock, Search, Star, Bookmark, 
   Filter, X, Info, HelpCircle
 } from 'lucide-react';
-import { store } from '../dataStore';
+import { store, DEFAULT_EVENT_DETAILS_CONFIG } from '../dataStore';
 import { ConferenceSession } from '../types';
 
 interface PublicEventDetailsProps {
@@ -129,6 +129,7 @@ function getSessionEnrichment(session: ConferenceSession) {
 }
 
 export default function PublicEventDetails({ onNavigate }: PublicEventDetailsProps) {
+  const edc = store.getBusinessConfig().eventDetailsConfig || DEFAULT_EVENT_DETAILS_CONFIG;
   const sessions = store.getSessions();
   const sponsors = store.getSponsors();
   const packages = store.getPackages().filter(p => p.isActive);
@@ -165,7 +166,10 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800">
       {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-teal-950 via-sky-950 to-slate-950 text-white py-20 px-4 overflow-hidden border-b border-teal-500/20">
+      <div 
+        className="relative bg-gradient-to-r from-teal-950 via-sky-950 to-slate-950 text-white py-20 px-4 overflow-hidden border-b border-teal-500/20 bg-cover bg-center"
+        style={edc.heroBannerUrl ? { backgroundImage: `linear-gradient(rgba(4, 47, 46, 0.85), rgba(15, 23, 42, 0.85)), url(${edc.heroBannerUrl})` } : undefined}
+      >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.15),transparent)]" />
         <div className="max-w-6xl mx-auto relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-300 text-xs font-bold mb-6 animate-pulse">
@@ -174,32 +178,32 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
           </div>
           
           <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-4xl text-teal-50 uppercase leading-snug">
-            Đại Hội Nhiệm Kỳ III & Hội Nghị Khoa Học Thường Niên VSAPS Lần Thứ 10
+            {edc.heroTitle}
           </h1>
           <p className="text-slate-300 text-lg md:text-xl max-w-2xl mb-8 leading-relaxed font-medium">
-            Chủ đề: <span className="text-amber-400 font-black">&ldquo;Cùng nhau định hình tương lai ngành Phẫu Thuật Tạo Hình Thẩm Mỹ&rdquo;</span>.
+            Chủ đề: <span className="text-amber-400 font-black">&ldquo;{edc.heroSubtitle}&rdquo;</span>.
           </p>
-
+ 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mb-10">
             <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md p-4 rounded-xl border border-white/10">
               <Calendar className="w-8 h-8 text-teal-400 shrink-0" />
               <div>
                 <p className="text-xs text-slate-400 font-black">THỜI GIAN</p>
-                <p className="text-sm font-extrabold text-white">11 - 13 Tháng 12, 2026</p>
+                <p className="text-sm font-extrabold text-white">{edc.eventDates}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md p-4 rounded-xl border border-white/10">
               <MapPin className="w-8 h-8 text-teal-400 shrink-0" />
               <div>
                 <p className="text-xs text-slate-400 font-black">ĐỊA ĐIỂM</p>
-                <p className="text-sm font-extrabold text-white">Bệnh viện Quân y 175, TP.HCM</p>
+                <p className="text-sm font-extrabold text-white">{edc.eventLocation}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md p-4 rounded-xl border border-white/10">
               <Users className="w-8 h-8 text-teal-400 shrink-0" />
               <div>
                 <p className="text-xs text-slate-400 font-black">QUY MÔ</p>
-                <p className="text-sm font-extrabold text-white">1200 - 1500 Đại biểu</p>
+                <p className="text-sm font-extrabold text-white">{edc.eventScale}</p>
               </div>
             </div>
           </div>
@@ -288,28 +292,28 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
               <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
                 <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                   <Cpu className="text-teal-600 w-5 h-5" />
-                  Mục tiêu trọng tâm VSAPS 2026
+                  {edc.introTitle}
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-4">
-                  Hội nghị khoa học thường niên VSAPS 2026 là điểm hẹn học thuật uy tín dành cho giới y khoa toàn quốc. Trong bối cảnh công nghệ số phát hiện vượt bậc, VSAPS 2026 cam kết nâng cao chuẩn mực an toàn bệnh nhân, chia sẻ các kết quả lâm sàng xuất sắc dựa trên bằng chứng, kết hợp trí tuệ nhân tạo và các công nghệ can thiệp ít xâm lấn.
+                  {edc.introParagraph1}
                 </p>
                 <p className="text-slate-600 leading-relaxed mb-6">
-                  Chúng tôi tập trung vào 4 chủ đề cốt lõi: Phẫu thuật Robot chính xác, Gây mê hồi sức kỹ thuật cao tối ưu hóa hồi phục sau mổ (ERAS), Chẩn đoán hình ảnh tiên tiến và Thẩm mỹ tạo hình an toàn y học.
+                  {edc.introParagraph2}
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex gap-3 p-4 bg-teal-50/50 rounded-xl border border-teal-100/50">
                     <CheckCircle className="text-teal-600 w-5 h-5 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-slate-900 text-sm">Cấp chứng nhận CME chính thức</h4>
-                      <p className="text-xs text-slate-500">Được cấp bởi Đại học Y Dược uy tín dành cho các Bác sỹ, Thầy thuốc tham dự đủ số tiết quy định.</p>
+                      <h4 className="font-semibold text-slate-900 text-sm">{edc.feature1Title}</h4>
+                      <p className="text-xs text-slate-500">{edc.feature1Desc}</p>
                     </div>
                   </div>
                   <div className="flex gap-3 p-4 bg-teal-50/50 rounded-xl border border-teal-100/50">
                     <CheckCircle className="text-teal-600 w-5 h-5 shrink-0 mt-0.5" />
                     <div>
-                      <h4 className="font-semibold text-slate-900 text-sm">Giao lưu doanh nghiệp toàn cầu</h4>
-                      <p className="text-xs text-slate-500">Tiếp cận 30+ gian hàng triển lãm vật tư y khoa thế hệ mới, thiết bị chuẩn đoán hình ảnh hàng đầu.</p>
+                      <h4 className="font-semibold text-slate-900 text-sm">{edc.feature2Title}</h4>
+                      <p className="text-xs text-slate-500">{edc.feature2Desc}</p>
                     </div>
                   </div>
                 </div>
@@ -322,26 +326,35 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                   Báo cáo viên chuyên đề nổi bật
                 </h3>
                 <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-600 to-sky-600 flex items-center justify-center text-white font-bold shrink-0 text-sm shadow">
-                      TQ
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900">PGS.TS.BS. Trần Quốc Bảo</h4>
-                      <p className="text-xs text-teal-600 font-medium mb-1">Trưởng khoa Ngoại Lồng Ngực - Bệnh viện 108</p>
-                      <p className="text-xs text-slate-500">Chuyên đề: &ldquo;Phẫu thuật Robot điều trị u trung thất trước: Kinh nghiệm tại Việt Nam&rdquo;</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-sky-600 via-teal-600 to-emerald-600 flex items-center justify-center text-white font-bold shrink-0 text-sm shadow">
-                      LM
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900">PGS.TS.BS. Lê Hoàng Mỹ</h4>
-                      <p className="text-xs text-teal-600 font-medium mb-1">Giảng viên bộ môn Thần Kinh - ĐH Y Dược TP.HCM</p>
-                      <p className="text-xs text-slate-500">Chuyên đề: &ldquo;Cập nhật liệu pháp kháng thể đơn dòng trong điều trị bệnh Alzheimer giai đoạn sớm&rdquo;</p>
-                    </div>
-                  </div>
+                  {(edc.highlightSpeakers || []).map((spk) => {
+                    const initials = spk.name
+                      .split(' ')
+                      .filter(Boolean)
+                      .slice(-2)
+                      .map((n) => n[0])
+                      .join('')
+                      .toUpperCase();
+
+                    return (
+                      <div key={spk.id} className="flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                        {spk.avatarUrl ? (
+                          <img src={spk.avatarUrl} alt={spk.name} className="w-12 h-12 rounded-full object-cover shrink-0 shadow border border-slate-100" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-teal-600 to-sky-600 flex items-center justify-center text-white font-bold shrink-0 text-sm shadow">
+                            {initials}
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="font-semibold text-slate-900">{spk.name}</h4>
+                          <p className="text-xs text-teal-600 font-medium mb-1">{spk.title}</p>
+                          <p className="text-xs text-slate-500">Chuyên đề: &ldquo;{spk.topic}&rdquo;</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(edc.highlightSpeakers || []).length === 0 && (
+                    <p className="text-xs text-slate-400 italic text-center py-4">Chưa có báo cáo viên nổi bật nào được cấu hình.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -353,31 +366,31 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                 <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
                   <div>
                     <span className="font-bold text-slate-800 block uppercase">Đơn vị chủ trì:</span>
-                    <span className="font-semibold text-slate-900">HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)</span>
+                    <span className="font-semibold text-slate-900">{edc.contactOrganizer}</span>
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 block uppercase">Chủ tịch hiệp hội:</span>
-                    <span className="font-semibold text-slate-900">PGS. TS. BS. LÊ HÀNH</span>
+                    <span className="font-semibold text-slate-900">{edc.contactPresident}</span>
                   </div>
                   <div className="border-t border-slate-100 pt-3">
                     <span className="font-bold text-slate-800 block uppercase">Thư ký liên hệ chính:</span>
-                    <span className="text-teal-900 font-extrabold text-sm">Thái Võ Ngọc Thư</span>
+                    <span className="text-teal-900 font-extrabold text-sm">{edc.contactSecretary}</span>
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 block uppercase">Hotline / Zalo hỗ trợ:</span>
-                    <span className="text-emerald-600 font-bold text-sm">+84964551151</span>
+                    <span className="text-emerald-600 font-bold text-sm">{edc.contactPhone}</span>
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 block uppercase">Email tiếp nhận:</span>
-                    <span className="text-sky-700 font-semibold text-xs font-mono select-all">vsaps.events@gmail.com</span>
+                    <span className="text-sky-700 font-semibold text-xs font-mono select-all">{edc.contactEmail}</span>
                   </div>
                   <div className="border-t border-slate-100 pt-3">
                     <span className="font-bold text-slate-800 block uppercase">Website chính thức:</span>
-                    <a href="https://vsaps.vn" target="_blank" rel="noreferrer" className="text-teal-600 hover:underline font-semibold font-mono">https://vsaps.vn/</a>
+                    <a href={edc.contactWebsite} target="_blank" rel="noreferrer" className="text-teal-600 hover:underline font-semibold font-mono">{edc.contactWebsite}</a>
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 block uppercase">Fanpage sự nghiệp:</span>
-                    <a href="https://www.facebook.com/vsapsevent" target="_blank" rel="noreferrer" className="text-indigo-650 hover:underline font-semibold text-[11px] font-mono break-all">facebook.com/vsapsevent</a>
+                    <a href={edc.contactFanpage} target="_blank" rel="noreferrer" className="text-indigo-650 hover:underline font-semibold text-[11px] font-mono break-all">{edc.contactFanpage.replace(/^https?:\/\/(www\.)?/, '')}</a>
                   </div>
                 </div>
               </div>

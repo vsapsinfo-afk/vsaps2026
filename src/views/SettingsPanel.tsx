@@ -39,7 +39,7 @@ import {
   RefreshCw,
   Award
 } from 'lucide-react';
-import { store, DEFAULT_CME_TEMPLATE_CONFIG } from '../dataStore';
+import { store, DEFAULT_CME_TEMPLATE_CONFIG, DEFAULT_EVENT_DETAILS_CONFIG } from '../dataStore';
 import { 
   UserAccount, 
   RegistrationPackage, 
@@ -54,7 +54,9 @@ import {
   BusinessConfig,
   EmbedScript,
   AddOnService,
-  CmeTemplateConfig
+  CmeTemplateConfig,
+  EventDetailsConfig,
+  HighlightSpeaker
 } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 
@@ -64,7 +66,7 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout' | 'event-details'>('business');
   const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
 
   // Printer config states (saved to localStorage for device-specific setup)
@@ -83,6 +85,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
 
   // Business Config state
   const [businessConfig, setBusinessConfig] = useState<BusinessConfig>(store.getBusinessConfig());
+  const [isSaving, setIsSaving] = useState(false);
 
   // Packages state
   const [packages, setPackages] = useState<RegistrationPackage[]>(store.getPackages());
@@ -1285,6 +1288,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           >
             <span className="shrink-0 text-base">🎓</span>
             <span>Thiết kế Chứng chỉ CME</span>
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('event-details')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'event-details'
+                ? 'bg-sky-850 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-sky-50 hover:text-sky-850 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">📰</span>
+            <span>Cài đặt Trang Tin Sự Kiện</span>
           </button>
 
           {/* Quick diagnostic tips */}
@@ -4468,6 +4483,475 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
 
                     </div>
                   </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {activeSubTab === 'event-details' && (() => {
+            const edc = businessConfig.eventDetailsConfig || DEFAULT_EVENT_DETAILS_CONFIG;
+            
+            const updateEdc = (updatedFields: Partial<EventDetailsConfig>) => {
+              setBusinessConfig({
+                ...businessConfig,
+                eventDetailsConfig: {
+                  ...edc,
+                  ...updatedFields
+                }
+              });
+            };
+
+            const handleAddSpeaker = () => {
+              const newSpk = {
+                id: `spk-${Date.now()}`,
+                name: 'Họ và tên Báo cáo viên',
+                title: 'Học vị, chức danh, nơi công tác',
+                topic: 'Chuyên đề bài báo cáo',
+                avatarUrl: ''
+              };
+              updateEdc({
+                highlightSpeakers: [...(edc.highlightSpeakers || []), newSpk]
+              });
+            };
+
+            const handleRemoveSpeaker = (id: string) => {
+              updateEdc({
+                highlightSpeakers: (edc.highlightSpeakers || []).filter(s => s.id !== id)
+              });
+            };
+
+            const handleSpeakerChange = (id: string, fields: Partial<HighlightSpeaker>) => {
+              updateEdc({
+                highlightSpeakers: (edc.highlightSpeakers || []).map(s => s.id === id ? { ...s, ...fields } : s)
+              });
+            };
+
+            return (
+              <div className="space-y-6">
+                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">📰 Cấu hình Trang Tin Sự Kiện (Public Details)</h3>
+                    <p className="text-[11px] text-slate-450 mt-0.5">Tùy chỉnh tiêu đề, chủ đề, thời gian, địa điểm, liên hệ và báo cáo viên nổi bật hiển thị ở trang ngoài.</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setIsSaving(true);
+                      try {
+                        await store.saveBusinessConfig(businessConfig);
+                        alert('Đã cập nhật cấu hình trang tin sự kiện thành công!');
+                        reloadData();
+                      } catch (err) {
+                        console.error(err);
+                        alert('Có lỗi xảy ra khi lưu cấu hình.');
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                    disabled={isSaving}
+                    className="px-4 py-2 bg-sky-800 hover:bg-sky-900 text-white font-bold text-xs rounded-xl shadow border-none cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSaving ? 'Đang lưu...' : '💾 Lưu Cấu Hình'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Section 1: Hero Banner & General Info */}
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
+                      🎨 HERO & BANNER ĐẦU TRANG
+                    </span>
+                    <div className="space-y-3.5">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 block mb-1">TIÊU ĐỀ LỚN HERO</label>
+                        <input
+                          type="text"
+                          value={edc.heroTitle}
+                          onChange={(e) => updateEdc({ heroTitle: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 block mb-1">CHỦ ĐỀ / KHẨU HIỆU CHÍNH</label>
+                        <input
+                          type="text"
+                          value={edc.heroSubtitle}
+                          onChange={(e) => updateEdc({ heroSubtitle: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">THỜI GIAN</label>
+                          <input
+                            type="text"
+                            value={edc.eventDates}
+                            onChange={(e) => updateEdc({ eventDates: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">ĐỊA ĐIỂM</label>
+                          <input
+                            type="text"
+                            value={edc.eventLocation}
+                            onChange={(e) => updateEdc({ eventLocation: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">QUY MÔ</label>
+                          <input
+                            type="text"
+                            value={edc.eventScale}
+                            onChange={(e) => updateEdc({ eventScale: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-500 block mb-1">Hình nền Banner Hero (Tải lên / URL)</label>
+                        <div className="flex items-center gap-3 bg-white p-2 border border-slate-200 rounded-xl">
+                          <div className="w-16 h-12 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                            {edc.heroBannerUrl ? (
+                              <img src={edc.heroBannerUrl} alt="Hero Banner" className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[9px] text-slate-400 font-bold select-none text-center">Gradient</span>
+                            )}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <label className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-350 text-[10px] font-bold rounded-lg cursor-pointer transition-all inline-block select-none">
+                              Tải ảnh lên
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      updateEdc({ heroBannerUrl: reader.result as string });
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                            {edc.heroBannerUrl && (
+                              <button
+                                type="button"
+                                onClick={() => updateEdc({ heroBannerUrl: '' })}
+                                className="px-2 py-1 ml-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded-lg border-none cursor-pointer"
+                              >
+                                Xóa
+                              </button>
+                            )}
+                            <input
+                              type="text"
+                              placeholder="Hoặc dán URL ảnh trực tiếp"
+                              value={edc.heroBannerUrl || ''}
+                              onChange={(e) => updateEdc({ heroBannerUrl: e.target.value })}
+                              className="w-full mt-1.5 px-2.5 py-1 border border-slate-200 rounded text-[10px] font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Contact Info */}
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
+                      📞 THÔNG TIN LIÊN HỆ BAN TỔ CHỨC (SIDEBAR)
+                    </span>
+                    <div className="space-y-3.5">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">ĐƠN VỊ CHỦ TRÌ</label>
+                          <input
+                            type="text"
+                            value={edc.contactOrganizer}
+                            onChange={(e) => updateEdc({ contactOrganizer: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">CHỦ TỊCH HIỆP HỘI</label>
+                          <input
+                            type="text"
+                            value={edc.contactPresident}
+                            onChange={(e) => updateEdc({ contactPresident: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">THƯ KÝ LIÊN HỆ CHÍNH</label>
+                          <input
+                            type="text"
+                            value={edc.contactSecretary}
+                            onChange={(e) => updateEdc({ contactSecretary: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">HOTLINE / ZALO HỖ TRỢ</label>
+                          <input
+                            type="text"
+                            value={edc.contactPhone}
+                            onChange={(e) => updateEdc({ contactPhone: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-1">
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">EMAIL</label>
+                          <input
+                            type="text"
+                            value={edc.contactEmail}
+                            onChange={(e) => updateEdc({ contactEmail: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">WEBSITE</label>
+                          <input
+                            type="text"
+                            value={edc.contactWebsite}
+                            onChange={(e) => updateEdc({ contactWebsite: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div className="col-span-1">
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">FANPAGE FACEBOOK</label>
+                          <input
+                            type="text"
+                            value={edc.contactFanpage}
+                            onChange={(e) => updateEdc({ contactFanpage: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 3: Intro & Features */}
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 lg:col-span-2">
+                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
+                      📝 NỘI DUNG GIỚI THIỆU & MỤC TIÊU SỰ KIỆN
+                    </span>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      <div className="space-y-3.5">
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">TIÊU ĐỀ GIỚI THIỆU</label>
+                          <input
+                            type="text"
+                            value={edc.introTitle}
+                            onChange={(e) => updateEdc({ introTitle: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">ĐOẠN VĂN GIỚI THIỆU 1</label>
+                          <textarea
+                            value={edc.introParagraph1}
+                            onChange={(e) => updateEdc({ introParagraph1: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            rows={3}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-slate-400 block mb-1">ĐOẠN VĂN GIỚI THIỆU 2</label>
+                          <textarea
+                            value={edc.introParagraph2}
+                            onChange={(e) => updateEdc({ introParagraph2: e.target.value })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3.5 bg-white p-4 rounded-xl border border-slate-200/60">
+                        <div className="grid grid-cols-2 gap-4 border-b border-slate-100 pb-3">
+                          <div>
+                            <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 1 - TIÊU ĐỀ</label>
+                            <input
+                              type="text"
+                              value={edc.feature1Title}
+                              onChange={(e) => updateEdc({ feature1Title: e.target.value })}
+                              className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 1 - MÔ TẢ</label>
+                            <input
+                              type="text"
+                              value={edc.feature1Desc}
+                              onChange={(e) => updateEdc({ feature1Desc: e.target.value })}
+                              className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 2 - TIÊU ĐỀ</label>
+                            <input
+                              type="text"
+                              value={edc.feature2Title}
+                              onChange={(e) => updateEdc({ feature2Title: e.target.value })}
+                              className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black text-teal-600 block mb-1">TÍNH NĂNG 2 - MÔ TẢ</label>
+                            <input
+                              type="text"
+                              value={edc.feature2Desc}
+                              onChange={(e) => updateEdc({ feature2Desc: e.target.value })}
+                              className="w-full px-3 py-1 border border-slate-200 rounded-lg text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4: Highlight Speakers */}
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 lg:col-span-2">
+                    <div className="flex justify-between items-center border-b border-slate-200 pb-1.5">
+                      <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
+                        👨‍🏫 BÁO CÁO VIÊN NỔI BẬT (HIGHLIGHT SPEAKERS)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleAddSpeaker}
+                        className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black rounded-lg border-none cursor-pointer flex items-center gap-1"
+                      >
+                        ➕ Thêm Báo Cáo Viên
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {(edc.highlightSpeakers || []).map((spk) => (
+                        <div key={spk.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSpeaker(spk.id)}
+                            className="absolute right-3 top-3 w-5 h-5 flex items-center justify-center bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-full border-none cursor-pointer"
+                            title="Xóa báo cáo viên"
+                          >
+                            ✕
+                          </button>
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-full border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0 relative">
+                              {spk.avatarUrl ? (
+                                <img src={spk.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-xs font-bold text-slate-400 select-none">No Ảnh</span>
+                              )}
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <label className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold rounded cursor-pointer transition-all inline-block select-none border border-slate-300">
+                                Tải ảnh
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const reader = new FileReader();
+                                      reader.onloadend = () => {
+                                        handleSpeakerChange(spk.id, { avatarUrl: reader.result as string });
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }
+                                  }}
+                                />
+                              </label>
+                              {spk.avatarUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSpeakerChange(spk.id, { avatarUrl: '' })}
+                                  className="px-1.5 py-0.5 ml-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[9px] font-bold rounded border-none cursor-pointer"
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                              <input
+                                type="text"
+                                placeholder="URL ảnh đại diện"
+                                value={spk.avatarUrl || ''}
+                                onChange={(e) => handleSpeakerChange(spk.id, { avatarUrl: e.target.value })}
+                                className="w-full mt-1 px-2 py-0.5 border border-slate-200 rounded text-[9px] font-mono"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div>
+                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Họ và tên *</label>
+                              <input
+                                type="text"
+                                value={spk.name}
+                                onChange={(e) => handleSpeakerChange(spk.id, { name: e.target.value })}
+                                className="w-full px-2 py-1 border border-slate-200 rounded text-xs font-bold"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Học hàm / Học vị / Chức vụ *</label>
+                              <input
+                                type="text"
+                                value={spk.title}
+                                onChange={(e) => handleSpeakerChange(spk.id, { title: e.target.value })}
+                                className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[8.5px] font-black text-slate-400 uppercase">Tên đề tài chuyên đề báo cáo *</label>
+                              <input
+                                type="text"
+                                value={spk.topic}
+                                onChange={(e) => handleSpeakerChange(spk.id, { topic: e.target.value })}
+                                className="w-full px-2 py-1 border border-slate-200 rounded text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {(edc.highlightSpeakers || []).length === 0 && (
+                        <div className="col-span-2 text-center py-6 text-slate-400 text-xs italic">
+                          Chưa có báo cáo viên nổi bật nào. Nhấn "Thêm Báo Cáo Viên" để bắt đầu.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="flex justify-end border-t border-slate-100 pt-4">
+                  <button
+                    onClick={async () => {
+                      setIsSaving(true);
+                      try {
+                        await store.saveBusinessConfig(businessConfig);
+                        alert('Đã cập nhật cấu hình trang tin sự kiện thành công!');
+                        reloadData();
+                      } catch (err) {
+                        console.error(err);
+                        alert('Có lỗi xảy ra khi lưu cấu hình.');
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                    disabled={isSaving}
+                    className="px-6 py-2.5 bg-sky-800 hover:bg-sky-900 text-white font-bold text-xs rounded-xl shadow border-none cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSaving ? 'Đang lưu...' : '💾 Lưu Cấu Hình'}
+                  </button>
                 </div>
               </div>
             );

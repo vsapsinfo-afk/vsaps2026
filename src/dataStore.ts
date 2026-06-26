@@ -28,6 +28,7 @@ import {
   Contact,
   SponsorPackage,
   CmeTemplateConfig,
+  EventDetailsConfig,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -128,6 +129,50 @@ export const DEFAULT_CME_TEMPLATE_CONFIG: CmeTemplateConfig = {
   logoUrl: "",
 };
 
+export const DEFAULT_EVENT_DETAILS_CONFIG: EventDetailsConfig = {
+  heroTitle: "Đại Hội Nhiệm Kỳ III & Hội Nghị Khoa Học Thường Niên VSAPS Lần Thứ 10",
+  heroSubtitle: "Cùng nhau định hình tương lai ngành Phẫu Thuật Tạo Hình Thẩm Mỹ",
+  eventDates: "11 - 13 Tháng 12, 2026",
+  eventLocation: "Bệnh viện Quân y 175, TP.HCM",
+  eventScale: "1200 - 1500 Đại biểu",
+  heroBannerUrl: "",
+
+  introTitle: "Mục tiêu trọng tâm VSAPS 2026",
+  introParagraph1: "Hội nghị khoa học thường niên VSAPS 2026 là điểm hẹn học thuật uy tín dành cho giới y khoa toàn quốc. Trong bối cảnh công nghệ số phát hiện vượt bậc, VSAPS 2026 cam kết nâng cao chuẩn mực an toàn bệnh nhân, chia sẻ các kết quả lâm sàng xuất sắc dựa trên bằng chứng, kết hợp trí tuệ nhân tạo và các công nghệ can thiệp ít xâm lấn.",
+  introParagraph2: "Chúng tôi tập trung vào 4 chủ đề cốt lõi: Phẫu thuật Robot chính xác, Gây mê hồi sức kỹ thuật cao tối ưu hóa hồi phục sau mổ (ERAS), Chẩn đoán hình ảnh tiên tiến và Thẩm mỹ tạo hình an toàn y học.",
+
+  feature1Title: "Cấp chứng nhận CME chính thức",
+  feature1Desc: "Được cấp bởi Đại học Y Dược uy tín dành cho các Bác sỹ, Thầy thuốc tham dự đủ số tiết quy định.",
+  feature2Title: "Giao lưu doanh nghiệp toàn cầu",
+  feature2Desc: "Tiếp cận 30+ gian hàng triển lãm vật tư y khoa thế hệ mới, thiết bị chuẩn đoán hình ảnh hàng đầu.",
+
+  highlightSpeakers: [
+    {
+      id: "spk-1",
+      name: "PGS.TS.BS. Trần Quốc Bảo",
+      title: "Trưởng khoa Ngoại Lồng Ngực - Bệnh viện 108",
+      topic: "Phẫu thuật Robot điều trị u trung thất trước: Kinh nghiệm tại Việt Nam",
+      avatarUrl: ""
+    },
+    {
+      id: "spk-2",
+      name: "PGS.TS.BS. Lê Hoàng Mỹ",
+      title: "Giảng viên bộ môn Thần Kinh - ĐH Y Dược TP.HCM",
+      topic: "Cập nhật liệu pháp kháng thể đơn dòng trong điều trị bệnh Alzheimer giai đoạn sớm",
+      avatarUrl: ""
+    }
+  ],
+
+  contactOrganizer: "HỘI PHẪU THUẬT TẠO HÌNH THẨM MỸ VIỆT NAM (VSAPS)",
+  contactPresident: "PGS. TS. BS. LÊ HÀNH",
+  contactSecretary: "Thái Võ Ngọc Thư",
+  contactPhone: "+84964551151",
+  contactEmail: "vsaps.events@gmail.com",
+  contactWebsite: "https://vsaps.vn/",
+  contactFanpage: "https://www.facebook.com/vsapsevent",
+  posterImageUrl: ""
+};
+
 const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   appUrl: 'https://vsaps2026.vercel.app',
   eventName: "Hội nghị Khoa học Thường niên VSAPS 2026",
@@ -140,6 +185,8 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
   autoSendZns: true,
   requirePracticeCode: true,
   cmeTemplateConfig: DEFAULT_CME_TEMPLATE_CONFIG,
+  eventDetailsConfig: DEFAULT_EVENT_DETAILS_CONFIG,
+
 
   pwaName: "VSAPS 2026 - Hội Nghị Khoa Học Thẩm Mỹ",
   pwaShortName: "VSAPS 2026",
@@ -2082,14 +2129,36 @@ export class DataStore {
   }
 
   getBusinessConfig() { return this.businessConfig; }
-  saveBusinessConfig(config: BusinessConfig) {
+  async saveBusinessConfig(config: BusinessConfig) {
+    if (isSupabaseConfigured() && config.eventDetailsConfig) {
+      const edc = config.eventDetailsConfig;
+      if (edc.heroBannerUrl && edc.heroBannerUrl.startsWith('data:')) {
+        const path = `event_details/hero_banner_${Date.now()}.png`;
+        const publicUrl = await uploadToSupabaseStorage(path, edc.heroBannerUrl);
+        if (publicUrl) edc.heroBannerUrl = publicUrl;
+      }
+      if (edc.posterImageUrl && edc.posterImageUrl.startsWith('data:')) {
+        const path = `event_details/poster_${Date.now()}.png`;
+        const publicUrl = await uploadToSupabaseStorage(path, edc.posterImageUrl);
+        if (publicUrl) edc.posterImageUrl = publicUrl;
+      }
+      if (edc.highlightSpeakers && edc.highlightSpeakers.length > 0) {
+        for (const spk of edc.highlightSpeakers) {
+          if (spk.avatarUrl && spk.avatarUrl.startsWith('data:')) {
+            const path = `event_details/speaker_${spk.id}_${Date.now()}.png`;
+            const publicUrl = await uploadToSupabaseStorage(path, spk.avatarUrl);
+            if (publicUrl) spk.avatarUrl = publicUrl;
+          }
+        }
+      }
+    }
+
     this.businessConfig = config;
     this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, config);
 
     if (isSupabaseConfigured()) {
-      supabase.from('business_config').upsert(mapBusinessConfigToDb(config)).then(({ error }) => {
-        if (error) console.error('Error saving Business Config to Supabase:', error);
-      });
+      const { error } = await supabase.from('business_config').upsert(mapBusinessConfigToDb(config));
+      if (error) console.error('Error saving Business Config to Supabase:', error);
     }
     return config;
   }

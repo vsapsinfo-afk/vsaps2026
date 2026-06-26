@@ -340,6 +340,44 @@ export interface CmeTemplateConfig {
   logoUrl?: string;
 }
 
+export interface HighlightSpeaker {
+  id: string;
+  name: string;
+  title: string;
+  topic: string;
+  avatarUrl?: string;
+}
+
+export interface EventDetailsConfig {
+  heroTitle: string;
+  heroSubtitle: string;
+  eventDates: string;
+  eventLocation: string;
+  eventScale: string;
+  heroBannerUrl?: string;
+  
+  introTitle: string;
+  introParagraph1: string;
+  introParagraph2: string;
+  
+  feature1Title: string;
+  feature1Desc: string;
+  feature2Title: string;
+  feature2Desc: string;
+  
+  highlightSpeakers?: HighlightSpeaker[];
+  
+  contactOrganizer: string;
+  contactPresident: string;
+  contactSecretary: string;
+  contactPhone: string;
+  contactEmail: string;
+  contactWebsite: string;
+  contactFanpage: string;
+  
+  posterImageUrl?: string;
+}
+
 export interface BusinessConfig {
   eventName: string;
   organizerName: string;
@@ -368,7 +406,10 @@ export interface BusinessConfig {
   addOnServices?: AddOnService[];
   /** Cấu hình layout chứng chỉ CME điện tử */
   cmeTemplateConfig?: CmeTemplateConfig;
+  /** Cấu hình chi tiết trang tin sự kiện public */
+  eventDetailsConfig?: EventDetailsConfig;
 }
+
 
 
 export interface EmbedScript {
