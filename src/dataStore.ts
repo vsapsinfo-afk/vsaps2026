@@ -170,7 +170,10 @@ export const DEFAULT_EVENT_DETAILS_CONFIG: EventDetailsConfig = {
   contactEmail: "vsaps.events@gmail.com",
   contactWebsite: "https://vsaps.vn/",
   contactFanpage: "https://www.facebook.com/vsapsevent",
-  posterImageUrl: ""
+  posterImageUrl: "",
+  seoTitle: "VSAPS 2026 - Đại Hội Nhiệm Kỳ III & Hội Nghị Khoa Học Thường Niên Lần Thứ 10",
+  seoDescription: "Hội nghị khoa học thường niên VSAPS 2026 là điểm hẹn học thuật uy tín dành cho giới y khoa tạo hình thẩm mỹ toàn quốc.",
+  seoKeywords: "VSAPS 2026, hội nghị thẩm mỹ, phẫu thuật thẩm mỹ, hội thảo y khoa, tạo hình thẩm mỹ, cme phẫu thuật thẩm mỹ"
 };
 
 const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {

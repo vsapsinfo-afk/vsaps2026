@@ -376,6 +376,9 @@ export interface EventDetailsConfig {
   contactFanpage: string;
   
   posterImageUrl?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string;
 }
 
 export interface BusinessConfig {

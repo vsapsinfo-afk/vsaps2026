@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, MapPin, Users, Award, ShieldAlert, Cpu, CheckCircle, 
   FileText, ArrowRight, HeartHandshake, Clock, Search, Star, Bookmark, 
@@ -163,11 +163,33 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
     localStorage.setItem('vsaps2026_my_agenda', JSON.stringify(updated));
   };
 
+  useEffect(() => {
+    if (edc) {
+      document.title = edc.seoTitle || edc.heroTitle || "VSAPS 2026";
+      
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+        metaDesc = document.createElement('meta');
+        metaDesc.setAttribute('name', 'description');
+        document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute('content', edc.seoDescription || edc.heroSubtitle || "");
+
+      let metaKeywords = document.querySelector('meta[name="keywords"]');
+      if (!metaKeywords) {
+        metaKeywords = document.createElement('meta');
+        metaKeywords.setAttribute('name', 'keywords');
+        document.head.appendChild(metaKeywords);
+      }
+      metaKeywords.setAttribute('content', edc.seoKeywords || "");
+    }
+  }, [edc]);
+
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800">
       {/* Hero Section */}
       <div 
-        className="relative bg-gradient-to-r from-teal-950 via-sky-950 to-slate-950 text-white py-20 px-4 overflow-hidden border-b border-teal-500/20 bg-cover bg-center"
+        className="relative bg-gradient-to-r from-teal-950 via-sky-950 to-slate-950 text-white py-12 md:py-16 px-4 overflow-hidden border-b border-teal-500/20 bg-cover bg-center"
         style={edc.heroBannerUrl ? { backgroundImage: `linear-gradient(rgba(4, 47, 46, 0.85), rgba(15, 23, 42, 0.85)), url(${edc.heroBannerUrl})` } : undefined}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.15),transparent)]" />
@@ -285,11 +307,11 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         {activeTab === 'intro' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
                   <Cpu className="text-teal-600 w-5 h-5" />
                   {edc.introTitle}
@@ -320,7 +342,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
               </div>
 
               {/* Speaker Highlights info */}
-              <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                 <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
                   <Users className="text-teal-600 w-5 h-5" />
                   Báo cáo viên chuyên đề nổi bật
@@ -361,7 +383,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
 
             {/* Practical info sidebar */}
             <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
                 <h4 className="font-bold text-slate-900 mb-4 text-md">Thông Tin Liên Hệ Ban Tổ Chức</h4>
                 <div className="space-y-4 text-xs text-slate-600 leading-relaxed">
                   <div>
@@ -395,7 +417,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-6 rounded-2xl border border-indigo-950 shadow-md">
+              <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-2xl border border-indigo-950 shadow-md">
                 <h4 className="font-bold mb-2 flex items-center gap-2">
                   <ShieldAlert className="w-5 h-5 text-teal-400" />
                   Bạn là Báo Cáo Viên?
@@ -416,10 +438,10 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
         )}
 
         {activeTab === 'schedule' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Header controls & Quick tabs */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-3.5">
                 <div>
                   <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                     <Award className="w-6 h-6 text-teal-600" />
@@ -846,14 +868,14 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
         )}
 
         {activeTab === 'sponsors' && (
-          <div className="space-y-12">
+          <div className="space-y-8">
             {/* Gói đăng ký */}
             <div>
               <h3 className="text-2xl font-black text-slate-900 text-center mb-2 uppercase tracking-tight">HƯỚNG DẪN ĐĂNG KÝ & BIỂU PHÍ THAM DỰ HỘI NGHỊ</h3>
               <p className="text-sm text-slate-500 text-center mb-8">Lựa chọn các hạng mục đăng ký tối ưu được Ban Chấp Hành hội VSAPS 2026 phê chuẩn chính thức</p>
 
               {/* Official Pricing Guideline Table */}
-              <div className="bg-white rounded-2xl border border-slate-205 shadow-md overflow-hidden p-6 mb-10 max-w-4xl mx-auto space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-205 shadow-md overflow-hidden p-5 mb-6 max-w-4xl mx-auto space-y-4">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                   <span className="bg-teal-900 text-amber-400 font-mono font-bold px-2 py-0.5 rounded text-[10px]">INFO</span>
                   <h4 className="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Bảng Biểu Phí Đăng Ký Hệ Thống Năm 2026</h4>
@@ -920,7 +942,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {packages.map((pkg) => {
                   const today = new Date();
                   const targetDate = new Date('2026-11-10');
@@ -982,7 +1004,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
             </div>
 
             {/* Dịch vụ Tự chọn thêm cho Đại biểu */}
-            <div className="bg-amber-50/40 rounded-3xl border border-amber-200/50 p-6 flex flex-col md:flex-row items-center gap-6 justify-between shadow-sm">
+            <div className="bg-amber-50/40 rounded-3xl border border-amber-200/50 p-5 flex flex-col md:flex-row items-center gap-6 justify-between shadow-sm">
               <div className="space-y-2">
                 <span className="text-[9px] font-bold text-amber-700 uppercase bg-amber-100 px-2 py-0.5 rounded tracking-wider">Học phần dịch vụ bổ sung tự chọn</span>
                 <h4 className="text-base font-black text-slate-900 uppercase">Tùy Chọn Đăng Ký Cấp CME, GALA DINNER, MASTERCLASS & TOUR</h4>
@@ -1009,7 +1031,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
             </div>
 
             {/* CTA Đăng ký tài trợ Doanh Nghiệp */}
-            <div className="bg-gradient-to-r from-teal-900 to-indigo-950 p-8 rounded-3xl border border-teal-500/20 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-teal-900 to-indigo-950 p-6 rounded-3xl border border-teal-500/20 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(20,184,166,0.1),transparent)]" />
               <div className="space-y-2 relative z-10 max-w-xl text-center md:text-left">
                 <span className="text-[10px] font-bold text-teal-300 uppercase tracking-widest font-mono">VSAPS 2026 PARTNER OPPORTUNITIES</span>
@@ -1028,8 +1050,8 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
             </div>
 
             {/* Đồng hành của doanh tài trợ */}
-            <div className="border-t border-slate-205 pt-12">
-              <h3 className="text-xl font-bold text-slate-900 text-center mb-6 uppercase tracking-wider">Doanh nghiệp Đồng Hành Tài Trợ</h3>
+            <div className="border-t border-slate-205 pt-8">
+              <h3 className="text-xl font-bold text-slate-900 text-center mb-4 uppercase tracking-wider">Doanh nghiệp Đồng Hành Tài Trợ</h3>
               
               <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16">
                 {sponsors.map(sponsor => (
@@ -1202,7 +1224,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
       })()}
       
       {/* Footer space */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4 border-t border-slate-800 text-center text-sm">
+      <footer className="bg-slate-900 text-slate-400 py-8 px-4 border-t border-slate-800 text-center text-sm">
         <div className="max-w-6xl mx-auto space-y-4">
           <p className="font-bold text-white tracking-widest text-base">VSAPS 2026 EVENT MANAGEMENT</p>
           <p>Hội nghị Khoa học thường niên Hiệp hội Phẫu thuật Thẩm mỹ Y khoa Việt Nam</p>

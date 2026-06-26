@@ -4930,6 +4930,45 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     </div>
                   </div>
 
+                  {/* Section 5: SEO Configuration */}
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 lg:col-span-2">
+                    <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest block border-b border-slate-200 pb-1.5">
+                      🔍 Cấu hình SEO cho trang tin sự kiện
+                    </span>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 block mb-1">TIÊU ĐỀ SEO (SEO TITLE)</label>
+                        <input
+                          type="text"
+                          value={edc.seoTitle || ''}
+                          placeholder="Mặc định sử dụng Tiêu đề Hero"
+                          onChange={(e) => updateEdc({ seoTitle: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 block mb-1">MÔ TẢ SEO (SEO DESCRIPTION)</label>
+                        <textarea
+                          value={edc.seoDescription || ''}
+                          placeholder="Nhập mô tả ngắn gọn tối ưu hóa tìm kiếm Google"
+                          onChange={(e) => updateEdc({ seoDescription: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-black text-slate-400 block mb-1">TỪ KHÓA SEO (SEO KEYWORDS - CÁCH NHAU BẰNG DẤU PHẨY)</label>
+                        <input
+                          type="text"
+                          value={edc.seoKeywords || ''}
+                          placeholder="Ví dụ: phẫu thuật thẩm mỹ, hội thảo y khoa, VSAPS..."
+                          onChange={(e) => updateEdc({ seoKeywords: e.target.value })}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
                 <div className="flex justify-end border-t border-slate-100 pt-4">
