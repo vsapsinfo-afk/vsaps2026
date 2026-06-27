@@ -4,12 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Plus, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare, Save } from 'lucide-react';
+import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCircle, AlertTriangle, Info, FileText, ToggleLeft, ToggleRight, Trash2, Plus, Check, X, Bell, Radio, Wifi, Volume2, BellOff, Smartphone, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, Image, Type, Code, Eye, RefreshCw, Palette, Upload, Play, Pause, Square, Users, CheckSquare, Save } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { NotificationTemplate, SentNotificationLog, Contact } from '../types';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, uploadToSupabaseStorage } from '../lib/supabase';
 
 interface NotificationSystemProps {
   defaultTab?: 'templates' | 'bulk';
@@ -39,6 +39,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [bulkEditorMode, setBulkEditorMode] = useState<'visual' | 'code'>('visual');
   const bulkEditorRef = React.useRef<HTMLDivElement>(null);
   const [selectedEmailTemplateId, setSelectedEmailTemplateId] = useState<string>('');
+  const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
 
   // Zalo bulk templates
   const [zaloTemplates, setZaloTemplates] = useState<NotificationTemplate[]>(() =>
@@ -737,6 +738,87 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     } catch (err) {
       console.error('Lỗi khi cập nhật mẫu thư:', err);
       alert('Không thể lưu mẫu thư.');
+    }
+  };
+
+  const insertImageIntoEditor = (url: string) => {
+    if (bulkEditorMode === 'visual') {
+      bulkEditorRef.current?.focus();
+      document.execCommand('insertImage', false, url);
+      if (bulkEditorRef.current) {
+        setBulkBody(bulkEditorRef.current.innerHTML);
+      }
+    } else {
+      const imgTag = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
+      const textarea = document.getElementById('bulk-body-textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+        const nextValue = before + imgTag + after;
+        setBulkBody(nextValue);
+      } else {
+        setBulkBody(prev => prev + imgTag);
+      }
+    }
+  };
+
+  const handleImageUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh dưới 5MB.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result as string;
+        const fileExt = file.name.split('.').pop() || 'png';
+        const path = `email-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+        
+        let imageUrl = '';
+        if (isSupabaseConfigured()) {
+          const publicUrl = await uploadToSupabaseStorage(path, base64Data);
+          if (publicUrl) {
+            imageUrl = publicUrl;
+          } else {
+            imageUrl = base64Data;
+          }
+        } else {
+          imageUrl = base64Data;
+        }
+
+        insertImageIntoEditor(imageUrl);
+        setIsUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error uploading email image:', err);
+      alert('Không thể tải ảnh lên. Vui lòng thử lại.');
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleInsertImageClick = () => {
+    const choice = window.confirm(
+      "Bạn muốn tải ảnh lên từ máy tính hay chèn link ảnh?\n\n" +
+      "Bấm OK (hoặc Yes): Để Tải ảnh lên từ máy tính.\n" +
+      "Bấm Hủy (hoặc No/Cancel): Để Chèn link ảnh (Image URL) từ internet."
+    );
+    
+    if (choice) {
+      document.getElementById('bulk-image-upload-input')?.click();
+    } else {
+      const url = prompt('Nhập địa chỉ hình ảnh (URL):', 'https://');
+      if (url && url.trim()) {
+        insertImageIntoEditor(url.trim());
+      }
     }
   };
 
@@ -2691,6 +2773,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         <Link className="w-3.5 h-3.5" />
                       </button>
 
+                      {/* Image insertion */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleInsertImageClick();
+                        }}
+                        className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                        title="Chèn hoặc Tải lên hình ảnh"
+                      >
+                        <Image className="w-3.5 h-3.5" />
+                      </button>
+
                       {/* Color selector dropdown */}
                       <div className="relative group flex items-center">
                         <button
@@ -2738,7 +2833,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   )}
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Nội dung thư (HTML body)</label>
+                    <input
+                      type="file"
+                      id="bulk-image-upload-input"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUploadChange}
+                    />
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">Nội dung thư (HTML body)</label>
+                      {isUploadingImage && (
+                        <span className="text-[9px] text-indigo-650 font-black animate-pulse">⏳ Đang xử lý & tải hình ảnh lên hệ thống...</span>
+                      )}
+                    </div>
                     {bulkEditorMode === 'visual' ? (
                       <div className="relative">
                         <div
