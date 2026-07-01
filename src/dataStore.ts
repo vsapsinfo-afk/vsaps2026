@@ -2735,7 +2735,9 @@ export class DataStore {
       try {
         const isHtml = /<[a-z][\s\S]*>/i.test(content);
         const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
-        const hideQrSection = template?.type === 'abstract_approved' || 
+        const isPaid = statusStr === 'paid' || statusStr === 'fully_paid';
+        const hideQrSection = !isPaid || 
+                              template?.type === 'abstract_approved' || 
                               template?.id === 'tmpl-speaker-email' || 
                               template?.id === 'tmpl-speaker-registered' ||
                               template?.id === 'tmpl-speaker-submitted-email' ||
