@@ -2736,6 +2736,18 @@ export class DataStore {
         const isHtml = /<[a-z][\s\S]*>/i.test(content);
         const formattedBody = isHtml ? content : content.replace(/\n/g, '<br/>');
         const isPaid = statusStr === 'paid' || statusStr === 'fully_paid';
+        const isRegistrationEmail = template?.type === 'registration_success' || template?.id === 'tmpl-reg-email' || templateId === 'tmpl-reg-email';
+        
+        // Define payment transfer memo and VietQR url
+        const cleanFullNameAscii = attendee.fullName
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[đĐ]/g, 'D')
+          .replace(/[^A-Za-z0-9\s]/g, '')
+          .toUpperCase();
+        const transferMessage = `VSAPS26-${cleanFullNameAscii} ${attendee.phone}`;
+        const vietQrUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${attendee.packageFee}&addInfo=${encodeURIComponent(transferMessage)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
+
         const hideQrSection = !isPaid || 
                               template?.type === 'abstract_approved' || 
                               template?.id === 'tmpl-speaker-email' || 
@@ -2746,6 +2758,7 @@ export class DataStore {
                               template?.id?.includes('sponsor') ||
                               attendee.id.includes('SPK') || 
                               attendee.id.includes('SPN');
+
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -2769,6 +2782,29 @@ export class DataStore {
             <div style="text-align: center; margin: 25px 0; background-color: #f1f5f9; padding: 20px; border-radius: 8px;">
               <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; font-weight: bold;">MÃ QR CHECK-IN</p>
               <img src="${payload.attachment_qr}" alt="QR Code" style="width: 180px; height: 180px;" />
+            </div>
+            ` : ''}
+
+            ${!isPaid && isRegistrationEmail ? `
+            <div style="background-color: #fffbeb; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; margin: 20px 0; border: 1px solid #fde68a;">
+              <h4 style="margin: 0 0 12px 0; color: #b45309; font-size: 14px; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #fde68a; padding-bottom: 6px;">
+                Hướng Dẫn Thanh Toán Lệ Phí / Payment Instructions
+              </h4>
+              <p style="font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 12px;">
+                Quý đại biểu vui lòng chuyển khoản thanh toán lệ phí tham dự theo thông tin dưới đây để xác nhận đăng ký và kích hoạt mã QR check-in chính thức:
+              </p>
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #374151;">
+                <tr><td style="padding: 5px 0; font-weight: bold; width: 130px; color: #6b7280;">Ngân hàng:</td><td style="padding: 5px 0; font-weight: bold;">Vietcombank (VCB)</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold; color: #6b7280;">Số tài khoản:</td><td style="padding: 5px 0; font-weight: bold; font-family: monospace; font-size: 14px; color: #1e3a8a;">0331000516283</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold; color: #6b7280;">Chủ tài khoản:</td><td style="padding: 5px 0; font-weight: bold; text-transform: uppercase;">HOI PHAU THUAT TAO HINH THAM MY VIET NAM</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold; color: #6b7280;">Số tiền nộp:</td><td style="padding: 5px 0; font-weight: bold; font-family: monospace; color: #b45309; font-size: 14px;">${attendee.packageFee.toLocaleString()} VNĐ</td></tr>
+                <tr><td style="padding: 5px 0; font-weight: bold; color: #6b7280;">Cú pháp CK:</td><td style="padding: 5px 0; font-weight: bold; font-family: monospace; background-color: #fff7ed; border: 1px dashed #fdba74; padding: 4px 8px; border-radius: 4px; display: inline-block; color: #c2410c;">${transferMessage}</td></tr>
+              </table>
+              
+              <div style="text-align: center; margin-top: 20px; background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #fde68a;">
+                <p style="font-size: 12px; color: #78350f; margin: 0 0 10px 0; font-weight: bold; text-transform: uppercase;">Quét mã VietQR để chuyển khoản nhanh</p>
+                <img src="${vietQrUrl}" alt="VietQR Payment Code" style="width: 200px; height: auto; border: 1px solid #e2e8f0; padding: 5px; border-radius: 4px;" />
+              </div>
             </div>
             ` : ''}
           </div>
