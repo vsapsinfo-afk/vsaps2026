@@ -602,6 +602,87 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     }
   };
 
+  const insertTemplateImageIntoEditor = (url: string) => {
+    if (editorMode === 'visual') {
+      editorRef.current?.focus();
+      document.execCommand('insertImage', false, url);
+      if (editorRef.current) {
+        setContent(editorRef.current.innerHTML);
+      }
+    } else {
+      const imgTag = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+        const nextValue = before + imgTag + after;
+        setContent(nextValue);
+      } else {
+        setContent(prev => prev + imgTag);
+      }
+    }
+  };
+
+  const handleTemplateImageUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Kích thước ảnh quá lớn. Vui lòng chọn ảnh dưới 5MB.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result as string;
+        const fileExt = file.name.split('.').pop() || 'png';
+        const path = `email-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+        
+        let imageUrl = '';
+        if (isSupabaseConfigured()) {
+          const publicUrl = await uploadToSupabaseStorage(path, base64Data);
+          if (publicUrl) {
+            imageUrl = publicUrl;
+          } else {
+            imageUrl = base64Data;
+          }
+        } else {
+          imageUrl = base64Data;
+        }
+
+        insertTemplateImageIntoEditor(imageUrl);
+        setIsUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error uploading email image:', err);
+      alert('Không thể tải ảnh lên. Vui lòng thử lại.');
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleInsertTemplateImageClick = () => {
+    const choice = window.confirm(
+      "Bạn muốn tải ảnh lên từ máy tính hay chèn link ảnh?\n\n" +
+      "Bấm OK (hoặc Yes): Để Tải ảnh lên từ máy tính.\n" +
+      "Bấm Hủy (hoặc No/Cancel): Để Chèn link ảnh (Image URL) từ internet."
+    );
+    
+    if (choice) {
+      document.getElementById('template-image-upload-input')?.click();
+    } else {
+      const url = prompt('Nhập địa chỉ hình ảnh (URL):', 'https://');
+      if (url && url.trim()) {
+        insertTemplateImageIntoEditor(url.trim());
+      }
+    }
+  };
+
   // Sync contenteditable content when switching to visual mode in bulk tab
   React.useEffect(() => {
     if (bulkEditorMode === 'visual' && bulkEditorRef.current && bulkChannel === 'email') {
@@ -1804,6 +1885,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     <Link className="w-3.5 h-3.5" />
                   </button>
 
+                  {/* Image insertion */}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleInsertTemplateImageClick();
+                    }}
+                    className="p-1.5 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
+                    title="Chèn hoặc Tải lên hình ảnh"
+                  >
+                    <Image className="w-3.5 h-3.5" />
+                  </button>
+
                   {/* Color selector dropdown */}
                   <div className="relative group flex items-center">
                     <button
@@ -1853,7 +1947,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               {/* Editor/Preview Display Body */}
               {editTab === 'edit' ? (
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Nội dung mẫu tin (Message Body) *</label>
+                  <input
+                    type="file"
+                    id="template-image-upload-input"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleTemplateImageUploadChange}
+                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-bold text-slate-500 block">Nội dung mẫu tin (Message Body) *</label>
+                    {isUploadingImage && (
+                      <span className="text-[9px] text-indigo-650 font-black animate-pulse">⏳ Đang xử lý & tải hình ảnh lên hệ thống...</span>
+                    )}
+                  </div>
                   
                   {selectedTemplate.channel === 'email' && editorMode === 'visual' ? (
                     <div className="relative">
