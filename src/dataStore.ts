@@ -2634,8 +2634,21 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_NOTIFICATION_LOGS, this.notificationLogs);
 
     if (isSupabaseConfigured()) {
-      supabase.from('notification_logs').insert(mapNotifLogToDb(log)).then(({ error }) => {
-        if (error) console.error('Error syncing notification log to Supabase:', error);
+      const payload = mapNotifLogToDb(log);
+      supabase.from('notification_logs').insert(payload).then(({ error }) => {
+        if (error) {
+          if (error.code === '23503' && payload.template_id) {
+            // Fallback: template_id does not exist in notification_templates on Supabase, retry with null template_id
+            payload.template_id = null;
+            supabase.from('notification_logs').insert(payload).then(({ error: retryError }) => {
+              if (retryError) {
+                console.error('Error syncing notification log to Supabase (retry):', retryError);
+              }
+            });
+          } else {
+            console.error('Error syncing notification log to Supabase:', error);
+          }
+        }
       });
     }
   }
