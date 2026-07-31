@@ -451,15 +451,15 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             // App url for tracking
             const trackingBaseUrl = store.getBusinessConfig().appUrl || window.location.origin;
 
-            // Tracking rewrites for Campaigns
-            if (bulkSubTab === 'campaign' && selectedCampaign) {
-              const campaignId = selectedCampaign.id;
+            // Real Tracking rewrites (Open Pixel & Link Click Tracking) for ALL bulk email sends
+            if (bulkChannel === 'email') {
+              const campaignId = selectedCampaign?.id || 'instant-bulk';
               
-              // 1. Rewrite links
+              // 1. Rewrite links for real-time click tracking
               compiledBody = rewriteLinksForTracking(compiledBody, campaignId, recipient.email, trackingBaseUrl);
               
-              // 2. Append open pixel
-              compiledBody += `<img src="${trackingBaseUrl}/api/campaign/track?type=open&campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipient.email)}" width="1" height="1" style="display:none;" />`;
+              // 2. Append 1x1 transparent open tracking pixel
+              compiledBody += `<img src="${trackingBaseUrl}/api/campaign/track?type=open&campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipient.email)}" width="1" height="1" style="display:none;" alt="" />`;
             }
 
             const activeMethod = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.method : bulkEmailMethod;
