@@ -29,6 +29,8 @@ import {
   SponsorPackage,
   CmeTemplateConfig,
   EventDetailsConfig,
+  EmailCampaign,
+  CampaignActivity,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
 import {
@@ -566,6 +568,8 @@ export class DataStore {
   private static KEY_CONTACTS = 'vsaps_contacts';
   private static KEY_BOOTHS = 'vsaps_booths';
   private static KEY_BOOTH_LAYOUT_MAP = 'vsaps_booth_layout_map';
+  private static KEY_CAMPAIGNS = 'vsaps_campaigns';
+  private static KEY_CAMPAIGN_ACTIVITIES = 'vsaps_campaign_activities';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -596,6 +600,7 @@ export class DataStore {
   private contacts: Contact[] = [];
   private booths: string[] = [];
   private boothLayoutMap: string = '/booth_layout_map.png';
+  private campaigns: EmailCampaign[] = [];
 
   constructor() {
     this.loadLocalStorage();
@@ -665,6 +670,7 @@ export class DataStore {
     this.contacts = this.getLocalStorage(DataStore.KEY_CONTACTS, []);
     this.booths = this.getLocalStorage(DataStore.KEY_BOOTHS, ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2']);
     this.boothLayoutMap = this.getLocalStorage(DataStore.KEY_BOOTH_LAYOUT_MAP, '/booth_layout_map.png');
+    this.campaigns = this.getLocalStorage(DataStore.KEY_CAMPAIGNS, []);
   }
 
   /**
@@ -706,6 +712,7 @@ export class DataStore {
         { data: dbShifts },
         { data: dbSections },
         { data: dbContacts },
+        { data: dbCampaigns },
       ] = await Promise.all([
         supabase.from('packages').select('*'),
         supabase.from('specialty_tracks').select('*'),
@@ -726,6 +733,7 @@ export class DataStore {
         Promise.resolve(supabase.from('shifts').select('*')).catch(() => ({ data: null })),
         Promise.resolve(supabase.from('virtual_sections').select('*')).catch(() => ({ data: null })),
         Promise.resolve(supabase.from('contacts').select('*')).catch(() => ({ data: null })),
+        Promise.resolve(supabase.from('email_campaigns').select('*')).catch(() => ({ data: null })),
       ]);
 
       if (pkgs) {
@@ -878,6 +886,10 @@ export class DataStore {
       if (dbContacts) {
         this.contacts = dbContacts.map(mapDbToContact);
         this.saveToLocalStorage(DataStore.KEY_CONTACTS, this.contacts);
+      }
+      if (dbCampaigns && dbCampaigns.length > 0) {
+        this.campaigns = dbCampaigns;
+        this.saveToLocalStorage(DataStore.KEY_CAMPAIGNS, this.campaigns);
       }
 
       console.log('✅ Supabase cache synchronization complete!');
@@ -2107,6 +2119,163 @@ export class DataStore {
     }
     window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'contacts' } }));
     return contacts;
+  }
+
+  getCampaigns() { return this.campaigns; }
+
+  async saveCampaign(campaign: EmailCampaign): Promise<EmailCampaign> {
+    const idx = this.campaigns.findIndex(c => c.id === campaign.id);
+    const isNew = idx < 0;
+    if (isNew) {
+      this.campaigns.push(campaign);
+    } else {
+      this.campaigns[idx] = campaign;
+    }
+    this.saveToLocalStorage(DataStore.KEY_CAMPAIGNS, this.campaigns);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase.from('email_campaigns').upsert(campaign);
+        if (error) {
+          console.error('Error saving campaign to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error in Supabase campaign upsert:', err);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'email_campaigns' } }));
+    return campaign;
+  }
+
+  async deleteCampaign(id: string): Promise<boolean> {
+    this.campaigns = this.campaigns.filter(c => c.id !== id);
+    this.saveToLocalStorage(DataStore.KEY_CAMPAIGNS, this.campaigns);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase.from('email_campaigns').delete().eq('id', id);
+        if (error) {
+          console.error('Error deleting campaign from Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error in Supabase campaign delete:', err);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'email_campaigns' } }));
+    return true;
+  }
+
+  getCampaignActivitiesFromLocal(): CampaignActivity[] {
+    return this.getLocalStorage(DataStore.KEY_CAMPAIGN_ACTIVITIES, []);
+  }
+
+  async getCampaignActivities(campaignId: string): Promise<CampaignActivity[]> {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('campaign_activity')
+          .select('*')
+          .eq('campaign_id', campaignId);
+        if (!error && data) {
+          return data;
+        }
+      } catch (err) {
+        console.error('Error fetching activities from Supabase:', err);
+      }
+    }
+    const all = this.getCampaignActivitiesFromLocal();
+    return all.filter(a => a.campaign_id === campaignId);
+  }
+
+  async saveCampaignActivity(activity: CampaignActivity): Promise<CampaignActivity> {
+    const all = this.getCampaignActivitiesFromLocal();
+    const idx = all.findIndex(a => a.id === activity.id);
+    if (idx < 0) {
+      all.push(activity);
+    } else {
+      all[idx] = activity;
+    }
+    this.saveToLocalStorage(DataStore.KEY_CAMPAIGN_ACTIVITIES, all);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase.from('campaign_activity').upsert(activity);
+        if (error) {
+          console.error('Error saving activity to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error in Supabase activity upsert:', err);
+      }
+    }
+    return activity;
+  }
+
+  async recordOpen(campaignId: string, recipientEmail: string): Promise<boolean> {
+    const activities = await this.getCampaignActivities(campaignId);
+    const existing = activities.find(a => a.recipient_email === recipientEmail);
+    
+    if (existing) {
+      if (existing.opened_at) {
+        return true;
+      }
+      existing.opened_at = new Date().toISOString();
+      existing.status = 'opened';
+      await this.saveCampaignActivity(existing);
+    } else {
+      const newActivity: CampaignActivity = {
+        id: `ACT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        campaign_id: campaignId,
+        recipient_email: recipientEmail,
+        sent_at: new Date().toISOString(),
+        opened_at: new Date().toISOString(),
+        status: 'opened'
+      };
+      await this.saveCampaignActivity(newActivity);
+    }
+
+    const camp = this.campaigns.find(c => c.id === campaignId);
+    if (camp) {
+      camp.open_count = (camp.open_count || 0) + 1;
+      await this.saveCampaign(camp);
+    }
+    return true;
+  }
+
+  async recordClick(campaignId: string, recipientEmail: string, url: string): Promise<boolean> {
+    const activities = await this.getCampaignActivities(campaignId);
+    const existing = activities.find(a => a.recipient_email === recipientEmail);
+
+    let isNewClick = false;
+    if (existing) {
+      if (!existing.clicked_at) {
+        isNewClick = true;
+      }
+      existing.clicked_at = new Date().toISOString();
+      existing.clicked_url = url;
+      existing.status = 'clicked';
+      await this.saveCampaignActivity(existing);
+    } else {
+      isNewClick = true;
+      const newActivity: CampaignActivity = {
+        id: `ACT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        campaign_id: campaignId,
+        recipient_email: recipientEmail,
+        sent_at: new Date().toISOString(),
+        clicked_at: new Date().toISOString(),
+        clicked_url: url,
+        status: 'clicked'
+      };
+      await this.saveCampaignActivity(newActivity);
+    }
+
+    if (isNewClick) {
+      const camp = this.campaigns.find(c => c.id === campaignId);
+      if (camp) {
+        camp.click_count = (camp.click_count || 0) + 1;
+        await this.saveCampaign(camp);
+      }
+    }
+    return true;
   }
 
   getWhatsappConfig() { return this.whatsappConfig; }

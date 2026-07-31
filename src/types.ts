@@ -459,3 +459,27 @@ export interface Contact {
   createdAt?: string;
 }
 
+export interface EmailCampaign {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  sent_count: number;
+  open_count: number;
+  click_count: number;
+  status: 'draft' | 'sending' | 'sent';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignActivity {
+  id: string;
+  campaign_id: string;
+  recipient_email: string;
+  sent_at: string;
+  opened_at?: string;
+  clicked_at?: string;
+  clicked_url?: string;
+  status: string;
+}
+

@@ -7,6 +7,8 @@
     { "source": "/api/email/test-connection", "destination": "/api/email/test-connection" },
     { "source": "/api/whatsapp/send", "destination": "/api/whatsapp/send" },
     { "source": "/api/onesignal/send-push", "destination": "/api/onesignal/send-push" },
+    { "source": "/api/campaign/track-open", "destination": "/api/campaign/track-open" },
+    { "source": "/api/campaign/track-click", "destination": "/api/campaign/track-click" },
     { "source": "/sw.js", "destination": "/sw.js" },
     { "source": "/OneSignalSDKWorker.js", "destination": "/OneSignalSDKWorker.js" },
     { "source": "/check-registration.html", "destination": "/check-registration.html" },

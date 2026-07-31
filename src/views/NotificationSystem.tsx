@@ -8,12 +8,23 @@ import { Megaphone, Mail, Phone, Settings, Send, CheckCircle, Sparkles, AlertCir
 import * as XLSX from 'xlsx';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
-import { NotificationTemplate, SentNotificationLog, Contact } from '../types';
+import { NotificationTemplate, SentNotificationLog, Contact, EmailCampaign, CampaignActivity } from '../types';
 import { isSupabaseConfigured, uploadToSupabaseStorage } from '../lib/supabase';
 
 interface NotificationSystemProps {
   defaultTab?: 'templates' | 'bulk';
   hideTabs?: boolean;
+}
+
+function rewriteLinksForTracking(html: string, campaignId: string, recipientEmail: string, baseUrl: string): string {
+  const hrefRegex = /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/gi;
+  return html.replace(hrefRegex, (match, quote, url) => {
+    if (url.startsWith('mailto:') || url.startsWith('tel:') || url.startsWith('#') || url.includes('/api/campaign/')) {
+      return match;
+    }
+    const trackClickUrl = `${baseUrl}/api/campaign/track-click?campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipientEmail)}&url=${encodeURIComponent(url)}`;
+    return match.replace(url, trackClickUrl);
+  });
 }
 
 export default function NotificationSystem({ defaultTab = 'templates', hideTabs = true }: NotificationSystemProps) {
@@ -63,6 +74,18 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [contactGroupName, setContactGroupName] = useState<string>('');
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
 
+  // Campaigns states
+  const [bulkSubTab, setBulkSubTab] = useState<'instant' | 'campaign'>('instant');
+  const [campaigns, setCampaigns] = useState<EmailCampaign[]>(() => store.getCampaigns());
+  const [selectedCampaign, setSelectedCampaign] = useState<EmailCampaign | null>(null);
+  const [isCreatingCampaign, setIsCreatingCampaign] = useState<boolean>(false);
+  const [campaignForm, setCampaignForm] = useState({ name: '', subject: '', body: '', method: 'smtp' as 'smtp' | 'resend' });
+  const [viewingReportCampaign, setViewingReportCampaign] = useState<EmailCampaign | null>(null);
+  const [campaignActivities, setCampaignActivities] = useState<CampaignActivity[]>([]);
+  const [campaignReportFilter, setCampaignReportFilter] = useState<'all' | 'sent' | 'opened' | 'clicked'>('all');
+  const [bulkEmailMethod, setBulkEmailMethod] = useState<'resend' | 'smtp'>('smtp');
+  const [emailConfig, setEmailConfig] = useState(() => store.getEmailConfig());
+
   React.useEffect(() => {
     const handleStoreUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -71,6 +94,10 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
       if (detail && detail.table === 'system_config') {
         setResendConfigState(store.getResendConfig());
+        setEmailConfig(store.getEmailConfig());
+      }
+      if (detail && detail.table === 'email_campaigns') {
+        setCampaigns([...store.getCampaigns()]);
       }
     };
     window.addEventListener('store-updated', handleStoreUpdate);
@@ -304,10 +331,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     }
 
     if (bulkChannel === 'email') {
-      const currentResend = store.getResendConfig();
-      if (!currentResend.apiKey || !currentResend.senderEmail) {
-        alert('Vui lòng vào mục "Cài đặt hệ thống" để cấu hình Resend API Key và Email gửi đi trước khi bắt đầu.');
-        return;
+      const activeMethod = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.method : bulkEmailMethod;
+      if (activeMethod === 'resend') {
+        const currentResend = store.getResendConfig();
+        if (!currentResend.apiKey || !currentResend.senderEmail) {
+          alert('Vui lòng vào mục "Cài đặt hệ thống" để cấu hình Resend API Key và Email gửi đi trước khi bắt đầu.');
+          return;
+        }
+      } else {
+        const currentSmtp = store.getEmailConfig();
+        if (!currentSmtp.smtpHost || !currentSmtp.smtpUser || !currentSmtp.smtpPass) {
+          alert('Vui lòng vào mục "Cài đặt hệ thống" để cấu hình máy chủ Outgoing SMTP trước khi bắt đầu.');
+          return;
+        }
       }
     } else {
       const zConfig = store.getZaloConfig();
@@ -333,6 +369,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       } catch (err) {
         console.error('Lỗi tự động lưu danh bạ:', err);
       }
+    }
+
+    if (bulkSubTab === 'campaign' && selectedCampaign) {
+      selectedCampaign.status = 'sending';
+      await store.saveCampaign(selectedCampaign);
+      setCampaigns([...store.getCampaigns()]);
     }
 
     setIsBulkSending(true);
@@ -364,12 +406,15 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           errorMsg = 'Email không hợp lệ';
         } else {
           try {
-            let compiledBody = bulkBody
+            const baseSubject = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.subject : bulkSubject;
+            const baseBody = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.body : bulkBody;
+
+            let compiledBody = baseBody
               .replace(/\{\{Tên\}\}/g, recipient.name || '')
               .replace(/\{\{Email\}\}/g, recipient.email || '')
               .replace(/\{\{Số điện thoại\}\}/g, recipient.phone || '');
 
-            let compiledSubject = bulkSubject
+            let compiledSubject = baseSubject
               .replace(/\{\{Tên\}\}/g, recipient.name || '');
 
             // Support dynamic placeholder replacements for database columns (e.g. {{fullname}}, {{code}}, {{package}}, etc.)
@@ -382,26 +427,80 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               }
             });
 
-            const res = await fetch('/api/email/send-resend', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                apiKey: resendConfig.apiKey,
-                from: resendConfig.senderEmail,
-                to: recipient.email,
-                subject: compiledSubject,
-                html: compiledBody
-              })
-            });
+            // App url for tracking
+            const trackingBaseUrl = store.getBusinessConfig().appUrl || window.location.origin;
+
+            // Tracking rewrites for Campaigns
+            if (bulkSubTab === 'campaign' && selectedCampaign) {
+              const campaignId = selectedCampaign.id;
+              
+              // 1. Rewrite links
+              compiledBody = rewriteLinksForTracking(compiledBody, campaignId, recipient.email, trackingBaseUrl);
+              
+              // 2. Append open pixel
+              compiledBody += `<img src="${trackingBaseUrl}/api/campaign/track-open?campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipient.email)}" width="1" height="1" style="display:none;" />`;
+            }
+
+            const activeMethod = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.method : bulkEmailMethod;
+            const useSmtp = activeMethod === 'smtp';
+
+            let res;
+            if (useSmtp) {
+              res = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  config: store.getEmailConfig(),
+                  payload: {
+                    to: recipient.email,
+                    subject: compiledSubject,
+                    body: compiledBody
+                  }
+                })
+              });
+            } else {
+              res = await fetch('/api/email/send-resend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  apiKey: resendConfig.apiKey,
+                  from: resendConfig.senderEmail,
+                  to: recipient.email,
+                  subject: compiledSubject,
+                  html: compiledBody
+                })
+              });
+            }
 
             const resData = await res.json();
             if (resData.success) {
               success = true;
+              
+              // If it's a campaign, update counters and activities
+              if (bulkSubTab === 'campaign' && selectedCampaign) {
+                try {
+                  const activity: CampaignActivity = {
+                    id: `ACT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    campaign_id: selectedCampaign.id,
+                    recipient_email: recipient.email,
+                    sent_at: new Date().toISOString(),
+                    status: 'sent'
+                  };
+                  await store.saveCampaignActivity(activity);
+
+                  selectedCampaign.sent_count = (selectedCampaign.sent_count || 0) + 1;
+                  await store.saveCampaign(selectedCampaign);
+                  
+                  setCampaigns([...store.getCampaigns()]);
+                } catch (actErr) {
+                  console.error('Error logging campaign activity:', actErr);
+                }
+              }
             } else {
-              errorMsg = resData.error || 'Lỗi gửi email qua Resend';
+              errorMsg = resData.error || (useSmtp ? 'Lỗi gửi email qua SMTP' : 'Lỗi gửi email qua Resend');
             }
           } catch (err: any) {
-            errorMsg = err.message || 'Lỗi kết nối API Resend';
+            errorMsg = err.message || 'Lỗi kết nối API gửi thư';
           }
         }
       } else {
@@ -485,6 +584,13 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
     setIsBulkSending(false);
     isBulkSendingRef.current = false;
+
+    if (bulkSubTab === 'campaign' && selectedCampaign) {
+      selectedCampaign.status = 'sent';
+      await store.saveCampaign(selectedCampaign);
+      setCampaigns([...store.getCampaigns()]);
+      alert(`Chiến dịch "${selectedCampaign.name}" đã gửi xong!`);
+    }
   };
 
   const pauseBulkSending = () => {
@@ -497,11 +603,17 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     isBulkPausedRef.current = false;
   };
 
-  const stopBulkSending = () => {
+  const stopBulkSending = async () => {
     setIsBulkSending(false);
     isBulkSendingRef.current = false;
     setIsBulkPaused(false);
     isBulkPausedRef.current = false;
+
+    if (bulkSubTab === 'campaign' && selectedCampaign) {
+      selectedCampaign.status = 'sent';
+      await store.saveCampaign(selectedCampaign);
+      setCampaigns([...store.getCampaigns()]);
+    }
   };
 
   // Form edit fields
@@ -1279,6 +1391,732 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   };
 
   const matchedIds = new Set<string>();
+
+  // Render Campaign Tab Layout
+  const renderCampaignDashboard = () => {
+    if (viewingReportCampaign) {
+      const openRate = viewingReportCampaign.sent_count > 0 ? Math.round((viewingReportCampaign.open_count / viewingReportCampaign.sent_count) * 100) : 0;
+      const clickRate = viewingReportCampaign.sent_count > 0 ? Math.round((viewingReportCampaign.click_count / viewingReportCampaign.sent_count) * 100) : 0;
+
+      const filteredActivities = campaignActivities.filter(act => {
+        if (campaignReportFilter === 'all') return true;
+        if (campaignReportFilter === 'sent') return act.status === 'sent';
+        if (campaignReportFilter === 'opened') return act.status === 'opened' || !!act.opened_at;
+        if (campaignReportFilter === 'clicked') return act.status === 'clicked' || !!act.clicked_at;
+        return true;
+      });
+
+      const handleExportReportToExcel = () => {
+        const rows = filteredActivities.map(act => ({
+          'Địa chỉ Email': act.recipient_email,
+          'Trạng thái': act.status === 'clicked' ? 'Đã click link' : act.status === 'opened' ? 'Đã mở thư' : 'Đã gửi (Chưa mở)',
+          'Thời điểm gửi': act.sent_at ? new Date(act.sent_at).toLocaleString('vi-VN') : '',
+          'Thời điểm mở': act.opened_at ? new Date(act.opened_at).toLocaleString('vi-VN') : '',
+          'Thời điểm click': act.clicked_at ? new Date(act.clicked_at).toLocaleString('vi-VN') : '',
+          'URL liên kết đã click': act.clicked_url || ''
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+        XLSX.writeFile(workbook, `BaoCao_Chiendich_${viewingReportCampaign.name.replace(/\s+/g, '_')}.xlsx`);
+      };
+
+      return (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-md space-y-6">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+            <div>
+              <button
+                onClick={() => setViewingReportCampaign(null)}
+                className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-transparent border-none cursor-pointer flex items-center gap-1 mb-1"
+              >
+                ← Quay lại danh sách
+              </button>
+              <h2 className="text-lg font-black text-slate-800 uppercase">Báo cáo: {viewingReportCampaign.name}</h2>
+              <p className="text-xs font-semibold text-slate-500 mt-0.5">Tiêu đề thư: <span className="font-mono">{viewingReportCampaign.subject}</span></p>
+            </div>
+            <button
+              onClick={handleExportReportToExcel}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border-none"
+            >
+              <Upload className="w-3.5 h-3.5 rotate-180" />
+              Xuất báo cáo Excel
+            </button>
+          </div>
+
+          <div className="grid grid-cols-5 gap-4">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center space-y-1">
+              <span className="text-[10px] font-black text-slate-400 block uppercase">Tổng đã gửi</span>
+              <span className="text-xl font-black text-slate-800 block">{viewingReportCampaign.sent_count}</span>
+            </div>
+            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-center space-y-1">
+              <span className="text-[10px] font-black text-indigo-400 block uppercase">Đã mở thư</span>
+              <span className="text-xl font-black text-indigo-800 block">{viewingReportCampaign.open_count}</span>
+            </div>
+            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-center space-y-1">
+              <span className="text-[10px] font-black text-indigo-400 block uppercase">Tỉ lệ mở</span>
+              <span className="text-xl font-black text-indigo-800 block">{openRate}%</span>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center space-y-1">
+              <span className="text-[10px] font-black text-amber-550 block uppercase">Click liên kết</span>
+              <span className="text-xl font-black text-amber-800 block">{viewingReportCampaign.click_count}</span>
+            </div>
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center space-y-1">
+              <span className="text-[10px] font-black text-amber-550 block uppercase">Tỉ lệ click</span>
+              <span className="text-xl font-black text-amber-800 block">{clickRate}%</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex gap-1.5 border-b border-slate-100 pb-1.5 font-bold">
+              {[
+                { filter: 'all', label: `Tất cả (${campaignActivities.length})` },
+                { filter: 'sent', label: `Đã gửi (Chưa mở) (${campaignActivities.filter(a => a.status === 'sent').length})` },
+                { filter: 'opened', label: `Đã mở (${campaignActivities.filter(a => a.status === 'opened' || !!a.opened_at).length})` },
+                { filter: 'clicked', label: `Đã click liên kết (${campaignActivities.filter(a => a.status === 'clicked' || !!a.clicked_at).length})` }
+              ].map(tab => (
+                <button
+                  key={tab.filter}
+                  onClick={() => setCampaignReportFilter(tab.filter as any)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer border-none transition-all ${
+                    campaignReportFilter === tab.filter ? 'bg-indigo-50 text-indigo-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-[350px] overflow-y-auto">
+              <table className="w-full border-collapse text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-[10px] uppercase font-black tracking-wider text-slate-400 border-b border-slate-150 select-none">
+                  <tr>
+                    <th className="px-4 py-3">Địa chỉ Email</th>
+                    <th className="px-4 py-3">Trạng thái</th>
+                    <th className="px-4 py-3">Gửi lúc</th>
+                    <th className="px-4 py-3">Mở lúc</th>
+                    <th className="px-4 py-3">Click lúc</th>
+                    <th className="px-4 py-3">URL liên kết đã click</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredActivities.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400 font-bold">
+                        Không có dữ liệu lịch sử hoạt động thỏa mãn bộ lọc.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredActivities.map(act => (
+                      <tr key={act.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-2.5 font-bold font-mono text-slate-800">{act.recipient_email}</td>
+                        <td className="px-4 py-2.5">
+                          {act.status === 'clicked' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-bold border border-amber-100">Click link</span>
+                          ) : act.status === 'opened' ? (
+                            <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-100">Đã mở</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-550/10 text-slate-550 font-bold">Đã gửi</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-500">{act.sent_at ? new Date(act.sent_at).toLocaleString('vi-VN') : '-'}</td>
+                        <td className="px-4 py-2.5 text-slate-500">{act.opened_at ? new Date(act.opened_at).toLocaleString('vi-VN') : '-'}</td>
+                        <td className="px-4 py-2.5 text-slate-500">{act.clicked_at ? new Date(act.clicked_at).toLocaleString('vi-VN') : '-'}</td>
+                        <td className="px-4 py-2.5 font-mono text-slate-450 truncate max-w-[150px]" title={act.clicked_url || ''}>{act.clicked_url || '-'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (isCreatingCampaign) {
+      return (
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-md space-y-5">
+          <div className="border-b border-slate-100 pb-3 flex justify-between items-center">
+            <h2 className="text-sm font-black text-slate-850 uppercase tracking-wider">Tạo chiến dịch Email mới</h2>
+            <button
+              onClick={() => setIsCreatingCampaign(false)}
+              className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-transparent border-none cursor-pointer"
+            >
+              Đóng X
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 block">Tên chiến dịch *</label>
+              <input
+                type="text"
+                value={campaignForm.name}
+                onChange={(e) => setCampaignForm({ ...campaignForm, name: e.target.value })}
+                placeholder="Ví dụ: Chiến dịch thông báo Gala Dinner"
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 block">Tiêu đề thư (Subject) *</label>
+              <input
+                type="text"
+                value={campaignForm.subject}
+                onChange={(e) => setCampaignForm({ ...campaignForm, subject: e.target.value })}
+                placeholder="Tiêu đề email nhận được"
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 block">Cổng truyền tin SMTP / Resend *</label>
+              <select
+                value={campaignForm.method}
+                onChange={(e) => setCampaignForm({ ...campaignForm, method: e.target.value as any })}
+                className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
+              >
+                <option value="smtp">📧 Google / Outcoming SMTP (Khuyên dùng)</option>
+                <option value="resend">🔑 Resend API (Mặc định)</option>
+              </select>
+            </div>
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-[10px] text-slate-450 leading-relaxed self-end">
+              {campaignForm.method === 'smtp' ? (
+                <span>Cấu hình SMTP hiện tại: <strong>{emailConfig.smtpUser}</strong> ({emailConfig.smtpHost})</span>
+              ) : (
+                <span>Cấu hình Resend hiện tại: <strong>{resendConfig.senderEmail || '(Chưa cấu hình)'}</strong></span>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-bold text-slate-500 block">Nội dung Email (HTML body) *</label>
+              {isUploadingImage && (
+                <span className="text-[9px] text-indigo-650 font-black animate-pulse">⏳ Đang xử lý & tải hình ảnh lên hệ thống...</span>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-50 border border-slate-200 rounded-xl mb-1.5 select-none">
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold', false, ''); }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Chữ đậm"
+              >
+                <Bold className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic', false, ''); }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Chữ nghiêng"
+              >
+                <Italic className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false, ''); }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Gạch chân"
+              >
+                <Underline className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-px h-3 bg-slate-300 mx-1" />
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyLeft', false, ''); }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Căn trái"
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyCenter', false, ''); }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Căn giữa"
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyRight', false, ''); }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Căn phải"
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-px h-3 bg-slate-300 mx-1" />
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+                  if (url) document.execCommand('createLink', false, url);
+                }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Chèn liên kết"
+              >
+                <Link className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const choice = window.confirm("Bạn muốn tải ảnh từ máy tính hay chèn link?\n\nOK: Tải lên từ máy tính\nHủy: Chèn link ảnh");
+                  if (choice) {
+                    document.getElementById('campaign-form-image-input')?.click();
+                  } else {
+                    const url = prompt('Nhập link ảnh (URL):', 'https://');
+                    if (url) document.execCommand('insertImage', false, url);
+                  }
+                }}
+                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                title="Chèn/Tải ảnh"
+              >
+                <Image className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <input
+              type="file"
+              id="campaign-form-image-input"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setIsUploadingImage(true);
+                try {
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    const base64Data = reader.result as string;
+                    const fileExt = file.name.split('.').pop() || 'png';
+                    const path = `email-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+                    let url = base64Data;
+                    if (isSupabaseConfigured()) {
+                      const pub = await uploadToSupabaseStorage(path, base64Data);
+                      if (pub) url = pub;
+                    }
+                    const editor = document.getElementById('campaign-form-editor');
+                    editor?.focus();
+                    document.execCommand('insertImage', false, url);
+                    setIsUploadingImage(false);
+                  };
+                  reader.readAsDataURL(file);
+                } catch (err) {
+                  console.error(err);
+                  setIsUploadingImage(false);
+                }
+              }}
+            />
+
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+              <div
+                id="campaign-form-editor"
+                contentEditable
+                className="w-full min-h-[250px] max-h-[400px] overflow-y-auto px-4 py-3 focus:outline-none text-xs text-slate-700 leading-relaxed rich-editor-content"
+                style={{ borderStyle: 'solid', borderWidth: '0' }}
+                onBlur={(e) => setCampaignForm({ ...campaignForm, body: e.currentTarget.innerHTML })}
+                dangerouslySetInnerHTML={{ __html: campaignForm.body }}
+              />
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[10px] text-slate-500">
+            <span className="font-bold">Hỗ trợ các biến thay thế:</span>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {['Tên', 'Email', 'Số điện thoại', 'code', 'package', 'payment_status', 'organization'].map(v => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => {
+                    const editor = document.getElementById('campaign-form-editor');
+                    if (editor) {
+                      editor.focus();
+                      document.execCommand('insertText', false, `{{${v}}}`);
+                      setCampaignForm({ ...campaignForm, body: editor.innerHTML });
+                    }
+                  }}
+                  className="bg-white px-1.5 py-0.5 border border-slate-200 hover:border-indigo-400 rounded font-mono font-bold cursor-pointer"
+                >
+                  {"{{"}{v}{"}}"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2.5">
+            <button
+              onClick={() => setIsCreatingCampaign(false)}
+              className="px-4 py-2 border border-slate-205 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={async () => {
+                if (!campaignForm.name || !campaignForm.subject || !campaignForm.body) {
+                  alert('Vui lòng nhập đầy đủ thông tin bắt buộc (*)');
+                  return;
+                }
+                const newCampaign: EmailCampaign = {
+                  id: `CMP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                  name: campaignForm.name,
+                  subject: campaignForm.subject,
+                  body: campaignForm.body,
+                  sent_count: 0,
+                  open_count: 0,
+                  click_count: 0,
+                  status: 'draft',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                };
+                (newCampaign as any).method = campaignForm.method;
+                
+                await store.saveCampaign(newCampaign);
+                setCampaigns([...store.getCampaigns()]);
+                setIsCreatingCampaign(false);
+                setCampaignForm({ name: '', subject: '', body: '', method: 'smtp' });
+              }}
+              className="px-4 py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm"
+            >
+              Lưu chiến dịch
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                Chiến dịch Email
+              </span>
+              <button
+                onClick={() => {
+                  setCampaignForm({ name: '', subject: '', body: '', method: 'smtp' });
+                  setIsCreatingCampaign(true);
+                }}
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer border-none"
+              >
+                + Mới
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {campaigns.length === 0 ? (
+                <p className="text-xs text-slate-400 font-semibold text-center py-4">Chưa có chiến dịch nào được tạo.</p>
+              ) : (
+                campaigns.map(camp => (
+                  <div
+                    key={camp.id}
+                    onClick={() => {
+                      setSelectedCampaign(camp);
+                      setBulkEmailMethod((camp as any).method || 'smtp');
+                    }}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer text-left space-y-1.5 ${
+                      selectedCampaign?.id === camp.id
+                        ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-500/25'
+                        : 'bg-white border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-extrabold text-slate-800 truncate max-w-[120px]">{camp.name}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                        camp.status === 'sent' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                        camp.status === 'sending' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse' :
+                        'bg-slate-50 text-slate-500 border border-slate-250'
+                      }`}>
+                        {camp.status === 'sent' ? 'Đã gửi' : camp.status === 'sending' ? 'Đang gửi' : 'Nháp'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-slate-450 font-bold">
+                      <span>Cổng: {((camp as any).method === 'resend' ? 'Resend' : 'SMTP')}</span>
+                      <span>Mở: {camp.open_count} | Click: {camp.click_count}</span>
+                    </div>
+
+                    <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-100">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const acts = await store.getCampaignActivities(camp.id);
+                          setCampaignActivities(acts);
+                          setViewingReportCampaign(camp);
+                        }}
+                        className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-650 text-[9px] font-bold rounded cursor-pointer border-none"
+                      >
+                        Báo cáo
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (confirm(`Bạn chắc chắn muốn xóa chiến dịch "${camp.name}"?`)) {
+                            await store.deleteCampaign(camp.id);
+                            if (selectedCampaign?.id === camp.id) setSelectedCampaign(null);
+                            setCampaigns([...store.getCampaigns()]);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-650 text-[9px] font-bold rounded cursor-pointer border-none"
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 space-y-6">
+          {!selectedCampaign ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm text-center text-slate-400 space-y-2">
+              <Mail className="w-8 h-8 mx-auto text-slate-350" />
+              <p className="text-xs font-bold">Vui lòng chọn hoặc tạo mới một chiến dịch ở bảng bên trái để tiếp tục.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
+                  Nạp danh sách đại biểu tham gia chiến dịch
+                </span>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 block">Nguồn danh sách</label>
+                    <select
+                      value={listSource}
+                      onChange={(e) => {
+                        const src = e.target.value as any;
+                        setListSource(src);
+                        setExcelData([]);
+                        setExcelFileName('');
+                        setSelectedGroup('');
+                        setContactGroupName('');
+                        if (src === 'attendees') loadAttendeesList();
+                        else if (src === 'speakers') loadSpeakersList();
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
+                    >
+                      <option value="file">📁 Tải file Excel/CSV mới</option>
+                      <option value="saved">👥 Chọn từ danh bạ đã lưu ({Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).length} nhóm)</option>
+                      <option value="attendees">🎓 Tất cả Đại biểu đã đăng ký ({store.getAttendees().length} người)</option>
+                      <option value="speakers">🎙️ Tất cả Báo cáo viên đã đăng ký ({store.getSpeakers().length} người)</option>
+                    </select>
+                  </div>
+
+                  {listSource === 'saved' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">Chọn nhóm danh bạ *</label>
+                      <select
+                        value={selectedGroup}
+                        onChange={(e) => {
+                          const grp = e.target.value;
+                          setSelectedGroup(grp);
+                          const list = contacts.filter(c => c.groupName === grp).map(c => ({
+                            id: c.id,
+                            name: c.name,
+                            email: c.email,
+                            phone: c.phone,
+                            isEmailValid: !!c.email && c.email.includes('@'),
+                            isPhoneValid: !!c.phone && c.phone.length > 8,
+                            status: 'pending'
+                          }));
+                          setExcelData(list);
+                        }}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
+                      >
+                        <option value="">-- Chọn nhóm --</option>
+                        {Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).map(grp => (
+                          <option key={grp} value={grp}>{grp} ({contacts.filter(c => c.groupName === grp).length} liên hệ)</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {listSource === 'file' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 block">Chọn file Excel từ máy tính</label>
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls, .csv"
+                        onChange={handleExcelUpload}
+                        className="w-full text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="border-b border-slate-100 pb-2 flex justify-between items-center">
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                    Thông tin gửi chiến dịch
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-450 bg-indigo-50 px-2 py-0.5 rounded-lg">
+                    Chiến dịch ID: <span className="font-mono">{selectedCampaign.id}</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs font-semibold text-slate-650">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                    <span className="text-[9.5px] font-black text-slate-400 block uppercase">Nội dung chiến dịch</span>
+                    <p className="text-slate-800 font-bold">{selectedCampaign.name}</p>
+                    <p className="text-[10px] text-slate-550 truncate">Tiêu đề: {selectedCampaign.subject}</p>
+                  </div>
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-1">
+                    <span className="text-[9.5px] font-black text-slate-400 block uppercase">Cổng & Tài khoản gửi</span>
+                    <p className="text-indigo-700 font-bold uppercase">{selectedCampaign.method === 'resend' ? 'Resend API' : 'SMTP Server'}</p>
+                    <p className="text-[10px] text-slate-550 truncate">
+                      {selectedCampaign.method === 'resend' ? resendConfig.senderEmail : emailConfig.smtpUser}
+                    </p>
+                  </div>
+                </div>
+
+                {renderRecipientsPanel()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderRecipientsPanel = () => {
+    return (
+      <div className="space-y-4">
+        <span className="text-xs font-black text-slate-800 uppercase tracking-wider block border-b border-slate-100 pb-2">
+          Bảng điều khiển &amp; Tiến trình gửi
+        </span>
+
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex gap-2">
+            {!isBulkSending ? (
+              <button
+                onClick={startBulkSending}
+                className="px-4 py-2 rounded-xl bg-indigo-650 hover:bg-indigo-755 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+              >
+                <Play className="w-3.5 h-3.5" />
+                Bắt Đầu Gửi Chiến Dịch
+              </button>
+            ) : (
+              <>
+                {isBulkPaused ? (
+                  <button
+                    onClick={resumeBulkSending}
+                    className="px-4 py-2 rounded-xl bg-emerald-650 hover:bg-emerald-755 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Tiếp Tục
+                  </button>
+                ) : (
+                  <button
+                    onClick={pauseBulkSending}
+                    className="px-4 py-2 rounded-xl bg-amber-650 hover:bg-amber-755 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                  >
+                    <Pause className="w-3.5 h-3.5" />
+                    Tạm Dừng
+                  </button>
+                )}
+                <button
+                  onClick={stopBulkSending}
+                  className="px-4 py-2 rounded-xl bg-rose-650 hover:bg-rose-755 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                  Dừng Hẳn
+                </button>
+              </>
+            )}
+          </div>
+
+          {sendingIndex !== -1 && (
+            <div className="text-xs text-slate-505 font-bold">
+              Tiến độ: {sendingIndex + 1} / {excelData.length} ({Math.round(((sendingIndex + 1) / excelData.length) * 100)}%)
+            </div>
+          )}
+        </div>
+
+        {isBulkSending && (
+          <div className="w-full bg-slate-105 rounded-full h-3.5 overflow-hidden border border-slate-200">
+            <div
+              className="bg-indigo-600 h-full transition-all duration-300"
+              style={{ width: `${((sendingIndex + 1) / excelData.length) * 100}%` }}
+            />
+          </div>
+        )}
+
+        {excelData.length > 0 && (
+          <div className="overflow-x-auto border border-slate-200 rounded-xl max-h-96 overflow-y-auto bg-white">
+            <table className="w-full border-collapse text-[11px] text-left">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 font-bold uppercase tracking-wider text-slate-500 text-[9.5px]">
+                  <th className="px-4 py-2.5">STT</th>
+                  <th className="px-4 py-2.5">Tên</th>
+                  <th className="px-4 py-2.5">Email</th>
+                  <th className="px-4 py-2.5 text-center">Kiểm tra</th>
+                  <th className="px-4 py-2.5 text-center">Trạng thái</th>
+                  <th className="px-4 py-2.5">Chi tiết/Lỗi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {excelData.map((item, idx) => {
+                  const isContactValid = item.isEmailValid;
+                  return (
+                    <tr key={item.id} className={`hover:bg-slate-50/50 ${idx === sendingIndex ? 'bg-indigo-50/40 font-bold' : ''}`}>
+                      <td className="px-4 py-2 font-mono text-slate-400">{item.id}</td>
+                      <td className="px-4 py-2 font-bold text-slate-700">{item.name}</td>
+                      <td className="px-4 py-2 text-slate-600 font-mono">{item.email || <span className="text-red-500 italic">Trống</span>}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold ${
+                          isContactValid ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                        }`}>
+                          {isContactValid ? 'Hợp lệ' : 'Lỗi định dạng'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-bold text-[8.5px] ${
+                          item.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
+                          item.status === 'failed' ? 'bg-rose-50 text-rose-700' :
+                          item.status === 'sending' ? 'bg-indigo-100 text-indigo-805 animate-pulse' :
+                          'bg-slate-100 text-slate-550'
+                        }`}>
+                          {item.status === 'success' ? 'Thành công' :
+                           item.status === 'failed' ? 'Thất bại' :
+                           item.status === 'sending' ? 'Đang gửi...' : 'Chờ gửi'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 font-medium text-slate-550 max-w-xs truncate" title={item.error}>{item.error || '-'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {bulkLogs.length > 0 && (
+          <div className="bg-slate-950 p-4 rounded-xl border border-slate-900 space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-900 pb-2.5">
+              <span className="text-[9px] font-mono font-black text-indigo-400 tracking-wider">NHẬT KÝ ĐƯỜNG TRUYỀN PHÁT LOGS</span>
+              <span className="text-[8px] font-mono text-slate-500">LIVE FEED</span>
+            </div>
+            <div className="font-mono text-[10px] text-slate-300 max-h-32 overflow-y-auto space-y-1">
+              {bulkLogs.map((log, idx) => (
+                <div key={idx} className={log.includes('Thất bại') ? 'text-rose-450' : 'text-emerald-450'}>
+                  {log}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 font-sans text-slate-805">
@@ -2402,7 +3240,41 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       )}
 
       {activeTab === 'bulk' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          {/* Sub-tab Navigation */}
+          <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl w-fit mb-2 shadow-inner">
+            <button
+              onClick={() => {
+                setBulkSubTab('instant');
+                setSelectedCampaign(null);
+                setViewingReportCampaign(null);
+              }}
+              className={`px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                bulkSubTab === 'instant'
+                  ? 'bg-white text-indigo-700 shadow-md scale-[1.02]'
+                  : 'text-slate-500 hover:text-slate-800 bg-transparent'
+              }`}
+            >
+              🚀 Gửi Tin Tức Thì (Instant Mail & Zalo)
+            </button>
+            <button
+              onClick={() => {
+                setBulkSubTab('campaign');
+              }}
+              className={`px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                bulkSubTab === 'campaign'
+                  ? 'bg-white text-indigo-700 shadow-md scale-[1.02]'
+                  : 'text-slate-500 hover:text-slate-800 bg-transparent'
+              }`}
+            >
+              📊 Chiến Dịch Email SMTP & Đo Lường
+            </button>
+          </div>
+
+          {bulkSubTab === 'campaign' ? (
+            renderCampaignDashboard()
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel: Excel Uploader & Channel config */}
           <div className="space-y-6 lg:col-span-1">
             {/* File upload card */}
@@ -2623,21 +3495,53 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
               {bulkChannel === 'email' ? (
                 <div className="space-y-3 pt-2 text-xs">
-                  <div className="bg-indigo-50 text-indigo-800 p-3 rounded-xl border border-indigo-100 leading-relaxed text-[10.5px]">
-                    📧 <strong>Cổng gửi Email Resend</strong>: Hệ thống sẽ sử dụng thông số cấu hình API Key và Email gửi đi của **Resend** được thiết lập trong mục <strong>Cài đặt hệ thống</strong>.
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Phương thức gửi Email</label>
+                    <select
+                      value={bulkEmailMethod}
+                      onChange={(e) => setBulkEmailMethod(e.target.value as 'resend' | 'smtp')}
+                      className="w-full px-3 py-2 border border-slate-205 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
+                    >
+                      <option value="smtp">📧 Google / Outcoming SMTP (Khuyên dùng)</option>
+                      <option value="resend">🔑 Resend API (Mặc định)</option>
+                    </select>
                   </div>
-                  <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-1.5">
-                    <div className="flex justify-between">
-                      <span className="text-slate-450 font-bold">Email gửi đi:</span>
-                      <span className="font-mono text-slate-700 font-extrabold">{resendConfig.senderEmail || '(Chưa cấu hình)'}</span>
+
+                  {bulkEmailMethod === 'smtp' ? (
+                    <div className="space-y-2">
+                      <div className="bg-indigo-50 text-indigo-800 p-3 rounded-xl border border-indigo-100 leading-relaxed text-[10.5px]">
+                        📧 <strong>Cổng SMTP</strong>: Hệ thống sẽ gửi thư trực tiếp thông qua máy chủ SMTP được thiết lập trong mục <strong>Cài đặt hệ thống</strong>.
+                      </div>
+                      <div className="border border-slate-205 rounded-xl p-3 bg-slate-50 space-y-1.5 font-medium">
+                        <div className="flex justify-between">
+                          <span className="text-slate-450 font-bold">Tài khoản SMTP:</span>
+                          <span className="font-mono text-slate-700 font-extrabold">{emailConfig.smtpUser || '(Chưa cấu hình)'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-450 font-bold">Máy chủ:</span>
+                          <span className="font-mono text-[10px] text-slate-700 font-extrabold">{emailConfig.smtpHost || 'smtp.gmail.com'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-450 font-bold">Trạng thái API Key:</span>
-                      <span className="font-bold text-slate-750">
-                        {resendConfig.apiKey ? '🟢 Đã cấu hình' : '🔴 Chưa cấu hình'}
-                      </span>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="bg-indigo-50 text-indigo-800 p-3 rounded-xl border border-indigo-100 leading-relaxed text-[10.5px]">
+                        🔑 <strong>Cổng Resend</strong>: Sử dụng thông số cấu hình API Key và Email gửi đi của **Resend** trong mục <strong>Cài đặt hệ thống</strong>.
+                      </div>
+                      <div className="border border-slate-205 rounded-xl p-3 bg-slate-50 space-y-1.5 font-medium">
+                        <div className="flex justify-between">
+                          <span className="text-slate-450 font-bold">Email gửi đi:</span>
+                          <span className="font-mono text-slate-700 font-extrabold">{resendConfig.senderEmail || '(Chưa cấu hình)'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-450 font-bold">Trạng thái API Key:</span>
+                          <span className="font-bold text-slate-750">
+                            {resendConfig.apiKey ? '🟢 Đã cấu hình' : '🔴 Chưa cấu hình'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3 pt-2 text-xs">
@@ -3122,6 +4026,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           </div>
         </div>
       )}
+    </div>
+  )}
     </div>
   );
 }
