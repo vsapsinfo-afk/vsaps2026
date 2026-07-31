@@ -49,6 +49,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [bulkBody, setBulkBody] = useState('<p>Kính gửi anh/chị <strong>{{Tên}}</strong>,</p>\n<p>Ban tổ chức Hội nghị Khoa học Thẩm mỹ Quốc tế Thường niên VSAPS 2026 trân trọng xác nhận thông tin đăng ký của anh/chị.</p>\n<p>Thông tin chi tiết:</p>\n<ul>\n<li>Hộp thư: {{Email}}</li>\n<li>Điện thoại: {{Số điện thoại}}</li>\n</ul>\n<p>Hệ thống tự động đã kích hoạt vé tham dự của anh/chị. Vui lòng mang theo email này để quét mã QR check-in tại sảnh chính.</p>\n<p>Trân trọng,<br>Ban tổ chức VSAPS 2026</p>');
   const [bulkEditorMode, setBulkEditorMode] = useState<'visual' | 'code'>('visual');
   const bulkEditorRef = React.useRef<HTMLDivElement>(null);
+  const campaignEditorRef = React.useRef<HTMLDivElement>(null);
   const [selectedEmailTemplateId, setSelectedEmailTemplateId] = useState<string>('');
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
 
@@ -806,6 +807,16 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
     }
   }, [bulkEditorMode, bulkChannel]);
+
+  // Sync campaign editor DOM imperatively (avoids dangerouslySetInnerHTML + contentEditable conflict)
+  React.useEffect(() => {
+    const el = campaignEditorRef.current;
+    if (campaignEditorMode === 'visual' && el) {
+      if ((el.innerHTML || '') !== campaignForm.body) {
+        el.innerHTML = campaignForm.body || '';
+      }
+    }
+  }, [campaignEditorMode, isCreatingCampaign, editingCampaignId]);
 
   const handleBulkEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
     setBulkBody(e.currentTarget?.innerHTML || '');
@@ -1617,9 +1628,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   <button
                     type="button"
                     onClick={() => {
-                      const editor = document.getElementById('campaign-form-editor');
-                      if (editor) {
-                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                      const el = campaignEditorRef.current;
+                      if (el) {
+                        setCampaignForm(prev => ({ ...prev, body: el.innerHTML || '' }));
                       }
                       setCampaignEditorMode('code');
                     }}
@@ -1691,7 +1702,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      const editor = document.getElementById('campaign-form-editor');
+                      const editor = campaignEditorRef.current;
                       if (!editor) return;
 
                       const sel = window.getSelection();
@@ -1711,7 +1722,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       const url = prompt('Nhập địa chỉ liên kết (để theo dõi/tracking):', 'https://');
                       if (url && url.trim()) {
                         const cleanUrl = url.trim();
-                        const currentEditor = document.getElementById('campaign-form-editor');
+                        const currentEditor = campaignEditorRef.current;
                         if (currentEditor) {
                           currentEditor.focus();
                           if (savedRange && sel) {
@@ -1745,7 +1756,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         const url = prompt('Nhập link ảnh (URL):', 'https://');
                         if (url) {
                           document.execCommand('insertImage', false, url);
-                          const currentEditor = document.getElementById('campaign-form-editor');
+                          const currentEditor = campaignEditorRef.current;
                           if (currentEditor) setCampaignForm(prev => ({ ...prev, body: currentEditor.innerHTML || '' }));
                         }
                       }
@@ -1777,7 +1788,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                           const pub = await uploadToSupabaseStorage(path, base64Data);
                           if (pub) url = pub;
                         }
-                        const currentEditor = document.getElementById('campaign-form-editor');
+                        const currentEditor = campaignEditorRef.current;
                         if (currentEditor) {
                           currentEditor.focus();
                           document.execCommand('insertImage', false, url);
@@ -1796,12 +1807,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
                   <div
                     id="campaign-form-editor"
+                    ref={campaignEditorRef}
                     contentEditable
                     className="w-full min-h-[250px] max-h-[400px] overflow-y-auto px-4 py-3 focus:outline-none text-xs text-slate-700 leading-relaxed rich-editor-content"
                     style={{ borderStyle: 'solid', borderWidth: '0' }}
-                    onInput={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML || '' }))}
-                    onBlur={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML || '' }))}
-                    dangerouslySetInnerHTML={{ __html: campaignForm.body }}
+                    onInput={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget?.innerHTML || '' }))}
+                    onBlur={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget?.innerHTML || '' }))}
                   />
                 </div>
               </>
@@ -1826,7 +1837,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (campaignEditorMode === 'visual') {
-                      const currentEditor = document.getElementById('campaign-form-editor');
+                      const currentEditor = campaignEditorRef.current;
                       if (currentEditor) {
                         currentEditor.focus();
                         document.execCommand('insertHTML', false, `{{${v}}}`);
@@ -1849,7 +1860,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   if (url && url.trim()) {
                     const cleanUrl = url.trim();
                     if (campaignEditorMode === 'visual') {
-                      const currentEditor = document.getElementById('campaign-form-editor');
+                      const currentEditor = campaignEditorRef.current;
                       if (currentEditor) {
                         currentEditor.focus();
                         const linkHtml = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${cleanUrl}</a>&nbsp;`;
@@ -1883,8 +1894,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               onClick={async () => {
                 let finalBody = campaignForm.body;
                 if (campaignEditorMode === 'visual') {
-                  const editor = document.getElementById('campaign-form-editor');
-                  if (editor) finalBody = editor.innerHTML;
+                  const el = campaignEditorRef.current;
+                  if (el) finalBody = el.innerHTML || '';
                 }
 
                 if (!campaignForm.name || !campaignForm.subject || !finalBody) {
