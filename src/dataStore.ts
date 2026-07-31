@@ -2228,6 +2228,22 @@ export class DataStore {
 
     if (isSupabaseConfigured()) {
       try {
+        // Ensure campaign_id exists in email_campaigns to avoid FK 23503 error
+        const campId = activity.campaign_id || 'instant-bulk';
+        const dummyCampaign = {
+          id: campId,
+          name: campId === 'instant-bulk' ? 'Gửi Email Tức Thì Hàng Loạt' : `Chiến dịch ${campId}`,
+          subject: 'Gửi từ hệ thống thông báo',
+          body: '<p>Tự động lưu vết</p>',
+          sent_count: 1,
+          open_count: 0,
+          click_count: 0,
+          status: 'sent',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        await supabase.from('email_campaigns').upsert(dummyCampaign, { onConflict: 'id', ignoreDuplicates: true });
+
         const { error } = await supabase.from('campaign_activity').upsert(activity);
         if (error) {
           console.error('Error saving activity to Supabase:', error);
