@@ -75,8 +75,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [contactGroupName, setContactGroupName] = useState<string>('');
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
 
-  // Campaigns states
-  const [bulkSubTab, setBulkSubTab] = useState<'instant' | 'campaign'>('campaign');
+  // Campaigns & Tracking states
+  const [bulkSubTab, setBulkSubTab] = useState<'instant' | 'campaign' | 'tracking'>('instant');
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>(() => store.getCampaigns());
   const [selectedCampaign, setSelectedCampaign] = useState<EmailCampaign | null>(null);
   const [isCreatingCampaign, setIsCreatingCampaign] = useState<boolean>(false);
@@ -86,6 +86,24 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [viewingReportCampaign, setViewingReportCampaign] = useState<EmailCampaign | null>(null);
   const [campaignActivities, setCampaignActivities] = useState<CampaignActivity[]>([]);
   const [campaignReportFilter, setCampaignReportFilter] = useState<'all' | 'sent' | 'opened' | 'clicked'>('all');
+  
+  // Overall email tracking states
+  const [allActivities, setAllActivities] = useState<CampaignActivity[]>([]);
+  const [trackingFilter, setTrackingFilter] = useState<'all' | 'sent' | 'opened' | 'clicked'>('all');
+  const [selectedCampaignFilter, setSelectedCampaignFilter] = useState<string>('all');
+  const [trackingSearchQuery, setTrackingSearchQuery] = useState<string>('');
+
+  const loadTrackingActivities = async () => {
+    const acts = await store.getAllCampaignActivities();
+    setAllActivities(acts);
+  };
+
+  React.useEffect(() => {
+    if (bulkSubTab === 'tracking') {
+      loadTrackingActivities();
+    }
+  }, [bulkSubTab]);
+
   const [bulkEmailMethod, setBulkEmailMethod] = useState<'resend' | 'smtp'>('smtp');
   const [emailConfig, setEmailConfig] = useState(() => store.getEmailConfig());
 
@@ -581,6 +599,17 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
         response: { success, error: errorMsg }
       };
       store.addNotificationLog(storeLog);
+
+      if (bulkChannel === 'email' && success) {
+        const actLog: CampaignActivity = {
+          id: `ACT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          campaign_id: selectedCampaign?.id || 'instant-bulk',
+          recipient_email: recipient.email,
+          sent_at: new Date().toISOString(),
+          status: 'sent'
+        };
+        await store.saveCampaignActivity(actLog);
+      }
 
       await new Promise(r => setTimeout(r, 800));
     }
@@ -1406,6 +1435,267 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   };
 
   const matchedIds = new Set<string>();
+
+  // Render Overall Email Open & Click Tracking Dashboard
+  const renderTrackingDashboard = () => {
+    const filtered = allActivities.filter(act => {
+      if (selectedCampaignFilter !== 'all' && act.campaign_id !== selectedCampaignFilter) {
+        return false;
+      }
+      if (trackingSearchQuery.trim() && !act.recipient_email.toLowerCase().includes(trackingSearchQuery.toLowerCase().trim())) {
+        return false;
+      }
+      if (trackingFilter === 'sent') return act.status === 'sent' && !act.opened_at;
+      if (trackingFilter === 'opened') return act.status === 'opened' || !!act.opened_at;
+      if (trackingFilter === 'clicked') return act.status === 'clicked' || !!act.clicked_at;
+      return true;
+    });
+
+    const totalSent = allActivities.length;
+    const totalOpened = allActivities.filter(a => a.status === 'opened' || a.status === 'clicked' || !!a.opened_at).length;
+    const totalClicked = allActivities.filter(a => a.status === 'clicked' || !!a.clicked_at).length;
+    const totalUnopened = totalSent - totalOpened;
+
+    const openRate = totalSent > 0 ? Math.round((totalOpened / totalSent) * 100) : 0;
+    const clickRate = totalSent > 0 ? Math.round((totalClicked / totalSent) * 100) : 0;
+
+    const handleExportExcel = () => {
+      const rows = filtered.map(act => {
+        const camp = campaigns.find(c => c.id === act.campaign_id);
+        return {
+          'Địa chỉ Email': act.recipient_email,
+          'Chiến dịch / Đợt gửi': camp ? camp.name : (act.campaign_id === 'instant-bulk' ? 'Gửi Email Tức Thì' : act.campaign_id || 'Gửi Email'),
+          'Trạng thái': act.status === 'clicked' || !!act.clicked_at ? 'Đã click link' : act.status === 'opened' || !!act.opened_at ? 'Đã mở thư' : 'Đã gửi (Chưa mở)',
+          'Thời điểm gửi': act.sent_at ? new Date(act.sent_at).toLocaleString('vi-VN') : '',
+          'Thời điểm mở': act.opened_at ? new Date(act.opened_at).toLocaleString('vi-VN') : '',
+          'Thời điểm click': act.clicked_at ? new Date(act.clicked_at).toLocaleString('vi-VN') : '',
+          'Link URL đã click': act.clicked_url || ''
+        };
+      });
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Tracking');
+      XLSX.writeFile(workbook, `BaoCao_ThongKe_Mo_Click_Email_${Date.now()}.xlsx`);
+    };
+
+    const handleSimulateOpen = async (act: CampaignActivity) => {
+      await store.recordOpen(act.campaign_id, act.recipient_email);
+      await loadTrackingActivities();
+      alert(`Đã ghi nhận lượt Mở Thư cho email: ${act.recipient_email}`);
+    };
+
+    const handleSimulateClick = async (act: CampaignActivity) => {
+      const demoUrl = window.prompt('Nhập link giả lập click:', act.clicked_url || 'https://vsapsevent.org/check-registration') || 'https://vsapsevent.org/check-registration';
+      await store.recordClick(act.campaign_id, act.recipient_email, demoUrl);
+      await loadTrackingActivities();
+      alert(`Đã ghi nhận lượt Click Link (${demoUrl}) cho email: ${act.recipient_email}`);
+    };
+
+    return (
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-md space-y-6">
+        {/* Title & Actions */}
+        <div className="flex flex-wrap justify-between items-center border-b border-slate-100 pb-4 gap-3">
+          <div>
+            <h2 className="text-lg font-black text-slate-800 uppercase flex items-center gap-2">
+              📊 Thống Kê & Báo Cáo Lượt Mở / Click Link Email
+            </h2>
+            <p className="text-xs font-medium text-slate-500 mt-0.5">
+              Theo dõi kết quả gửi thư, số lượt mở email và tỷ lệ tương tác click link từ người nhận theo thời gian thực.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={loadTrackingActivities}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border-none"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Làm mới
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm border-none"
+            >
+              <Upload className="w-3.5 h-3.5 rotate-180" />
+              Xuất Báo Cáo Excel
+            </button>
+          </div>
+        </div>
+
+        {/* Metric Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center space-y-1">
+            <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Tổng Thư Đã Gửi</span>
+            <span className="text-2xl font-black text-slate-800 block">{totalSent}</span>
+            <span className="text-[10px] font-bold text-slate-400 block">Thư đã phát đi</span>
+          </div>
+          <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-100 text-center space-y-1">
+            <span className="text-[10px] font-black text-indigo-500 block uppercase tracking-wider">Đã Mở Thư (Open Rate)</span>
+            <span className="text-2xl font-black text-indigo-800 block">{totalOpened} <span className="text-xs font-bold text-indigo-600">({openRate}%)</span></span>
+            <span className="text-[10px] font-bold text-indigo-500 block">Tỷ lệ tương tác mở</span>
+          </div>
+          <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 text-center space-y-1">
+            <span className="text-[10px] font-black text-amber-600 block uppercase tracking-wider">Click Link (CTR)</span>
+            <span className="text-2xl font-black text-amber-800 block">{totalClicked} <span className="text-xs font-bold text-amber-600">({clickRate}%)</span></span>
+            <span className="text-[10px] font-bold text-amber-600 block">Nhấp liên kết đăng ký</span>
+          </div>
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center space-y-1">
+            <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Chưa Mở Thư</span>
+            <span className="text-2xl font-black text-slate-700 block">{totalUnopened}</span>
+            <span className="text-[10px] font-bold text-slate-400 block">Chưa phát sinh lượt mở</span>
+          </div>
+        </div>
+
+        {/* Filters Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[
+              { filter: 'all', label: `Tất cả (${allActivities.length})` },
+              { filter: 'opened', label: `👁️ Đã mở (${allActivities.filter(a => a.status === 'opened' || !!a.opened_at).length})` },
+              { filter: 'clicked', label: `🔗 Đã click (${allActivities.filter(a => a.status === 'clicked' || !!a.clicked_at).length})` },
+              { filter: 'sent', label: `✉️ Chưa mở (${allActivities.filter(a => a.status === 'sent' && !a.opened_at).length})` }
+            ].map(tab => (
+              <button
+                key={tab.filter}
+                type="button"
+                onClick={() => setTrackingFilter(tab.filter as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer border-none transition-all ${
+                  trackingFilter === tab.filter ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedCampaignFilter}
+              onChange={(e) => setSelectedCampaignFilter(e.target.value)}
+              className="px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-700 focus:outline-none"
+            >
+              <option value="all">Tất cả đợt gửi / chiến dịch</option>
+              {campaigns.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+              <option value="instant-bulk">Gửi tức thì hàng loạt</option>
+            </select>
+
+            <input
+              type="text"
+              placeholder="Tìm theo email người nhận..."
+              value={trackingSearchQuery}
+              onChange={(e) => setTrackingSearchQuery(e.target.value)}
+              className="px-3 py-1.5 border border-slate-200 rounded-xl bg-white text-xs font-semibold text-slate-700 focus:outline-none w-52"
+            />
+          </div>
+        </div>
+
+        {/* Detailed Tracking Table */}
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+          <div className="max-h-[420px] overflow-y-auto">
+            <table className="w-full border-collapse text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-[10px] uppercase font-black tracking-wider text-slate-400 border-b border-slate-200 sticky top-0 bg-slate-50 z-10 select-none">
+                <tr>
+                  <th className="px-4 py-3">STT</th>
+                  <th className="px-4 py-3">Email Người Nhận</th>
+                  <th className="px-4 py-3">Đợt gửi / Chiến dịch</th>
+                  <th className="px-4 py-3 text-center">Trạng thái</th>
+                  <th className="px-4 py-3">Gửi lúc</th>
+                  <th className="px-4 py-3">Mở thư lúc</th>
+                  <th className="px-4 py-3">Click link lúc</th>
+                  <th className="px-4 py-3">Link URL đã click</th>
+                  <th className="px-4 py-3 text-right">Giả lập Test</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-10 text-center text-slate-400 italic">
+                      Chưa có dữ liệu theo dõi hoặc không tìm thấy kết quả phù hợp với bộ lọc.
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((act, idx) => {
+                    const camp = campaigns.find(c => c.id === act.campaign_id);
+                    const campName = camp ? camp.name : (act.campaign_id === 'instant-bulk' ? 'Gửi Email Tức Thì' : act.campaign_id || 'Gửi Email');
+                    return (
+                      <tr key={act.id || idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-2.5 font-mono text-slate-400 text-[11px]">{idx + 1}</td>
+                        <td className="px-4 py-2.5 font-bold font-mono text-slate-800">{act.recipient_email}</td>
+                        <td className="px-4 py-2.5 text-slate-600 font-semibold max-w-[150px] truncate" title={campName}>{campName}</td>
+                        <td className="px-4 py-2.5 text-center">
+                          {act.status === 'clicked' || !!act.clicked_at ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-extrabold text-[10px] border border-amber-200">
+                              🔗 Click Link
+                            </span>
+                          ) : act.status === 'opened' || !!act.opened_at ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-extrabold text-[10px] border border-indigo-200">
+                              👁️ Đã Mở Thư
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold text-[10px]">
+                              ✉️ Đã Gửi
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-400 font-mono text-[11px]">
+                          {act.sent_at ? new Date(act.sent_at).toLocaleString('vi-VN') : '-'}
+                        </td>
+                        <td className="px-4 py-2.5 text-indigo-700 font-mono text-[11px] font-semibold">
+                          {act.opened_at ? new Date(act.opened_at).toLocaleString('vi-VN') : '-'}
+                        </td>
+                        <td className="px-4 py-2.5 text-amber-700 font-mono text-[11px] font-semibold">
+                          {act.clicked_at ? new Date(act.clicked_at).toLocaleString('vi-VN') : '-'}
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-slate-500 truncate max-w-[140px]" title={act.clicked_url || ''}>
+                          {act.clicked_url ? (
+                            <a href={act.clicked_url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
+                              {act.clicked_url}
+                            </a>
+                          ) : '-'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right space-x-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSimulateOpen(act)}
+                            className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold border border-indigo-200 cursor-pointer transition-all"
+                            title="Giả lập người nhận mở email"
+                          >
+                            + Mở
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSimulateClick(act)}
+                            className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-[10px] font-bold border border-amber-200 cursor-pointer transition-all"
+                            title="Giả lập người nhận click link đăng ký"
+                          >
+                            + Click
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Tracking Guidance Card */}
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
+          <div className="flex items-center gap-2 text-slate-800 font-bold">
+            <Info className="w-4 h-4 text-indigo-600 shrink-0" />
+            <span>Cơ chế tự động ghi nhận lượt mở thư & click link đăng ký:</span>
+          </div>
+          <p className="text-slate-600 leading-relaxed text-[11px]">
+            Hệ thống tự động theo dõi lượt mở thư thông qua <strong>Tracking Pixel ẩn</strong> được nhúng trong thư HTML, và tự động ghi nhận thời điểm người nhận nhấp vào các đường link đăng ký hay liên kết theo dõi trong email. Bạn có thể sử dụng các nút <strong>"+ Mở"</strong> và <strong>"+ Click"</strong> ở bảng trên để thử nghiệm tính năng này trực tiếp.
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   // Render Campaign Tab Layout
   const renderCampaignDashboard = () => {
@@ -3428,8 +3718,24 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             >
               🚀 Gửi Tin Tức Thì (Instant Mail & Zalo)
             </button>
+            <button
+              onClick={() => {
+                setBulkSubTab('tracking');
+                loadTrackingActivities();
+              }}
+              className={`px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                bulkSubTab === 'tracking'
+                  ? 'bg-white text-indigo-700 shadow-md scale-[1.02]'
+                  : 'text-slate-500 hover:text-slate-800 bg-transparent'
+              }`}
+            >
+              📊 Thống Kê Mở & Click Email
+            </button>
           </div>
 
+          {bulkSubTab === 'tracking' ? (
+            renderTrackingDashboard()
+          ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel: Excel Uploader & Channel config */}
           <div className="space-y-6 lg:col-span-1">
@@ -4181,6 +4487,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             </div>
           </div>
         </div>
+      )}
     </div>
   )}
     </div>

@@ -2199,6 +2199,23 @@ export class DataStore {
     return all.filter(a => a.campaign_id === campaignId);
   }
 
+  async getAllCampaignActivities(): Promise<CampaignActivity[]> {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('campaign_activity')
+          .select('*');
+        if (!error && data) {
+          return data;
+        }
+      } catch (err) {
+        console.error('Error fetching all activities from Supabase:', err);
+      }
+    }
+    return this.getCampaignActivitiesFromLocal();
+  }
+
+
   async saveCampaignActivity(activity: CampaignActivity): Promise<CampaignActivity> {
     const all = this.getCampaignActivitiesFromLocal();
     const idx = all.findIndex(a => a.id === activity.id);
