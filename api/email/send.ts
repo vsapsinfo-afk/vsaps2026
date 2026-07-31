@@ -3,7 +3,6 @@ import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,6 +13,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { apiKey, from, to, subject, html, provider } = req.body;
+
+  if (provider === 'resend' || apiKey) {
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: 'Resend API Key (apiKey) is required.' });
+    }
+    if (!from) {
+      return res.status(400).json({ success: false, error: 'Sender email (from) is required.' });
+    }
+    if (!to) {
+      return res.status(400).json({ success: false, error: 'Recipient email (to) is required.' });
+    }
+
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          from,
+          to,
+          subject: subject || 'Thông báo từ Ban Tổ Chức',
+          html: html || req.body.body
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        return res.status(200).json({
+          success: true,
+          id: data.id,
+          message: 'Email sent successfully via Resend API'
+        });
+      } else {
+        return res.status(response.status).json({
+          success: false,
+          error: data.message || JSON.stringify(data)
+        });
+      }
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Error connecting to Resend API'
+      });
+    }
   }
 
   let { config, payload } = req.body;
@@ -75,7 +123,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
     });
 
-    // Assemble content using object format for from field to prevent quote/syntax issues
     const mailOptions = {
       from: {
         name: config.senderName || "VSAPS 2026 BTC",
@@ -83,7 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       to: payload.to,
       subject: payload.subject || "Thư xác nhận VSAPS 2026",
-      html: payload.body, // We pass email body as HTML content
+      html: payload.body,
     };
 
     const info = await transporter.sendMail(mailOptions);
@@ -95,18 +142,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     let errorMessage = err.message || "Lỗi khi gửi mail SMTP";
-    
-    // Add helpful tips for SMTP sender mismatch errors (common in Gmail/Zoho/Outlook)
-    const lowerError = errorMessage.toLowerCase();
-    if (
-      errorMessage.includes("5.7.1") || 
-      lowerError.includes("sender address rejected") || 
-      lowerError.includes("allowed sender address mismatch") ||
-      lowerError.includes("not owned by user")
-    ) {
-      errorMessage += " (Gợi ý: Một số nhà cung cấp SMTP như Gmail/Zoho/Outlook yêu cầu 'MÃ SENDER EMAIL' phải khớp chính xác với tài khoản 'SMTP USER' đăng nhập).";
-    }
-
     return res.status(500).json({
       success: false,
       error: errorMessage,

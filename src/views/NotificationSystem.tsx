@@ -22,7 +22,7 @@ function rewriteLinksForTracking(html: string, campaignId: string, recipientEmai
     if (url.startsWith('mailto:') || url.startsWith('tel:') || url.startsWith('#') || url.includes('/api/campaign/')) {
       return match;
     }
-    const trackClickUrl = `${baseUrl}/api/campaign/track-click?campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipientEmail)}&url=${encodeURIComponent(url)}`;
+    const trackClickUrl = `${baseUrl}/api/campaign/track?type=click&campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipientEmail)}&url=${encodeURIComponent(url)}`;
     return match.replace(url, trackClickUrl);
   });
 }
@@ -438,7 +438,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               compiledBody = rewriteLinksForTracking(compiledBody, campaignId, recipient.email, trackingBaseUrl);
               
               // 2. Append open pixel
-              compiledBody += `<img src="${trackingBaseUrl}/api/campaign/track-open?campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipient.email)}" width="1" height="1" style="display:none;" />`;
+              compiledBody += `<img src="${trackingBaseUrl}/api/campaign/track?type=open&campaignId=${encodeURIComponent(campaignId)}&recipientEmail=${encodeURIComponent(recipient.email)}" width="1" height="1" style="display:none;" />`;
             }
 
             const activeMethod = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.method : bulkEmailMethod;
@@ -459,7 +459,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 })
               });
             } else {
-              res = await fetch('/api/email/send-resend', {
+              res = await fetch('/api/email/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
