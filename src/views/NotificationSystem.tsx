@@ -3428,23 +3428,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             >
               🚀 Gửi Tin Tức Thì (Instant Mail & Zalo)
             </button>
-            <button
-              onClick={() => {
-                setBulkSubTab('campaign');
-              }}
-              className={`px-4 py-2 rounded-xl font-bold text-xs cursor-pointer transition-all border-none flex items-center gap-1.5 ${
-                bulkSubTab === 'campaign'
-                  ? 'bg-white text-indigo-700 shadow-md scale-[1.02]'
-                  : 'text-slate-500 hover:text-slate-800 bg-transparent'
-              }`}
-            >
-              📊 Chiến Dịch Email SMTP & Đo Lường
-            </button>
           </div>
 
-          {bulkSubTab === 'campaign' ? (
-            renderCampaignDashboard()
-          ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel: Excel Uploader & Channel config */}
           <div className="space-y-6 lg:col-span-1">
@@ -4196,7 +4181,6 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
             </div>
           </div>
         </div>
-      )}
     </div>
   )}
     </div>
