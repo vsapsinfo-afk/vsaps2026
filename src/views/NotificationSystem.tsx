@@ -75,7 +75,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
 
   // Campaigns states
-  const [bulkSubTab, setBulkSubTab] = useState<'instant' | 'campaign'>('instant');
+  const [bulkSubTab, setBulkSubTab] = useState<'instant' | 'campaign'>('campaign');
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>(() => store.getCampaigns());
   const [selectedCampaign, setSelectedCampaign] = useState<EmailCampaign | null>(null);
   const [isCreatingCampaign, setIsCreatingCampaign] = useState<boolean>(false);
