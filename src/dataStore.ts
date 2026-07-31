@@ -2135,7 +2135,19 @@ export class DataStore {
 
     if (isSupabaseConfigured()) {
       try {
-        const { error } = await supabase.from('email_campaigns').upsert(campaign);
+        const dbCampaign = {
+          id: campaign.id,
+          name: campaign.name,
+          subject: campaign.subject,
+          body: campaign.body,
+          sent_count: campaign.sent_count || 0,
+          open_count: campaign.open_count || 0,
+          click_count: campaign.click_count || 0,
+          status: campaign.status || 'draft',
+          created_at: campaign.created_at || new Date().toISOString(),
+          updated_at: campaign.updated_at || new Date().toISOString()
+        };
+        const { error } = await supabase.from('email_campaigns').upsert(dbCampaign);
         if (error) {
           console.error('Error saving campaign to Supabase:', error);
         }

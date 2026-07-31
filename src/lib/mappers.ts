@@ -374,11 +374,12 @@ export function mapDbToTemplate(row: any): NotificationTemplate {
 // NOTIFICATION LOGS
 // ============================================================
 export function mapNotifLogToDb(l: SentNotificationLog): Record<string, any> {
+  const isAdHoc = !l.templateId || l.templateId === 'instant-email' || l.templateId === 'bulk-email' || l.templateId.startsWith('adhoc-');
   return {
     id: l.id,
     recipient: l.recipient,
     type: l.type,
-    template_id: l.templateId,
+    template_id: isAdHoc ? null : l.templateId,
     template_name: l.templateName,
     sender: l.sender,
     sent_at: l.sentAt,
