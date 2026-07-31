@@ -79,6 +79,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>(() => store.getCampaigns());
   const [selectedCampaign, setSelectedCampaign] = useState<EmailCampaign | null>(null);
   const [isCreatingCampaign, setIsCreatingCampaign] = useState<boolean>(false);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [campaignEditorMode, setCampaignEditorMode] = useState<'visual' | 'code'>('visual');
   const [campaignForm, setCampaignForm] = useState({ name: '', subject: '', body: '', method: 'smtp' as 'smtp' | 'resend' });
   const [viewingReportCampaign, setViewingReportCampaign] = useState<EmailCampaign | null>(null);
   const [campaignActivities, setCampaignActivities] = useState<CampaignActivity[]>([]);
@@ -1591,138 +1593,186 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           </div>
 
           <div className="space-y-1">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-1">
               <label className="text-[10px] font-bold text-slate-500 block">Nội dung Email (HTML body) *</label>
-              {isUploadingImage && (
-                <span className="text-[9px] text-indigo-650 font-black animate-pulse">⏳ Đang xử lý & tải hình ảnh lên hệ thống...</span>
-              )}
+              <div className="flex items-center gap-3">
+                {isUploadingImage && (
+                  <span className="text-[9px] text-indigo-650 font-black animate-pulse">⏳ Đang xử lý & tải hình ảnh lên hệ thống...</span>
+                )}
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit select-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const editor = document.getElementById('campaign-form-editor');
+                      if (campaignEditorMode === 'code' && editor) {
+                        editor.innerHTML = campaignForm.body;
+                      }
+                      setCampaignEditorMode('visual');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all border-none ${
+                      campaignEditorMode === 'visual' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                    }`}
+                  >
+                    <Eye className="w-3 h-3" />
+                    Trực quan (Visual)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const editor = document.getElementById('campaign-form-editor');
+                      if (campaignEditorMode === 'visual' && editor) {
+                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                      }
+                      setCampaignEditorMode('code');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all border-none ${
+                      campaignEditorMode === 'code' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                    }`}
+                  >
+                    <Code className="w-3 h-3" />
+                    Mã HTML (Code)
+                  </button>
+                </div>
+              </div>
             </div>
             
-            <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-50 border border-slate-200 rounded-xl mb-1.5 select-none">
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold', false, ''); }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Chữ đậm"
-              >
-                <Bold className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic', false, ''); }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Chữ nghiêng"
-              >
-                <Italic className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false, ''); }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Gạch chân"
-              >
-                <Underline className="w-3.5 h-3.5" />
-              </button>
-              <div className="w-px h-3 bg-slate-300 mx-1" />
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyLeft', false, ''); }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Căn trái"
-              >
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyCenter', false, ''); }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Căn giữa"
-              >
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyRight', false, ''); }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Căn phải"
-              >
-                <AlignRight className="w-3.5 h-3.5" />
-              </button>
-              <div className="w-px h-3 bg-slate-300 mx-1" />
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
-                  if (url) document.execCommand('createLink', false, url);
-                }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Chèn liên kết"
-              >
-                <Link className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  const choice = window.confirm("Bạn muốn tải ảnh từ máy tính hay chèn link?\n\nOK: Tải lên từ máy tính\nHủy: Chèn link ảnh");
-                  if (choice) {
-                    document.getElementById('campaign-form-image-input')?.click();
-                  } else {
-                    const url = prompt('Nhập link ảnh (URL):', 'https://');
-                    if (url) document.execCommand('insertImage', false, url);
-                  }
-                }}
-                className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                title="Chèn/Tải ảnh"
-              >
-                <Image className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {campaignEditorMode === 'visual' ? (
+              <>
+                <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-50 border border-slate-200 rounded-xl mb-1.5 select-none">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); document.execCommand('bold', false, ''); }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Chữ đậm"
+                  >
+                    <Bold className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); document.execCommand('italic', false, ''); }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Chữ nghiêng"
+                  >
+                    <Italic className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); document.execCommand('underline', false, ''); }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Gạch chân"
+                  >
+                    <Underline className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="w-px h-3 bg-slate-300 mx-1" />
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyLeft', false, ''); }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Căn trái"
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyCenter', false, ''); }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Căn giữa"
+                  >
+                    <AlignCenter className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); document.execCommand('justifyRight', false, ''); }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Căn phải"
+                  >
+                    <AlignRight className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="w-px h-3 bg-slate-300 mx-1" />
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
+                      if (url) document.execCommand('createLink', false, url);
+                    }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Chèn liên kết"
+                  >
+                    <Link className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      const choice = window.confirm("Bạn muốn tải ảnh từ máy tính hay chèn link?\n\nOK: Tải lên từ máy tính\nHủy: Chèn link ảnh");
+                      if (choice) {
+                        document.getElementById('campaign-form-image-input')?.click();
+                      } else {
+                        const url = prompt('Nhập link ảnh (URL):', 'https://');
+                        if (url) document.execCommand('insertImage', false, url);
+                      }
+                    }}
+                    className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
+                    title="Chèn/Tải ảnh"
+                  >
+                    <Image className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
-            <input
-              type="file"
-              id="campaign-form-image-input"
-              accept="image/*"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setIsUploadingImage(true);
-                try {
-                  const reader = new FileReader();
-                  reader.onloadend = async () => {
-                    const base64Data = reader.result as string;
-                    const fileExt = file.name.split('.').pop() || 'png';
-                    const path = `email-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-                    let url = base64Data;
-                    if (isSupabaseConfigured()) {
-                      const pub = await uploadToSupabaseStorage(path, base64Data);
-                      if (pub) url = pub;
+                <input
+                  type="file"
+                  id="campaign-form-image-input"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setIsUploadingImage(true);
+                    try {
+                      const reader = new FileReader();
+                      reader.onloadend = async () => {
+                        const base64Data = reader.result as string;
+                        const fileExt = file.name.split('.').pop() || 'png';
+                        const path = `email-images/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+                        let url = base64Data;
+                        if (isSupabaseConfigured()) {
+                          const pub = await uploadToSupabaseStorage(path, base64Data);
+                          if (pub) url = pub;
+                        }
+                        const editor = document.getElementById('campaign-form-editor');
+                        editor?.focus();
+                        document.execCommand('insertImage', false, url);
+                        setIsUploadingImage(false);
+                      };
+                      reader.readAsDataURL(file);
+                    } catch (err) {
+                      console.error(err);
+                      setIsUploadingImage(false);
                     }
-                    const editor = document.getElementById('campaign-form-editor');
-                    editor?.focus();
-                    document.execCommand('insertImage', false, url);
-                    setIsUploadingImage(false);
-                  };
-                  reader.readAsDataURL(file);
-                } catch (err) {
-                  console.error(err);
-                  setIsUploadingImage(false);
-                }
-              }}
-            />
+                  }}
+                />
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-              <div
-                id="campaign-form-editor"
-                contentEditable
-                className="w-full min-h-[250px] max-h-[400px] overflow-y-auto px-4 py-3 focus:outline-none text-xs text-slate-700 leading-relaxed rich-editor-content"
-                style={{ borderStyle: 'solid', borderWidth: '0' }}
-                onBlur={(e) => setCampaignForm({ ...campaignForm, body: e.currentTarget.innerHTML })}
-                dangerouslySetInnerHTML={{ __html: campaignForm.body }}
+                <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                  <div
+                    id="campaign-form-editor"
+                    contentEditable
+                    className="w-full min-h-[250px] max-h-[400px] overflow-y-auto px-4 py-3 focus:outline-none text-xs text-slate-700 leading-relaxed rich-editor-content"
+                    style={{ borderStyle: 'solid', borderWidth: '0' }}
+                    onBlur={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML }))}
+                    dangerouslySetInnerHTML={{ __html: campaignForm.body }}
+                  />
+                </div>
+              </>
+            ) : (
+              <textarea
+                rows={12}
+                value={campaignForm.body}
+                onChange={(e) => setCampaignForm(prev => ({ ...prev, body: e.target.value }))}
+                placeholder="Dán hoặc tự viết mã HTML email (ví dụ: <p>Kính gửi {{Tên}}...</p>)"
+                className="w-full px-4 py-3 border border-slate-800 rounded-xl font-mono text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none leading-relaxed bg-slate-950 text-emerald-400"
               />
-            </div>
+            )}
           </div>
 
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[10px] text-slate-500">
@@ -1733,11 +1783,15 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   key={v}
                   type="button"
                   onClick={() => {
-                    const editor = document.getElementById('campaign-form-editor');
-                    if (editor) {
-                      editor.focus();
-                      document.execCommand('insertText', false, `{{${v}}}`);
-                      setCampaignForm({ ...campaignForm, body: editor.innerHTML });
+                    if (campaignEditorMode === 'visual') {
+                      const editor = document.getElementById('campaign-form-editor');
+                      if (editor) {
+                        editor.focus();
+                        document.execCommand('insertText', false, `{{${v}}}`);
+                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                      }
+                    } else {
+                      setCampaignForm(prev => ({ ...prev, body: prev.body + `{{${v}}}` }));
                     }
                   }}
                   className="bg-white px-1.5 py-0.5 border border-slate-200 hover:border-indigo-400 rounded font-mono font-bold cursor-pointer"
@@ -1750,39 +1804,62 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
           <div className="flex justify-end gap-2.5">
             <button
-              onClick={() => setIsCreatingCampaign(false)}
+              onClick={() => {
+                setIsCreatingCampaign(false);
+                setEditingCampaignId(null);
+              }}
               className="px-4 py-2 border border-slate-205 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white"
             >
               Hủy
             </button>
             <button
               onClick={async () => {
-                if (!campaignForm.name || !campaignForm.subject || !campaignForm.body) {
+                let finalBody = campaignForm.body;
+                if (campaignEditorMode === 'visual') {
+                  const editor = document.getElementById('campaign-form-editor');
+                  if (editor) finalBody = editor.innerHTML;
+                }
+
+                if (!campaignForm.name || !campaignForm.subject || !finalBody) {
                   alert('Vui lòng nhập đầy đủ thông tin bắt buộc (*)');
                   return;
                 }
-                const newCampaign: EmailCampaign = {
-                  id: `CMP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-                  name: campaignForm.name,
-                  subject: campaignForm.subject,
-                  body: campaignForm.body,
-                  sent_count: 0,
-                  open_count: 0,
-                  click_count: 0,
-                  status: 'draft',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString()
-                };
-                (newCampaign as any).method = campaignForm.method;
-                
-                await store.saveCampaign(newCampaign);
+
+                if (editingCampaignId) {
+                  const existing = campaigns.find(c => c.id === editingCampaignId);
+                  if (existing) {
+                    existing.name = campaignForm.name;
+                    existing.subject = campaignForm.subject;
+                    existing.body = finalBody;
+                    (existing as any).method = campaignForm.method;
+                    existing.updated_at = new Date().toISOString();
+                    await store.saveCampaign(existing);
+                  }
+                } else {
+                  const newCampaign: EmailCampaign = {
+                    id: `CMP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                    name: campaignForm.name,
+                    subject: campaignForm.subject,
+                    body: finalBody,
+                    sent_count: 0,
+                    open_count: 0,
+                    click_count: 0,
+                    status: 'draft',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  };
+                  (newCampaign as any).method = campaignForm.method;
+                  await store.saveCampaign(newCampaign);
+                }
+
                 setCampaigns([...store.getCampaigns()]);
                 setIsCreatingCampaign(false);
+                setEditingCampaignId(null);
                 setCampaignForm({ name: '', subject: '', body: '', method: 'smtp' });
               }}
               className="px-4 py-2 bg-indigo-650 hover:bg-indigo-755 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm"
             >
-              Lưu chiến dịch
+              {editingCampaignId ? 'Lưu cập nhật' : 'Lưu chiến dịch'}
             </button>
           </div>
         </div>
@@ -1841,6 +1918,22 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     </div>
 
                     <div className="flex justify-end gap-1.5 pt-1.5 border-t border-slate-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCampaignForm({
+                            name: camp.name,
+                            subject: camp.subject,
+                            body: camp.body,
+                            method: (camp as any).method || 'smtp'
+                          });
+                          setEditingCampaignId(camp.id);
+                          setIsCreatingCampaign(true);
+                        }}
+                        className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-bold rounded cursor-pointer border-none"
+                      >
+                        Sửa
+                      </button>
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
