@@ -1693,32 +1693,43 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
+                      const editor = document.getElementById('campaign-form-editor');
+                      if (!editor) return;
+
                       const sel = window.getSelection();
                       let savedRange: Range | null = null;
                       if (sel && sel.rangeCount > 0) {
-                        savedRange = sel.getRangeAt(0).cloneRange();
+                        let node: Node | null = sel.anchorNode;
+                        let isInside = false;
+                        while (node) {
+                          if (node === editor) { isInside = true; break; }
+                          node = node.parentNode;
+                        }
+                        if (isInside) {
+                          savedRange = sel.getRangeAt(0).cloneRange();
+                        }
                       }
-                      const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
-                      if (url) {
-                        const editor = document.getElementById('campaign-form-editor');
-                        if (editor) editor.focus();
+
+                      const url = prompt('Nhập địa chỉ liên kết (để theo dõi/tracking):', 'https://');
+                      if (url && url.trim()) {
+                        const cleanUrl = url.trim();
+                        editor.focus();
                         if (savedRange && sel) {
                           sel.removeAllRanges();
                           sel.addRange(savedRange);
                         }
-                        const text = sel?.toString();
+                        const text = sel ? sel.toString() : '';
                         if (text && text.trim().length > 0) {
-                          document.execCommand('createLink', false, url);
+                          document.execCommand('createLink', false, cleanUrl);
                         } else {
-                          document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" style="color: #4f46e5; text-decoration: underline;">${url}</a>`);
+                          const linkHtml = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${cleanUrl}</a>&nbsp;`;
+                          document.execCommand('insertHTML', false, linkHtml);
                         }
-                        if (editor) {
-                          setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
-                        }
+                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
                       }
                     }}
                     className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
-                    title="Chèn liên kết"
+                    title="Chèn liên kết tracking"
                   >
                     <Link className="w-3.5 h-3.5" />
                   </button>
@@ -1827,6 +1838,31 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   {"{{"}{v}{"}}"}
                 </button>
               ))}
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  const url = prompt('Nhập địa chỉ liên kết tracking (URL):', 'https://');
+                  if (url && url.trim()) {
+                    const cleanUrl = url.trim();
+                    if (campaignEditorMode === 'visual') {
+                      const editor = document.getElementById('campaign-form-editor');
+                      if (editor) {
+                        editor.focus();
+                        const linkHtml = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${cleanUrl}</a>&nbsp;`;
+                        document.execCommand('insertHTML', false, linkHtml);
+                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                      }
+                    } else {
+                      const linkTag = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">${cleanUrl}</a>`;
+                      setCampaignForm(prev => ({ ...prev, body: prev.body + linkTag }));
+                    }
+                  }
+                }}
+                className="bg-indigo-50 text-indigo-700 px-2 py-0.5 border border-indigo-200 hover:bg-indigo-100 rounded text-[10px] font-bold cursor-pointer transition-colors flex items-center gap-1"
+              >
+                🔗 Chèn Link Tracking
+              </button>
             </div>
           </div>
 
