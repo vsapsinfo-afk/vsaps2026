@@ -1603,10 +1603,6 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   <button
                     type="button"
                     onClick={() => {
-                      const editor = document.getElementById('campaign-form-editor');
-                      if (campaignEditorMode === 'code' && editor) {
-                        editor.innerHTML = campaignForm.body;
-                      }
                       setCampaignEditorMode('visual');
                     }}
                     className={`px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all border-none ${
@@ -1620,7 +1616,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     type="button"
                     onClick={() => {
                       const editor = document.getElementById('campaign-form-editor');
-                      if (campaignEditorMode === 'visual' && editor) {
+                      if (editor) {
                         setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
                       }
                       setCampaignEditorMode('code');
