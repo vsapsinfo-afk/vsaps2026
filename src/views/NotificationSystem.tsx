@@ -799,22 +799,24 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
   // Sync contenteditable content when switching to visual mode in bulk tab
   React.useEffect(() => {
-    if (bulkEditorMode === 'visual' && bulkEditorRef.current && bulkChannel === 'email') {
-      if (bulkEditorRef.current.innerHTML !== bulkBody) {
-        bulkEditorRef.current.innerHTML = bulkBody;
+    const el = bulkEditorRef.current;
+    if (bulkEditorMode === 'visual' && el && bulkChannel === 'email') {
+      if ((el.innerHTML || '') !== bulkBody) {
+        el.innerHTML = bulkBody || '';
       }
     }
   }, [bulkEditorMode, bulkChannel]);
 
   const handleBulkEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setBulkBody(e.currentTarget.innerHTML);
+    setBulkBody(e.currentTarget?.innerHTML || '');
   };
 
   const handleBulkFormat = (command: string, value: string = '') => {
     document.execCommand(command, false, value);
-    if (bulkEditorRef.current) {
-      setBulkBody(bulkEditorRef.current.innerHTML);
-      bulkEditorRef.current.focus();
+    const el = bulkEditorRef.current;
+    if (el) {
+      setBulkBody(el.innerHTML || '');
+      el.focus();
     }
   };
 
@@ -838,11 +840,11 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       } else {
         // Fallback: append at the end
         if (bulkEditorRef.current) {
-          bulkEditorRef.current.innerHTML += textToInsert;
+          bulkEditorRef.current.innerHTML = (bulkEditorRef.current.innerHTML || '') + textToInsert;
         }
       }
       if (bulkEditorRef.current) {
-        setBulkBody(bulkEditorRef.current.innerHTML);
+        setBulkBody(bulkEditorRef.current.innerHTML || '');
       }
     } else {
       // code mode: insert at cursor in textarea
@@ -876,7 +878,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       setBulkSubject(tmpl.subject || '');
       setBulkBody(tmpl.content);
       if (bulkEditorMode === 'visual' && bulkEditorRef.current) {
-        bulkEditorRef.current.innerHTML = tmpl.content;
+        bulkEditorRef.current.innerHTML = tmpl.content || '';
       }
     }
   };
@@ -941,7 +943,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       bulkEditorRef.current?.focus();
       document.execCommand('insertImage', false, url);
       if (bulkEditorRef.current) {
-        setBulkBody(bulkEditorRef.current.innerHTML);
+        setBulkBody(bulkEditorRef.current.innerHTML || '');
       }
     } else {
       const imgTag = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;
