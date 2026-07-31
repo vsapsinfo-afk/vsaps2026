@@ -645,7 +645,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
         lastLoadedTemplateId.current = selectedTemplate.id;
         setEditTab('edit'); // Reset to edit tab
         if (editorRef.current && selectedTemplate.channel === 'email' && editorMode === 'visual') {
-          editorRef.current.innerHTML = selectedTemplate.content;
+          editorRef.current.innerHTML = selectedTemplate.content || '';
         }
       }
     }
@@ -654,18 +654,18 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   // Sync contenteditable content when switching to visual mode
   React.useEffect(() => {
     if (editorMode === 'visual' && editorRef.current && selectedTemplate?.channel === 'email') {
-      editorRef.current.innerHTML = content;
+      editorRef.current.innerHTML = content || '';
     }
   }, [editorMode]);
 
   const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setContent(e.currentTarget.innerHTML);
+    setContent(e.currentTarget.innerHTML || '');
   };
 
   const handleFormat = (command: string, value: string = '') => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      setContent(editorRef.current.innerHTML);
+      setContent(editorRef.current.innerHTML || '');
       editorRef.current.focus();
     }
   };
@@ -690,11 +690,11 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       } else {
         // Fallback: append at the end
         if (editorRef.current) {
-          editorRef.current.innerHTML += textToInsert;
+          editorRef.current.innerHTML = (editorRef.current.innerHTML || '') + textToInsert;
         }
       }
       if (editorRef.current) {
-        setContent(editorRef.current.innerHTML);
+        setContent(editorRef.current.innerHTML || '');
       }
     } else {
       // code mode / other channels: insert at cursor in textarea
@@ -721,7 +721,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       editorRef.current?.focus();
       document.execCommand('insertImage', false, url);
       if (editorRef.current) {
-        setContent(editorRef.current.innerHTML);
+        setContent(editorRef.current.innerHTML || '');
       }
     } else {
       const imgTag = `<img src="${url}" alt="Image" style="max-width: 100%; height: auto;" />`;

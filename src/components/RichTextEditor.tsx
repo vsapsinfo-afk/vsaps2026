@@ -29,7 +29,7 @@ export default function RichTextEditor({
   // This prevents cursor jumping when state changes
   useEffect(() => {
     if (editorRef.current) {
-      if (editorRef.current.innerHTML !== value) {
+      if ((editorRef.current.innerHTML || '') !== value) {
         editorRef.current.innerHTML = value || '';
       }
     }
@@ -37,14 +37,14 @@ export default function RichTextEditor({
 
   const handleInput = () => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      onChange(editorRef.current.innerHTML || '');
     }
   };
 
   const execCommand = (command: string, value: string = '') => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+      onChange(editorRef.current.innerHTML || '');
     }
   };
 
