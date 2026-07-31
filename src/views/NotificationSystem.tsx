@@ -1709,19 +1709,22 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       const url = prompt('Nhập địa chỉ liên kết (để theo dõi/tracking):', 'https://');
                       if (url && url.trim()) {
                         const cleanUrl = url.trim();
-                        editor.focus();
-                        if (savedRange && sel) {
-                          sel.removeAllRanges();
-                          sel.addRange(savedRange);
+                        const currentEditor = document.getElementById('campaign-form-editor');
+                        if (currentEditor) {
+                          currentEditor.focus();
+                          if (savedRange && sel) {
+                            sel.removeAllRanges();
+                            sel.addRange(savedRange);
+                          }
+                          const text = sel ? sel.toString() : '';
+                          if (text && text.trim().length > 0) {
+                            document.execCommand('createLink', false, cleanUrl);
+                          } else {
+                            const linkHtml = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${cleanUrl}</a>&nbsp;`;
+                            document.execCommand('insertHTML', false, linkHtml);
+                          }
+                          setCampaignForm(prev => ({ ...prev, body: currentEditor.innerHTML || '' }));
                         }
-                        const text = sel ? sel.toString() : '';
-                        if (text && text.trim().length > 0) {
-                          document.execCommand('createLink', false, cleanUrl);
-                        } else {
-                          const linkHtml = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${cleanUrl}</a>&nbsp;`;
-                          document.execCommand('insertHTML', false, linkHtml);
-                        }
-                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
                       }
                     }}
                     className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
@@ -1740,8 +1743,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         const url = prompt('Nhập link ảnh (URL):', 'https://');
                         if (url) {
                           document.execCommand('insertImage', false, url);
-                          const editor = document.getElementById('campaign-form-editor');
-                          if (editor) setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                          const currentEditor = document.getElementById('campaign-form-editor');
+                          if (currentEditor) setCampaignForm(prev => ({ ...prev, body: currentEditor.innerHTML || '' }));
                         }
                       }
                     }}
@@ -1772,10 +1775,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                           const pub = await uploadToSupabaseStorage(path, base64Data);
                           if (pub) url = pub;
                         }
-                        const editor = document.getElementById('campaign-form-editor');
-                        editor?.focus();
-                        document.execCommand('insertImage', false, url);
-                        if (editor) setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                        const currentEditor = document.getElementById('campaign-form-editor');
+                        if (currentEditor) {
+                          currentEditor.focus();
+                          document.execCommand('insertImage', false, url);
+                          setCampaignForm(prev => ({ ...prev, body: currentEditor.innerHTML || '' }));
+                        }
                         setIsUploadingImage(false);
                       };
                       reader.readAsDataURL(file);
@@ -1792,8 +1797,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     contentEditable
                     className="w-full min-h-[250px] max-h-[400px] overflow-y-auto px-4 py-3 focus:outline-none text-xs text-slate-700 leading-relaxed rich-editor-content"
                     style={{ borderStyle: 'solid', borderWidth: '0' }}
-                    onInput={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML }))}
-                    onBlur={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML }))}
+                    onInput={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML || '' }))}
+                    onBlur={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML || '' }))}
                     dangerouslySetInnerHTML={{ __html: campaignForm.body }}
                   />
                 </div>
@@ -1819,11 +1824,11 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (campaignEditorMode === 'visual') {
-                      const editor = document.getElementById('campaign-form-editor');
-                      if (editor) {
-                        editor.focus();
+                      const currentEditor = document.getElementById('campaign-form-editor');
+                      if (currentEditor) {
+                        currentEditor.focus();
                         document.execCommand('insertHTML', false, `{{${v}}}`);
-                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                        setCampaignForm(prev => ({ ...prev, body: currentEditor.innerHTML || '' }));
                       }
                     } else {
                       setCampaignForm(prev => ({ ...prev, body: prev.body + `{{${v}}}` }));
@@ -1842,12 +1847,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   if (url && url.trim()) {
                     const cleanUrl = url.trim();
                     if (campaignEditorMode === 'visual') {
-                      const editor = document.getElementById('campaign-form-editor');
-                      if (editor) {
-                        editor.focus();
+                      const currentEditor = document.getElementById('campaign-form-editor');
+                      if (currentEditor) {
+                        currentEditor.focus();
                         const linkHtml = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: bold;">${cleanUrl}</a>&nbsp;`;
                         document.execCommand('insertHTML', false, linkHtml);
-                        setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                        setCampaignForm(prev => ({ ...prev, body: currentEditor.innerHTML || '' }));
                       }
                     } else {
                       const linkTag = `<a href="${cleanUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">${cleanUrl}</a>`;
