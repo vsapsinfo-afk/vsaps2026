@@ -1606,13 +1606,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   <th className="px-4 py-3">Mở thư lúc</th>
                   <th className="px-4 py-3">Click link lúc</th>
                   <th className="px-4 py-3">Link URL đã click</th>
-                  <th className="px-4 py-3 text-right">Giả lập Test</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-slate-400 italic">
+                    <td colSpan={8} className="px-4 py-10 text-center text-slate-400 italic">
                       Chưa có dữ liệu theo dõi hoặc không tìm thấy kết quả phù hợp với bộ lọc.
                     </td>
                   </tr>
@@ -1649,30 +1648,12 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         <td className="px-4 py-2.5 text-amber-700 font-mono text-[11px] font-semibold">
                           {act.clicked_at ? new Date(act.clicked_at).toLocaleString('vi-VN') : '-'}
                         </td>
-                        <td className="px-4 py-2.5 font-mono text-slate-500 truncate max-w-[140px]" title={act.clicked_url || ''}>
+                        <td className="px-4 py-2.5 font-mono text-slate-500 truncate max-w-[200px]" title={act.clicked_url || ''}>
                           {act.clicked_url ? (
                             <a href={act.clicked_url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline flex items-center gap-1">
                               {act.clicked_url}
                             </a>
                           ) : '-'}
-                        </td>
-                        <td className="px-4 py-2.5 text-right space-x-1">
-                          <button
-                            type="button"
-                            onClick={() => handleSimulateOpen(act)}
-                            className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded text-[10px] font-bold border border-indigo-200 cursor-pointer transition-all"
-                            title="Giả lập người nhận mở email"
-                          >
-                            + Mở
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSimulateClick(act)}
-                            className="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-[10px] font-bold border border-amber-200 cursor-pointer transition-all"
-                            title="Giả lập người nhận click link đăng ký"
-                          >
-                            + Click
-                          </button>
                         </td>
                       </tr>
                     );
@@ -1687,10 +1668,10 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
           <div className="flex items-center gap-2 text-slate-800 font-bold">
             <Info className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span>Cơ chế tự động ghi nhận lượt mở thư & click link đăng ký:</span>
+            <span>Cơ chế tự động ghi nhận lượt mở thư & click link đăng ký thực tế:</span>
           </div>
           <p className="text-slate-600 leading-relaxed text-[11px]">
-            Hệ thống tự động theo dõi lượt mở thư thông qua <strong>Tracking Pixel ẩn</strong> được nhúng trong thư HTML, và tự động ghi nhận thời điểm người nhận nhấp vào các đường link đăng ký hay liên kết theo dõi trong email. Bạn có thể sử dụng các nút <strong>"+ Mở"</strong> và <strong>"+ Click"</strong> ở bảng trên để thử nghiệm tính năng này trực tiếp.
+            Hệ thống tự động theo dõi lượt mở thư thông qua <strong>Tracking Pixel ẩn</strong> được nhúng trong thư HTML, và tự động ghi nhận thời điểm người nhận nhấp vào các đường link đăng ký hay liên kết theo dõi trong email khi có tương tác thực tế từ người nhận.
           </p>
         </div>
       </div>
