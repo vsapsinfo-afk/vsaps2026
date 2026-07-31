@@ -1693,8 +1693,29 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
+                      const sel = window.getSelection();
+                      let savedRange: Range | null = null;
+                      if (sel && sel.rangeCount > 0) {
+                        savedRange = sel.getRangeAt(0).cloneRange();
+                      }
                       const url = prompt('Nhập địa chỉ liên kết (URL):', 'https://');
-                      if (url) document.execCommand('createLink', false, url);
+                      if (url) {
+                        const editor = document.getElementById('campaign-form-editor');
+                        if (editor) editor.focus();
+                        if (savedRange && sel) {
+                          sel.removeAllRanges();
+                          sel.addRange(savedRange);
+                        }
+                        const text = sel?.toString();
+                        if (text && text.trim().length > 0) {
+                          document.execCommand('createLink', false, url);
+                        } else {
+                          document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" style="color: #4f46e5; text-decoration: underline;">${url}</a>`);
+                        }
+                        if (editor) {
+                          setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                        }
+                      }
                     }}
                     className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
                     title="Chèn liên kết"
@@ -1710,7 +1731,11 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         document.getElementById('campaign-form-image-input')?.click();
                       } else {
                         const url = prompt('Nhập link ảnh (URL):', 'https://');
-                        if (url) document.execCommand('insertImage', false, url);
+                        if (url) {
+                          document.execCommand('insertImage', false, url);
+                          const editor = document.getElementById('campaign-form-editor');
+                          if (editor) setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
+                        }
                       }
                     }}
                     className="p-1 hover:bg-slate-200 rounded text-slate-700 cursor-pointer bg-transparent border-none"
@@ -1743,6 +1768,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         const editor = document.getElementById('campaign-form-editor');
                         editor?.focus();
                         document.execCommand('insertImage', false, url);
+                        if (editor) setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
                         setIsUploadingImage(false);
                       };
                       reader.readAsDataURL(file);
@@ -1759,6 +1785,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                     contentEditable
                     className="w-full min-h-[250px] max-h-[400px] overflow-y-auto px-4 py-3 focus:outline-none text-xs text-slate-700 leading-relaxed rich-editor-content"
                     style={{ borderStyle: 'solid', borderWidth: '0' }}
+                    onInput={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML }))}
                     onBlur={(e) => setCampaignForm(prev => ({ ...prev, body: e.currentTarget.innerHTML }))}
                     dangerouslySetInnerHTML={{ __html: campaignForm.body }}
                   />
@@ -1782,19 +1809,20 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 <button
                   key={v}
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (campaignEditorMode === 'visual') {
                       const editor = document.getElementById('campaign-form-editor');
                       if (editor) {
                         editor.focus();
-                        document.execCommand('insertText', false, `{{${v}}}`);
+                        document.execCommand('insertHTML', false, `{{${v}}}`);
                         setCampaignForm(prev => ({ ...prev, body: editor.innerHTML }));
                       }
                     } else {
                       setCampaignForm(prev => ({ ...prev, body: prev.body + `{{${v}}}` }));
                     }
                   }}
-                  className="bg-white px-1.5 py-0.5 border border-slate-200 hover:border-indigo-400 rounded font-mono font-bold cursor-pointer"
+                  className="bg-white px-1.5 py-0.5 border border-slate-200 hover:border-indigo-400 hover:text-indigo-600 rounded font-mono font-bold cursor-pointer transition-colors"
                 >
                   {"{{"}{v}{"}}"}
                 </button>
