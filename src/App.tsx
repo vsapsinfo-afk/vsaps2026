@@ -186,22 +186,26 @@ function AppContent() {
             const windowObj = window as any;
             windowObj.OneSignalDeferred = windowObj.OneSignalDeferred || [];
             windowObj.OneSignalDeferred.push(async (OneSignal: any) => {
-              if (OneSignal.isInitialized && OneSignal.isInitialized()) {
-                console.log('[OneSignal] SDK already initialized, skipping init');
-                return;
+              try {
+                if (OneSignal.isInitialized && OneSignal.isInitialized()) {
+                  console.log('[OneSignal] SDK already initialized, skipping init');
+                  return;
+                }
+                await OneSignal.init({
+                  appId: config.appId,
+                  safari_web_id: config.safariWebId || undefined,
+                  serviceWorkerPath: 'sw.js',
+                  serviceWorkerParam: { scope: '/' },
+                  serviceWorkerOverrideForTypical: true,
+                  notifyButton: {
+                    enable: true,
+                    size: 'medium',
+                    position: 'bottom-right',
+                  },
+                });
+              } catch (err: any) {
+                console.warn('[OneSignal Init Notice]: Suppressed domain or environment mismatch error:', err?.message || err);
               }
-              await OneSignal.init({
-                appId: config.appId,
-                safari_web_id: config.safariWebId || undefined,
-                serviceWorkerPath: 'sw.js',
-                serviceWorkerParam: { scope: '/' },
-                serviceWorkerOverrideForTypical: true,
-                notifyButton: {
-                  enable: true,
-                  size: 'medium',
-                  position: 'bottom-right',
-                },
-              });
             });
           }
         }
