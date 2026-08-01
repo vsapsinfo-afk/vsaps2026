@@ -450,6 +450,15 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       return;
     }
 
+    if (calculatedTotalFee > 0 && !proofImage) {
+      setErrorMsg('⚠️ BẮT BUỘC: Vui lòng đính kèm hình ảnh biên lai chuyển khoản (Để BTC Đối Soát Nhanh) trước khi gửi đăng ký.');
+      const element = document.getElementById('receipt-upload-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
     setErrorMsg('');
     setIsSubmitting(true);
 
@@ -1383,6 +1392,103 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         </div>
                       </div>
                     </div>
+
+                    {/* MANDATORY PAYMENT RECEIPT ATTACHMENT SECTION */}
+                    {calculatedTotalFee > 0 && (
+                      <div id="receipt-upload-section" className="bg-amber-50/50 border-2 border-amber-300 p-5 rounded-2xl space-y-4 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-amber-200 pb-3">
+                          <div className="flex items-center gap-2">
+                            <Upload className="w-5 h-5 text-amber-700 animate-bounce" />
+                            <h4 className="text-xs font-black text-amber-950 uppercase tracking-wide">
+                              {L.t('Đính Kèm Biên Lai Chuyển Khoản (Để BTC Đối Soát Nhanh)', 'Attach Payment Receipt (For Fast Verification)')}
+                            </h4>
+                          </div>
+                          <span className="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                            * {L.t('BẮT BUỘC', 'REQUIRED')}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-700 leading-relaxed font-medium">
+                          {L.t('Quý đại biểu vui lòng quét mã VietQR bên dưới hoặc chuyển khoản theo thông tin tài khoản của BTC, sau đó đính kèm ảnh chụp màn hình biên lai chuyển khoản thành công để BTC đối soát nhanh và cấp vé QR.', 'Please scan the VietQR code or transfer funds using the account details below, then attach a screenshot of your successful transfer receipt so the secretariat can verify quickly and issue your QR ticket.')}
+                        </p>
+
+                        {/* VietQR Bank Transfer Card */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white p-4 rounded-xl border border-amber-250 shadow-xs">
+                          <div className="md:col-span-4 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-amber-100 pb-3 md:pb-0 md:pr-3">
+                            <img
+                              src={currentVietQRUrl}
+                              alt="Mã VietQR"
+                              className="w-36 h-auto object-contain rounded-lg border border-slate-200 shadow-sm"
+                            />
+                            <span className="text-[9px] text-amber-900 font-bold mt-1.5">Quét QR chuyển tiền tự động</span>
+                          </div>
+                          <div className="md:col-span-8 space-y-1.5 text-xs text-slate-800 flex flex-col justify-center">
+                            <p>• Ngân hàng: <strong className="text-slate-900 font-mono">VIETCOMBANK (VCB)</strong></p>
+                            <p>• Số tài khoản: <strong className="text-teal-900 font-mono font-bold text-sm">0331000516283</strong></p>
+                            <p>• Chủ tài khoản: <strong className="text-slate-900 uppercase">HOI PHAU THUAT TAO HINH THAM MY VIET NAM</strong></p>
+                            <p>• Số tiền: <strong className="text-amber-700 font-bold font-mono text-sm">{calculatedTotalFee.toLocaleString()} VNĐ</strong></p>
+                            <p>• Cú pháp CK: <strong className="text-amber-900 bg-amber-100 px-2 py-0.5 rounded font-mono font-extrabold text-xs">{transferMessage}</strong></p>
+                          </div>
+                        </div>
+
+                        {/* Dropzone File Upload Input */}
+                        <div className={`p-4 rounded-xl border-2 border-dashed transition-all ${
+                          proofImage 
+                            ? 'border-emerald-500 bg-emerald-50/40' 
+                            : 'border-amber-400 bg-white hover:border-amber-500'
+                        }`}>
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div
+                                role="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow transition-all select-none"
+                              >
+                                <Upload className="w-4 h-4 text-slate-950" />
+                                {proofImage ? L.t('Thay đổi ảnh biên lai', 'Change Receipt Image') : L.t('Tải Lên Ảnh Biên Lai Chuyển Khoản *', 'Upload Payment Receipt Image *')}
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleFileUpload}
+                                  className="hidden"
+                                />
+                              </div>
+                              {isUploading && <span className="text-[11px] text-amber-700 font-mono animate-pulse">Đang nạp ảnh...</span>}
+                            </div>
+
+                            {proofImage ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-emerald-700 font-bold flex items-center gap-1">
+                                  ✓ Đã đính kèm ảnh biên lai!
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setProofImage(null)}
+                                  className="text-[10px] text-rose-600 hover:underline font-bold cursor-pointer"
+                                >
+                                  [Xóa]
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] font-bold text-rose-600 flex items-center gap-1">
+                                ⚠️ Chưa đính kèm ảnh biên lai
+                              </span>
+                            )}
+                          </div>
+
+                          {proofImage && (
+                            <div className="mt-3 pt-3 border-t border-emerald-200">
+                              <img
+                                src={proofImage}
+                                alt="Biên lai chuyển khoản"
+                                className="max-h-48 w-auto object-contain rounded-lg border border-slate-200 shadow-sm mx-auto"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Submit & Navigation Buttons Step 3 */}
                     <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row justify-between gap-4">

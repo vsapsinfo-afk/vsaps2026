@@ -1423,6 +1423,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 <th className="px-6 py-3.5">Đơn Vị Công Tác</th>
                 <th className="px-6 py-3.5">Gói Đăng Ký</th>
                 <th className="px-6 py-3.5 text-center">Đóng Phí (VNĐ)</th>
+                <th className="px-6 py-3.5 text-center">Biên Lai CK</th>
                 <th className="px-6 py-3.5 text-center">Check-In</th>
                 <th className="px-6 py-3.5 text-right">Tương Tác</th>
               </tr>
@@ -1430,7 +1431,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
             <tbody className="divide-y divide-slate-100 font-medium text-slate-750">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-slate-400 font-semibold italic text-xs">
+                  <td colSpan={9} className="text-center py-12 text-slate-400 font-semibold italic text-xs">
                     Không tìm thấy đại biểu nào khớp với bộ lọc dữ liệu hiện thời.
                   </td>
                 </tr>
@@ -1534,6 +1535,41 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           </button>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {att.transactionProofUrl ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <div 
+                            onClick={() => setViewDetailAttendee(att)}
+                            className="w-11 h-11 rounded-xl border-2 border-emerald-300 shadow-xs overflow-hidden cursor-pointer hover:opacity-85 transition-opacity bg-slate-100 group relative"
+                            title="Click để xem chi tiết ảnh biên lai chuyển khoản"
+                          >
+                            <img src={att.transactionProofUrl} alt="Biên lai" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Eye className="w-3.5 h-3.5 text-white" />
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-extrabold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                            ✓ Có biên lai
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-[9px] font-extrabold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                            ⚠️ Thiếu biên lai
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDetailEditForm(att);
+                              setIsEditingDetail(true);
+                            }}
+                            className="text-[9.5px] text-indigo-600 hover:underline font-bold cursor-pointer"
+                          >
+                            + Bổ sung ảnh
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <label className="inline-flex items-center gap-1 cursor-pointer">
@@ -2487,22 +2523,69 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       )}
 
                       {/* Proof of transfer image rendering */}
-                      {viewDetailAttendee.transactionProofUrl && (
-                        <div className="pt-3 border-t border-slate-100 space-y-2">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">ẢNH CHUYỂN KHOẢN / MINH CHỨNG THANH TOÁN:</span>
-                          <div className="relative max-w-sm rounded-xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 group hover:shadow transition-shadow">
-                            <img 
-                              src={viewDetailAttendee.transactionProofUrl} 
-                              alt="Minh chứng thanh toán" 
-                              className="max-h-48 w-full object-contain cursor-zoom-in"
-                              onClick={() => window.open(viewDetailAttendee.transactionProofUrl || '', '_blank')}
-                            />
-                            <div className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[9px] font-bold px-2 py-0.5 rounded backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                              Click để xem ảnh lớn 🔍
+                      <div className="pt-4 border-t border-slate-200 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-800 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                            🖼️ BIÊN LAI CHUYỂN KHOẢN (ĐỐI SOÁT THANH TOÁN)
+                          </span>
+                          {viewDetailAttendee.transactionProofUrl ? (
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              ✓ Đã có ảnh biên lai
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold bg-rose-100 text-rose-800 px-2.5 py-0.5 rounded-full border border-rose-200">
+                              ⚠️ Chưa có biên lai
+                            </span>
+                          )}
+                        </div>
+
+                        {viewDetailAttendee.transactionProofUrl ? (
+                          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-3">
+                            <div className="relative rounded-xl overflow-hidden border border-slate-300 shadow-sm bg-white group max-w-md mx-auto">
+                              <img 
+                                src={viewDetailAttendee.transactionProofUrl} 
+                                alt="Biên lai chuyển khoản" 
+                                className="max-h-60 w-full object-contain cursor-zoom-in hover:scale-102 transition-transform"
+                                onClick={() => window.open(viewDetailAttendee.transactionProofUrl || '', '_blank')}
+                              />
+                              <div className="absolute bottom-2 right-2 bg-slate-900/85 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-sm opacity-90 group-hover:opacity-100 transition-opacity flex items-center gap-1 cursor-pointer">
+                                <span>Phóng to biên lai 🔍</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] pt-1">
+                              <a 
+                                href={viewDetailAttendee.transactionProofUrl} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="text-indigo-600 font-bold hover:underline flex items-center gap-1"
+                              >
+                                🔗 Tải xuống / Xem liên kết ảnh gốc
+                              </a>
+                              {viewDetailAttendee.paymentStatus !== 'paid' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleUpdatePayment(viewDetailAttendee.id, 'paid');
+                                    setViewDetailAttendee({ ...viewDetailAttendee, paymentStatus: 'paid' });
+                                  }}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                                >
+                                  ✓ Duyệt Đã Đóng Phí (PAID)
+                                </button>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      )}
+                        ) : (
+                          <div className="p-4 bg-amber-50/80 border border-amber-300 rounded-2xl text-center space-y-2">
+                            <p className="text-xs font-bold text-amber-900">
+                              ⚠️ Đại biểu này chưa tải lên hình ảnh biên lai chuyển khoản.
+                            </p>
+                            <p className="text-[11px] text-amber-800">
+                              Bạn có thể yêu cầu đại biểu bổ sung hoặc chọn <strong>"Chỉnh sửa thông tin"</strong> bên dưới để tải ảnh biên lai thay đại biểu.
+                            </p>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Doctor proof credentials image rendering */}
                       {viewDetailAttendee.doctorProofUrl && (
