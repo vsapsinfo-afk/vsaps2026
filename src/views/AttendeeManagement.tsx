@@ -89,6 +89,11 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   // Custom QR Bank Transfer scanner component for unpaid attendees
   const [unpaidAttendeeForQR, setUnpaidAttendeeForQR] = useState<Attendee | null>(null);
 
+  // States for Excel Import feature
+  const [excelParsedAttendees, setExcelParsedAttendees] = useState<Attendee[]>([]);
+  const [importDefaultPaymentStatus, setImportDefaultPaymentStatus] = useState<'paid' | 'pending_verification' | 'unpaid'>('paid');
+  const [skipDuplicates, setSkipDuplicates] = useState<boolean>(true);
+
   // State for delete confirmation
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -334,9 +339,71 @@ Ban Thư ký Hội nghị VSAPS 2026`
     }
   };
 
+  const downloadSampleExcelTemplate = () => {
+    const sampleData = [
+      {
+        'Học vị': 'TS.BS.',
+        'Họ và tên': 'NGUYỄN VĂN AN',
+        'Số điện thoại': '0912345678',
+        'Email': 'nguyenvanan@gmail.com',
+        'Đơn vị công tác': 'Bệnh viện Chợ Rẫy',
+        'Năm sinh': '1982',
+        'Số CCCD (Cấp CME)': '079182001234',
+        'Gói đăng ký': 'Gói Đại Biểu Tiêu Chuẩn',
+        'Trạng thái thanh toán': 'PAID'
+      },
+      {
+        'Học vị': 'BS.CK2',
+        'Họ và tên': 'TRẦN THỊ MAI',
+        'Số điện thoại': '0987654321',
+        'Email': 'tranthimai@gmail.com',
+        'Đơn vị công tác': 'Bệnh viện Đại học Y Dược',
+        'Năm sinh': '1985',
+        'Số CCCD (Cấp CME)': '001185005678',
+        'Gói đăng ký': 'Gói Đại Biểu Tiêu Chuẩn',
+        'Trạng thái thanh toán': 'PAID'
+      },
+      {
+        'Học vị': 'ThS.BS.',
+        'Họ và tên': 'LÊ HOÀNG PHƯƠNG',
+        'Số điện thoại': '0903112233',
+        'Email': 'lhphuong@hmu.edu.vn',
+        'Đơn vị công tác': 'Bệnh viện Bạch Mai',
+        'Năm sinh': '1988',
+        'Số CCCD (Cấp CME)': '001188009988',
+        'Gói đăng ký': 'Gói Đại Biểu Tiêu Chuẩn',
+        'Trạng thái thanh toán': 'PAID'
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh_Sach_Dai_Bieu');
+    
+    worksheet['!cols'] = [
+      { wch: 10 },
+      { wch: 26 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 32 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 26 },
+      { wch: 22 }
+    ];
+
+    XLSX.writeFile(workbook, 'Mau_File_Import_Dai_Bieu_VSAPS2026.xlsx');
+  };
+
   const handleFileUpload = (file: File) => {
     if (!file) return;
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+    const existing = store.getAttendees();
+    let maxSeq = existing.reduce((max, att) => {
+      const match = att.id.match(/\d+$/);
+      return match ? Math.max(max, parseInt(match[0], 10)) : max;
+    }, existing.length);
 
     if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const reader = new FileReader();
@@ -347,55 +414,86 @@ Ban Thư ký Hội nghị VSAPS 2026`
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
-          // Get all rows as array of arrays
-          const rows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
-          
+          const objectRows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
+          const parsedAttendees: Attendee[] = [];
           const outputLines: string[] = [];
-          let skippedHeader = false;
-          let parsedCount = 0;
-          
-          rows.forEach((parts, index) => {
-            if (!parts || parts.length === 0) return;
-            
-            // Check if first line is a header
-            const rowStr = parts.map(p => p !== null && p !== undefined ? String(p) : '').join(' ').toLowerCase();
-            if (index === 0 && (
-              rowStr.includes('học vị') || 
-              rowStr.includes('fullname') || 
-              rowStr.includes('họ và tên') || 
-              rowStr.includes('điện thoại') || 
-              rowStr.includes('email') || 
-              rowStr.includes('cccd') ||
-              rowStr.includes('title') ||
-              rowStr.includes('phone') ||
-              rowStr.includes('cơ quan')
-            )) {
-              skippedHeader = true;
-              return; // skip header
-            }
-            
-            if (parts.length >= 2) {
-              const title = parts[0] !== null && parts[0] !== undefined ? String(parts[0]).trim() : 'BS.';
-              const name = parts[1] !== null && parts[1] !== undefined ? String(parts[1]).trim() : '';
-              const phone = parts[2] !== null && parts[2] !== undefined ? String(parts[2]).trim() : '';
-              const email = parts[3] !== null && parts[3] !== undefined ? String(parts[3]).trim() : '';
-              const org = parts[4] !== null && parts[4] !== undefined ? String(parts[4]).trim() : '';
-              const yob = parts[5] !== null && parts[5] !== undefined ? String(parts[5]).trim() : '';
-              const cccd = parts[6] !== null && parts[6] !== undefined ? String(parts[6]).trim() : '';
+
+          if (objectRows && objectRows.length > 0) {
+            objectRows.forEach((rowObj) => {
+              const keys = Object.keys(rowObj);
+              const findVal = (matchers: string[]): string => {
+                for (const m of matchers) {
+                  const foundKey = keys.find(k => k.toLowerCase().trim().includes(m));
+                  if (foundKey && rowObj[foundKey] !== undefined && rowObj[foundKey] !== null) {
+                    return String(rowObj[foundKey]).trim();
+                  }
+                }
+                return '';
+              };
+
+              const titleVal = findVal(['học vị', 'xưng hô', 'chức danh', 'title', 'học hàm']) || 'BS.';
+              const nameVal = findVal(['họ và tên', 'họ tên', 'tên đại biểu', 'họ tên đại biểu', 'fullname', 'name']);
               
-              if (name) {
-                outputLines.push(`${title} | ${name} | ${phone} | ${email} | ${org} | ${yob} | ${cccd}`);
-                parsedCount++;
+              if (nameVal) {
+                const cleanName = nameVal.toUpperCase();
+                const phoneVal = findVal(['số điện thoại', 'sđt', 'điện thoại', 'phone', 'mobile', 'sdt']).replace(/\s+/g, '');
+                const emailVal = findVal(['email', 'hòm thư', 'mail']) || `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Math.floor(Math.random()*1000)}@gmail.com`;
+                const orgVal = findVal(['đơn vị', 'cơ quan', 'bệnh viện', 'nơi công tác', 'trường', 'viện', 'workplace', 'organization']) || 'Bệnh viện / Viện Y khoa';
+                const yobVal = findVal(['năm sinh', 'yob', 'năm', 'birth']) || '1985';
+                const cccdVal = findVal(['cccd', 'cmnd', 'số định danh', 'cme', 'mã cme', 'identity']);
+                const pkgVal = findVal(['gói vé', 'gói đăng ký', 'gói', 'package']);
+                const paymentVal = findVal(['thanh toán', 'đóng phí', 'payment', 'status']).toLowerCase();
+
+                let status: 'paid' | 'pending_verification' | 'unpaid' = importDefaultPaymentStatus;
+                if (paymentVal.includes('paid') || paymentVal.includes('đã đóng') || paymentVal.includes('đã thanh toán')) {
+                  status = 'paid';
+                } else if (paymentVal.includes('pending') || paymentVal.includes('chờ')) {
+                  status = 'pending_verification';
+                } else if (paymentVal.includes('unpaid') || paymentVal.includes('chưa')) {
+                  status = 'unpaid';
+                }
+
+                maxSeq++;
+                const padSeq = String(maxSeq).padStart(3, '0');
+                const newId = `VSAPS2026-${padSeq}`;
+
+                parsedAttendees.push({
+                  id: newId,
+                  title: titleVal,
+                  fullName: cleanName,
+                  organization: orgVal,
+                  department: 'Thẩm mỹ & Tạo hình',
+                  phone: phoneVal,
+                  email: emailVal,
+                  address: 'Việt Nam',
+                  nationality: 'vietname',
+                  packageId: 'pkg-standard',
+                  packageName: pkgVal || 'Gói Đại Biểu Tiêu Chuẩn',
+                  packageFee: 1500000,
+                  paymentStatus: status,
+                  paymentMethod: 'bank_transfer',
+                  registrationDate: new Date().toISOString().split('T')[0],
+                  qrCodeValue: `${newId}-${cleanName.replace(/\s+/g, '')}`,
+                  isCheckedIn: false,
+                  yearOfBirth: yobVal,
+                  gender: 'Nam',
+                  cmeRequired: !!cccdVal,
+                  cmeIdentityNo: cccdVal || undefined,
+                  province: 'Hồ Chí Minh'
+                });
+
+                outputLines.push(`${titleVal} | ${cleanName} | ${phoneVal} | ${emailVal} | ${orgVal} | ${yobVal} | ${cccdVal}`);
               }
-            }
-          });
-          
-          if (parsedCount > 0) {
+            });
+          }
+
+          if (parsedAttendees.length > 0) {
+            setExcelParsedAttendees(parsedAttendees);
             setBulkInputText(outputLines.join('\n'));
-            setUploadFeedback(`📥 Tải file Excel thành công! Đã trích xuất ${parsedCount} đại biểu từ tệp "${file.name}" ${skippedHeader ? '(bỏ dòng tiêu đề)' : ''}.`);
+            setUploadFeedback(`📥 Tải file Excel thành công! Đã trích xuất ${parsedAttendees.length} đại biểu từ tệp "${file.name}".`);
             playSoundSound('success');
           } else {
-            alert('Không tìm thấy dữ liệu hợp lệ trong tệp Excel. Hãy chắc chắn tệp chứa ít nhất 2 cột (Học vị và Họ tên)');
+            alert('Không tìm thấy dữ liệu đại biểu hợp lệ trong tệp Excel. Hãy chắc chắn tệp chứa cột "Họ và tên".');
           }
         } catch (error) {
           console.error(error);
@@ -410,72 +508,82 @@ Ban Thư ký Hội nghị VSAPS 2026`
         if (!text) return;
         
         const lines = text.split(/\r?\n/);
+        const parsedAttendees: Attendee[] = [];
         const outputLines: string[] = [];
-        let skippedHeader = false;
-        let parsedCount = 0;
         
         lines.forEach((line, index) => {
           const trimmed = line.trim();
           if (!trimmed) return;
           
-          // Auto-detect delimiter: pipe, semicolon, tab, or comma
           let delimiter = '|';
-          if (trimmed.includes('|')) {
-            delimiter = '|';
-          } else if (trimmed.includes(';')) {
-            delimiter = ';';
-          } else if (trimmed.includes('\t')) {
-            delimiter = '\t';
-          } else if (trimmed.includes(',')) {
-            delimiter = ',';
-          }
+          if (trimmed.includes('|')) delimiter = '|';
+          else if (trimmed.includes(';')) delimiter = ';';
+          else if (trimmed.includes('\t')) delimiter = '\t';
+          else if (trimmed.includes(',')) delimiter = ',';
           
           const parts = trimmed.split(delimiter).map(p => {
             let s = p.trim();
-            if (s.startsWith('"') && s.endsWith('"')) {
-              s = s.substring(1, s.length - 1).trim();
-            }
+            if (s.startsWith('"') && s.endsWith('"')) s = s.substring(1, s.length - 1).trim();
             return s;
           });
           
-          // Check if first line is a header
           if (index === 0 && (
             trimmed.toLowerCase().includes('học vị') || 
             trimmed.toLowerCase().includes('fullname') || 
-            trimmed.toLowerCase().includes('họ và tên') || 
-            trimmed.toLowerCase().includes('điện thoại') || 
-            trimmed.toLowerCase().includes('email') || 
-            trimmed.toLowerCase().includes('cccd') ||
-            trimmed.toLowerCase().includes('title') ||
-            trimmed.toLowerCase().includes('phone') ||
-            trimmed.toLowerCase().includes('cơ quan')
+            trimmed.toLowerCase().includes('họ và tên')
           )) {
-            skippedHeader = true;
-            return; // skip parsing header line
+            return;
           }
           
-          if (parts.length >= 2) {
-            const title = parts[0] || 'BS.';
-            const name = parts[1] || '';
-            const phone = parts[2] || '';
-            const email = parts[3] || '';
-            const org = parts[4] || '';
-            const yob = parts[5] || '';
-            const cccd = parts[6] || '';
+          if (parts.length >= 2 && parts[1]) {
+            const titleVal = parts[0] || 'BS.';
+            const nameVal = parts[1].toUpperCase();
+            const phoneVal = (parts[2] || '').replace(/\s+/g, '');
+            const emailVal = parts[3] || `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com`;
+            const orgVal = parts[4] || 'Bệnh viện / Viện Y khoa';
+            const yobVal = parts[5] || '1985';
+            const cccdVal = parts[6] || '';
             
-            if (name) {
-              outputLines.push(`${title} | ${name} | ${phone} | ${email} | ${org} | ${yob} | ${cccd}`);
-              parsedCount++;
-            }
+            maxSeq++;
+            const padSeq = String(maxSeq).padStart(3, '0');
+            const newId = `VSAPS2026-${padSeq}`;
+
+            parsedAttendees.push({
+              id: newId,
+              title: titleVal,
+              fullName: nameVal,
+              organization: orgVal,
+              department: 'Thẩm mỹ & Tạo hình',
+              phone: phoneVal,
+              email: emailVal,
+              address: 'Việt Nam',
+              nationality: 'vietname',
+              packageId: 'pkg-standard',
+              packageName: 'Gói Đại Biểu Tiêu Chuẩn',
+              packageFee: 1500000,
+              paymentStatus: importDefaultPaymentStatus,
+              paymentMethod: 'bank_transfer',
+              registrationDate: new Date().toISOString().split('T')[0],
+              qrCodeValue: `${newId}-${nameVal.replace(/\s+/g, '')}`,
+              isCheckedIn: false,
+              yearOfBirth: yobVal,
+              gender: 'Nam',
+              cmeRequired: !!cccdVal,
+              cmeIdentityNo: cccdVal || undefined,
+              province: 'Hồ Chí Minh'
+            });
+
+            outputLines.push(`${titleVal} | ${nameVal} | ${phoneVal} | ${emailVal} | ${orgVal} | ${yobVal} | ${cccdVal}`);
           }
         });
         
-        if (parsedCount > 0) {
+        if (parsedAttendees.length > 0) {
+          setExcelParsedAttendees(parsedAttendees);
           setBulkInputText(outputLines.join('\n'));
-          setUploadFeedback(`📥 Tải file thành công! Đã trích xuất ${parsedCount} đại biểu từ tệp "${file.name}" ${skippedHeader ? '(bỏ dòng tiêu đề)' : ''}.`);
+          setUploadFeedback(`📥 Tải file thành công! Đã trích xuất ${parsedAttendees.length} đại biểu từ tệp "${file.name}".`);
           playSoundSound('success');
         } else {
-          alert('Không tìm thấy dữ liệu hợp lệ trong tệp. Hãy chắc chắn tệp CSV/TXT chứa ít nhất 2 cột (Học vị và Họ tên)');
+          alert('Không tìm thấy dữ liệu hợp lệ trong tệp CSV/TXT.');
         }
       };
       reader.readAsText(file);
@@ -662,79 +770,108 @@ Ban Thư ký Hội nghị VSAPS 2026`
     };
   }, [attendees]);
 
-  // Bulk past lists of attendees
-  const handleBulkImportTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bulkInputText.trim()) return;
+  // Bulk import confirm handler (Excel & manual paste)
+  const handleConfirmImportExcel = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
 
-    // Parse pasted lines from CSV or tab separated fields
-    // Formats supported: Title | Full Name | Phone | Email | Organization | yearOfBirth | CCCD
-    const lines = bulkInputText.split('\n');
-    let count = 0;
+    let itemsToImport: Attendee[] = [...excelParsedAttendees];
 
-    const existingAttendees = store.getAttendees();
-    let maxSeq = existingAttendees.reduce((max, att) => {
-      const match = att.id.match(/\d+$/);
-      if (match) {
-        const num = parseInt(match[0], 10);
-        return num > max ? num : max;
-      }
-      return max;
-    }, existingAttendees.length);
+    if (itemsToImport.length === 0 && bulkInputText.trim()) {
+      const lines = bulkInputText.split('\n');
+      const existingAttendees = store.getAttendees();
+      let maxSeq = existingAttendees.reduce((max, att) => {
+        const match = att.id.match(/\d+$/);
+        return match ? Math.max(max, parseInt(match[0], 10)) : max;
+      }, existingAttendees.length);
 
-    lines.forEach(line => {
-      const parts = line.split('|').map(s => s.trim());
-      if (parts.length >= 3 && parts[1]) {
-        const titleVal = parts[0] || 'BS.';
-        const nameVal = parts[1].toUpperCase();
-        const phoneVal = parts[2].replace(/\s+/g, '');
-        const emailVal = parts[3] || `${nameVal.toLowerCase().replace(/\s+/g, '')}@gmail.com`;
-        const orgVal = parts[4] || 'Sở Y Tế';
-        const yob = parts[5] || '1985';
-        const cccd = parts[6] || '';
+      lines.forEach(line => {
+        const parts = line.split('|').map(s => s.trim());
+        if (parts.length >= 2 && parts[1]) {
+          maxSeq++;
+          const titleVal = parts[0] || 'BS.';
+          const nameVal = parts[1].toUpperCase();
+          const phoneVal = (parts[2] || '').replace(/\s+/g, '');
+          const emailVal = parts[3] || `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@gmail.com`;
+          const orgVal = parts[4] || 'Bệnh viện / Viện Y khoa';
+          const yob = parts[5] || '1985';
+          const cccd = parts[6] || '';
 
-        maxSeq++;
-        const padSeq = String(maxSeq).padStart(3, '0');
-        const newId = `VSAPS2026-${padSeq}`;
-        const autoAttendee: Attendee = {
-          id: newId,
-          title: titleVal,
-          fullName: nameVal,
-          organization: orgVal,
-          department: 'Thẩm mỹ & Tạo hình',
-          phone: phoneVal,
-          email: emailVal,
-          address: 'Hồ Chí Minh',
-          nationality: 'vietname',
-          packageId: 'pkg-standard',
-          packageName: 'Gói Đại Biểu Tiêu Chuẩn',
-          packageFee: 1500000,
-          paymentStatus: 'paid', // invitees are pre-paid
-          paymentMethod: 'bank_transfer',
-          registrationDate: new Date().toISOString().split('T')[0],
-          qrCodeValue: `VSAPS2026-${newId}-${nameVal.replace(/\s+/g, '')}`,
-          isCheckedIn: false,
-          yearOfBirth: yob,
-          gender: 'Nam',
-          cmeRequired: !!cccd,
-          cmeIdentityNo: cccd || undefined,
-          province: 'Hồ Chí Minh'
-        };
+          const padSeq = String(maxSeq).padStart(3, '0');
+          const newId = `VSAPS2026-${padSeq}`;
 
-        store.saveAttendee(autoAttendee);
-        count++;
-      }
-    });
+          itemsToImport.push({
+            id: newId,
+            title: titleVal,
+            fullName: nameVal,
+            organization: orgVal,
+            department: 'Thẩm mỹ & Tạo hình',
+            phone: phoneVal,
+            email: emailVal,
+            address: 'Việt Nam',
+            nationality: 'vietname',
+            packageId: 'pkg-standard',
+            packageName: 'Gói Đại Biểu Tiêu Chuẩn',
+            packageFee: 1500000,
+            paymentStatus: importDefaultPaymentStatus,
+            paymentMethod: 'bank_transfer',
+            registrationDate: new Date().toISOString().split('T')[0],
+            qrCodeValue: `${newId}-${nameVal.replace(/\s+/g, '')}`,
+            isCheckedIn: false,
+            yearOfBirth: yob,
+            gender: 'Nam',
+            cmeRequired: !!cccd,
+            cmeIdentityNo: cccd || undefined,
+            province: 'Hồ Chí Minh'
+          });
+        }
+      });
+    }
 
-    if (count > 0) {
+    if (itemsToImport.length === 0) {
+      alert('Chưa có dữ liệu đại biểu hợp lệ để nạp vào hệ thống!');
+      return;
+    }
+
+    // Filter duplicates if option enabled
+    const existing = store.getAttendees();
+    let finalItems = itemsToImport;
+    let skippedCount = 0;
+
+    if (skipDuplicates) {
+      const existingKeys = new Set(existing.map(a => `${a.email.toLowerCase()}_${a.phone}`));
+      finalItems = itemsToImport.filter(item => {
+        const key = `${item.email.toLowerCase()}_${item.phone}`;
+        if (existingKeys.has(key)) {
+          skippedCount++;
+          return false;
+        }
+        return true;
+      });
+    }
+
+    if (finalItems.length === 0) {
+      alert(`Tất cả ${itemsToImport.length} đại biểu trong danh sách đã có trên hệ thống (Bỏ qua trùng lặp)!`);
+      return;
+    }
+
+    // Apply default payment status choice
+    finalItems = finalItems.map(item => ({
+      ...item,
+      paymentStatus: importDefaultPaymentStatus
+    }));
+
+    try {
+      await store.saveAttendeesBulk(finalItems);
       playSoundSound('success');
-      alert(`Đã nạp thành công bộ lọc danh bạ ${count} đại biểu Bác sĩ thư mời vào bộ cơ sở!`);
+      alert(`🎉 Đã nạp thành công ${finalItems.length} đại biểu vào CSDL!${skippedCount > 0 ? ` (Bỏ qua ${skippedCount} bản ghi trùng)` : ''}`);
       setShowBulkForm(false);
       setBulkInputText('');
+      setExcelParsedAttendees([]);
       setUploadFeedback(null);
       loadAll();
-    } else {
-      alert('Không phân giải được dữ liệu hàng loạt. Vui lòng nhập đúng định dạng phân tách bằng dấu gạch đứng (|)');
+    } catch (err) {
+      console.error('Lỗi khi nạp đại biểu hàng loạt:', err);
+      alert('Có lỗi xảy ra khi nạp danh sách đại biểu vào CSDL.');
     }
   };
 
@@ -3850,39 +3987,61 @@ Ban Thư ký Hội nghị VSAPS 2026`
         </div>
       )}
 
-      {/* Modal dialog for bulk text importing via tab grid pasting */}
+      {/* Modal dialog for bulk Excel / CSV / Text importing */}
       {showBulkForm && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full overflow-hidden border border-slate-100 shadow-2xl animate-fade-in text-slate-900">
-            <div className="bg-slate-900 p-5 text-white flex justify-between items-center">
-              <div>
-                <h4 className="font-bold text-sm tracking-wide">NHẬP DANH SÁCH BÁC SĨ THƯ MỜI HÀNG LOẠT</h4>
-                <p className="text-[11px] text-slate-450 mt-0.5">Tải lên tệp tin Excel (CSV / TXT) hoặc Sao chép & Dán thủ công.</p>
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-3xl w-full overflow-hidden border border-slate-200 shadow-2xl animate-fade-in text-slate-900 max-h-[90vh] flex flex-col">
+            <div className="bg-slate-900 p-5 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm tracking-wide">NHẬP DANH SÁCH ĐẠI BIỂU HÀNG LOẠT TỪ FILE EXCEL</h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Tải lên tệp Excel (.xlsx, .xls, .csv) hoặc Dán văn bản phân tách bằng gạch đứng (|).</p>
+                </div>
               </div>
               <button 
                 onClick={() => {
                   setShowBulkForm(false);
                   setBulkInputText('');
+                  setExcelParsedAttendees([]);
                   setUploadFeedback(null);
                 }}
-                className="text-slate-400 hover:text-white font-bold text-sm cursor-pointer"
+                className="text-slate-400 hover:text-white font-bold text-base cursor-pointer px-2"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleBulkImportTextSubmit} className="p-6 space-y-4 font-sans">
+            <form onSubmit={handleConfirmImportExcel} className="p-6 space-y-5 font-sans overflow-y-auto flex-1 bg-slate-50/50">
               
+              {/* Download Template Bar */}
+              <div className="bg-amber-50/70 border border-amber-250 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+                <div className="text-xs text-amber-950 font-medium">
+                  <span className="font-extrabold text-amber-900 block text-xs">💡 Chưa có mẫu file Excel?</span>
+                  <span className="text-[11px] text-amber-800">Tải file Excel mẫu chuẩn được format sẵn các cột thông tin để nhập dữ liệu nhanh nhất.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={downloadSampleExcelTemplate}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Tải File Excel Mẫu (.xlsx) 📥</span>
+                </button>
+              </div>
+
               {/* Drag and Drop File Upload Zone */}
               <div 
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-5 text-center transition-all cursor-pointer ${
+                className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
                   isDragActive 
                     ? 'border-indigo-600 bg-indigo-50/50 text-indigo-700' 
-                    : 'border-slate-200 bg-slate-50 hover:bg-slate-100/50 text-slate-500'
+                    : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-600 shadow-xs'
                 }`}
               >
                 <input 
@@ -3893,61 +4052,138 @@ Ban Thư ký Hội nghị VSAPS 2026`
                   className="hidden"
                 />
                 <label htmlFor="bulk-file-input" className="cursor-pointer block space-y-2">
-                  <div className="mx-auto w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <Upload className="w-5 h-5" />
+                  <div className="mx-auto w-12 h-12 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center border border-teal-100 shadow-xs">
+                    <Upload className="w-6 h-6 text-teal-700" />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-slate-705">Kéo & Thả tệp tin Excel (.xlsx, .xls, .csv, .txt) tại đây</p>
-                    <p className="text-[10px] text-slate-400 mt-1">Hoặc nhấp chuột để chọn tệp tin từ máy tính</p>
+                    <p className="text-xs font-black text-slate-800">Kéo & Thả tệp tin Excel (.xlsx, .xls, .csv) vào đây để đọc tự động</p>
+                    <p className="text-[10.5px] text-slate-400 mt-1">Hoặc nhấp chuột để chọn tệp tin từ máy tính</p>
                   </div>
                 </label>
               </div>
 
               {uploadFeedback && (
-                <div className="bg-emerald-50 text-emerald-800 p-2.5 rounded-lg border border-emerald-200 text-[11px] font-medium flex items-center gap-2 animate-fadeIn">
+                <div className="bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
                   <Check className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>{uploadFeedback}</span>
                 </div>
               )}
 
+              {/* Live Preview Table of Excel Parsed Rows */}
+              {excelParsedAttendees.length > 0 && (
+                <div className="space-y-2 border border-slate-200 rounded-2xl p-4 bg-white shadow-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <span className="text-xs font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
+                      📊 XEM TRƯỚC DỮ LIỆU EXCEL ĐÃ TRÍCH XUẤT ({excelParsedAttendees.length} đại biểu)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExcelParsedAttendees([])}
+                      className="text-[10px] text-rose-600 hover:underline font-bold"
+                    >
+                      [Xóa bảng xem trước]
+                    </button>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl">
+                    <table className="w-full text-left text-[11px] text-slate-700">
+                      <thead className="bg-slate-100 text-[9.5px] uppercase font-bold text-slate-500 sticky top-0 bg-slate-100">
+                        <tr>
+                          <th className="px-3 py-2">STT</th>
+                          <th className="px-3 py-2">Học vị & Họ Tên</th>
+                          <th className="px-3 py-2">Số Điện Thoại</th>
+                          <th className="px-3 py-2">Email</th>
+                          <th className="px-3 py-2">Đơn Vị Công Tác</th>
+                          <th className="px-3 py-2 text-center">Năm Sinh</th>
+                          <th className="px-3 py-2 text-center">Số CCCD (CME)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-mono">
+                        {excelParsedAttendees.map((att, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="px-3 py-1.5 text-slate-400">{idx + 1}</td>
+                            <td className="px-3 py-1.5 font-bold font-sans text-slate-900">{att.title} {att.fullName}</td>
+                            <td className="px-3 py-1.5">{att.phone}</td>
+                            <td className="px-3 py-1.5 text-slate-500">{att.email}</td>
+                            <td className="px-3 py-1.5 font-sans truncate max-w-[150px]">{att.organization}</td>
+                            <td className="px-3 py-1.5 text-center">{att.yearOfBirth}</td>
+                            <td className="px-3 py-1.5 text-center">{att.cmeIdentityNo || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Textarea Fallback */}
               <div>
-                <label className="text-[10.5px] font-bold text-slate-700 block mb-1">Xem trước dữ liệu tải lên hoặc Dán khối văn bản phân tách bằng dấu gạch đứng (|):</label>
-                <p className="text-[9.5px] text-indigo-750 bg-indigo-50/50 p-2 rounded leading-snug mb-2 font-mono text-indigo-800">
-                  Định dạng dòng: Học vị | Họ và Tên | Điện thoại | Email | Cơ quan | Năm Sinh | Số định danh CCCD (Nếu làm cọc CME)
+                <label className="text-[10.5px] font-bold text-slate-700 block mb-1">
+                  Hoặc Dán trực tiếp văn bản danh sách phân tách bằng dấu gạch đứng (|):
+                </label>
+                <p className="text-[9.5px] text-indigo-800 bg-indigo-50/60 p-2 rounded-lg leading-snug mb-2 font-mono border border-indigo-100">
+                  Cấu trúc: Học vị | Họ và Tên | Điện thoại | Email | Cơ quan | Năm Sinh | Số CCCD (Để cấp CME)
                 </p>
                 <textarea
-                  required
-                  rows={6}
+                  rows={4}
                   value={bulkInputText}
                   onChange={(e) => setBulkInputText(e.target.value)}
                   placeholder="BS. | NGUYỄN VĂN A | 0987112233 | nva@hmu.edu.vn | Bệnh viện Bạch Mai | 1980 | 001180009212&#10;TS.BS. | TRẦN THỊ BÚT | 0912343212 | ttbut@ump.edu.vn | BV Chợ Rẫy | 1975 | 079175001211"
-                  className="w-full px-3 py-2 border border-slate-200 focus:border-indigo-500 rounded-lg text-xs font-mono h-[140px] focus:outline-none"
+                  className="w-full px-3 py-2 border border-slate-200 focus:border-indigo-500 rounded-xl text-xs font-mono h-[110px] focus:outline-none bg-white"
                 />
               </div>
 
-              <div className="bg-slate-50 p-2.5 rounded text-[10px] text-slate-500 space-y-1 w-full">
-                <p className="font-bold text-slate-700">• Quy tắc xử lý tự động:</p>
-                <p>• Hệ thống sẽ tự tạo các mã số đại biểu duy nhất dạng `VSAPS2026-XXX` và sinh mã QR bảo mật tương ứng.</p>
-                <p>• Trạng thái thanh toán của khối import được kích hoạt thành <strong>Đã thanh toán (Paid)</strong> theo danh sách biểu mời sảnh.</p>
+              {/* Import Configuration Panel */}
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-xs">
+                <span className="text-[10.5px] font-extrabold text-slate-800 uppercase tracking-wider block">⚙️ CẤU HÌNH XỬ LÝ KHI NẠP DANH SÁCH EXCEL:</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">Trạng thái thanh toán mặc định:</label>
+                    <select
+                      value={importDefaultPaymentStatus}
+                      onChange={(e: any) => setImportDefaultPaymentStatus(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-bold bg-slate-50 focus:outline-none text-slate-800 cursor-pointer"
+                    >
+                      <option value="paid">PAID (Đã đóng phí / Thư mời sảnh)</option>
+                      <option value="pending_verification">PENDING (Chờ đối soát thanh toán)</option>
+                      <option value="unpaid">UNPAID (Chưa đóng phí)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center pt-5">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={skipDuplicates}
+                        onChange={(e) => setSkipDuplicates(e.target.checked)}
+                        className="w-4 h-4 text-teal-600 border-slate-300 rounded cursor-pointer"
+                      />
+                      <span>Tự động bỏ qua các đại biểu trùng Email / SĐT</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-2 border-t border-slate-150">
+              {/* Footer action buttons */}
+              <div className="pt-4 flex justify-end gap-3 border-t border-slate-200 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setShowBulkForm(false);
                     setBulkInputText('');
+                    setExcelParsedAttendees([]);
                     setUploadFeedback(null);
                   }}
-                  className="px-4 py-2 text-xs text-slate-500 bg-slate-100 hover:bg-slate-200 font-bold rounded-lg cursor-pointer"
+                  className="px-5 py-2.5 text-xs text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 font-bold rounded-xl cursor-pointer transition-all"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs text-white bg-indigo-600 hover:bg-indigo-700 font-bold rounded-lg cursor-pointer border-none shadow-sm"
+                  className="px-6 py-2.5 text-xs text-white bg-teal-900 hover:bg-teal-950 font-extrabold rounded-xl cursor-pointer border-none shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Nạp Vào Cơ Sở Dữ Liệu
+                  <span>⚡ Xác Nhận Nạp {excelParsedAttendees.length > 0 ? `${excelParsedAttendees.length} Đại Biểu` : 'Danh Sách'} Vào CSDL</span>
                 </button>
               </div>
             </form>

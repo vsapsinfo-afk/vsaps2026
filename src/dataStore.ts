@@ -1270,6 +1270,51 @@ export class DataStore {
     return updatedAttendee;
   }
 
+  async saveAttendeesBulk(newAttendees: Attendee[]): Promise<Attendee[]> {
+    if (!newAttendees || newAttendees.length === 0) return [];
+
+    newAttendees.forEach(att => {
+      const idx = this.attendees.findIndex(a => a.id === att.id);
+      if (idx >= 0) {
+        this.attendees[idx] = att;
+      } else {
+        this.attendees.push(att);
+      }
+
+      // Auto-create income transaction if paid
+      if (att.paymentStatus === 'paid' && !this.finance.find(f => f.referenceId === att.id)) {
+        this.addFinancialRecord({
+          id: 'TXN-' + Math.floor(Math.random() * 900000 + 100000),
+          date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          type: 'income',
+          category: 'Gói đại biểu',
+          amount: att.packageFee,
+          description: `Phí đăng ký Gói ${att.packageName} đại biểu ${att.fullName}`,
+          referenceId: att.id,
+          paymentMethod: att.paymentMethod === 'bank_transfer' ? 'Chuyển khoản Ngân hàng' : 'Thanh toán Thẻ',
+          verifiedBy: 'Import Excel Hàng Loạt',
+          isVerified: true,
+        });
+      }
+    });
+
+    this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const dbRecords = newAttendees.map(att => mapAttendeeToDb(att));
+        const { error } = await supabase.from('attendees').upsert(dbRecords);
+        if (error) {
+          console.error('Error bulk upserting attendees to Supabase:', error);
+        }
+      } catch (err) {
+        console.error('Error in saveAttendeesBulk Supabase sync:', err);
+      }
+    }
+
+    return newAttendees;
+  }
+
   deleteAttendee(id: string) {
     this.attendees = this.attendees.filter(a => a.id !== id);
     this.saveToLocalStorage(DataStore.KEY_ATTENDEES, this.attendees);
