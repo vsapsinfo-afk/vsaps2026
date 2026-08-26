@@ -69,11 +69,20 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
   // Contacts integration states
   const [contacts, setContacts] = useState<Contact[]>(() => store.getContacts());
-  const [listSource, setListSource] = useState<'file' | 'saved' | 'attendees' | 'speakers'>('file');
+  const [listSource, setListSource] = useState<'file' | 'saved' | 'attendees' | 'speakers' | 'pick'>('file');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [saveToContacts, setSaveToContacts] = useState<boolean>(true);
   const [contactGroupName, setContactGroupName] = useState<string>('');
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
+
+  // Pick-individual states (gửi lại thư cho các trường hợp bị sót)
+  const [pickPool, setPickPool] = useState<'attendees' | 'speakers' | 'both'>('attendees');
+  const [pickSearch, setPickSearch] = useState<string>('');
+  const [pickMailFilter, setPickMailFilter] = useState<'all' | 'never' | 'problem'>('all');
+  const [pickedKeys, setPickedKeys] = useState<string[]>([]);
+  const [pickEmailPaste, setPickEmailPaste] = useState<string>('');
+  const [pickPasteResult, setPickPasteResult] = useState<{ matched: number; unmatched: string[] } | null>(null);
+  const [pickRefreshKey, setPickRefreshKey] = useState<number>(0);
 
   // Campaigns & Tracking states
   const [bulkSubTab, setBulkSubTab] = useState<'instant' | 'campaign' | 'tracking'>('instant');
@@ -119,6 +128,10 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
       if (detail && detail.table === 'email_campaigns') {
         setCampaigns([...store.getCampaigns()]);
+      }
+      if (detail && detail.table === 'attendees') {
+        setPickRefreshKey(k => k + 1);
+        setLogs([...store.getNotificationLogs()]);
       }
     };
     window.addEventListener('store-updated', handleStoreUpdate);
@@ -211,35 +224,60 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     setBulkLogs([]);
   };
 
+  const buildAttendeeRecord = (a: any, index: number) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanPhone = (a.phone || '').replace(/[^0-9]/g, '');
+    const isEmailValid = emailRegex.test(a.email || '');
+    const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
+    const payStatusText = a.paymentStatus === 'paid' ? 'Đã Thanh Toán' : a.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
+    return {
+      id: index + 1,
+      name: a.fullName,
+      email: a.email || '',
+      phone: a.phone || '',
+      isEmailValid,
+      isPhoneValid,
+      status: 'pending' as const,
+      error: '',
+      // Extra properties for placeholders
+      title: a.title || '',
+      fullname: a.fullName || '',
+      package: a.packageName || '',
+      code: a.id || '',
+      payment_status: payStatusText,
+      package_fee: a.packageFee ? new Intl.NumberFormat('vi-VN').format(a.packageFee) : '0',
+      organization: a.organization || '',
+      qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(a.qrCodeValue || a.id || '')}`
+    };
+  };
+
+  const buildSpeakerRecord = (s: any, index: number) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanPhone = (s.phone || '').replace(/[^0-9]/g, '');
+    const isEmailValid = emailRegex.test(s.email || '');
+    const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
+    return {
+      id: index + 1,
+      name: s.fullName,
+      email: s.email || '',
+      phone: s.phone || '',
+      isEmailValid,
+      isPhoneValid,
+      status: 'pending' as const,
+      error: '',
+      // Extra properties for placeholders
+      title: s.title || '',
+      fullname: s.fullName || '',
+      code: s.id || '',
+      presentation_title: s.presentationTitle || '',
+      track: s.presentationTrack || '',
+      organization: s.organization || ''
+    };
+  };
+
   const loadAttendeesList = () => {
     const list = store.getAttendees();
-    const records = list.map((a, index) => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const cleanPhone = (a.phone || '').replace(/[^0-9]/g, '');
-      const isEmailValid = emailRegex.test(a.email || '');
-      const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
-      const payStatusText = a.paymentStatus === 'paid' ? 'Đã Thanh Toán' : a.paymentStatus === 'pending_verification' ? 'Chờ Đối Soát' : 'Chưa Thanh Toán';
-      return {
-        id: index + 1,
-        name: a.fullName,
-        email: a.email || '',
-        phone: a.phone || '',
-        isEmailValid,
-        isPhoneValid,
-        status: 'pending' as const,
-        error: '',
-        // Extra properties for placeholders
-        title: a.title || '',
-        fullname: a.fullName || '',
-        package: a.packageName || '',
-        code: a.id || '',
-        payment_status: payStatusText,
-        package_fee: a.packageFee ? new Intl.NumberFormat('vi-VN').format(a.packageFee) : '0',
-        organization: a.organization || '',
-        qr_url: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(a.qrCodeValue)}`
-      };
-    });
-    setExcelData(records);
+    setExcelData(list.map((a, index) => buildAttendeeRecord(a, index)));
     setExcelFileName(`Danh sách Đại biểu (${list.length} người)`);
     setContactGroupName('Đại biểu');
     setSendingIndex(-1);
@@ -248,31 +286,160 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
 
   const loadSpeakersList = () => {
     const list = store.getSpeakers();
-    const records = list.map((s, index) => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const cleanPhone = (s.phone || '').replace(/[^0-9]/g, '');
-      const isEmailValid = emailRegex.test(s.email || '');
-      const isPhoneValid = cleanPhone.length >= 9 && cleanPhone.length <= 11;
-      return {
-        id: index + 1,
-        name: s.fullName,
-        email: s.email || '',
-        phone: s.phone || '',
-        isEmailValid,
-        isPhoneValid,
-        status: 'pending' as const,
-        error: '',
-        // Extra properties for placeholders
-        title: s.title || '',
-        fullname: s.fullName || '',
-        presentation_title: s.presentationTitle || '',
-        track: s.presentationTrack || '',
-        organization: s.organization || ''
-      };
-    });
-    setExcelData(records);
+    setExcelData(list.map((s, index) => buildSpeakerRecord(s, index)));
     setExcelFileName(`Danh sách Báo cáo viên (${list.length} người)`);
     setContactGroupName('Báo cáo viên');
+    setSendingIndex(-1);
+    setBulkLogs([]);
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Chọn cá nhân bất kỳ theo Email (gửi lại thư cho trường hợp bị sót)  *
+   * ------------------------------------------------------------------ */
+
+  const normalizeEmail = (email: string) => (email || '').trim().toLowerCase();
+
+  // Tổng hợp trạng thái gửi Email của từng địa chỉ dựa trên nhật ký hệ thống
+  const emailLogSummary = React.useMemo(() => {
+    const map = new Map<string, { success: number; failed: number; lastAt: string }>();
+    logs.forEach(log => {
+      if (log.type !== 'email') return;
+      const key = normalizeEmail(log.recipient);
+      if (!key) return;
+      const entry = map.get(key) || { success: 0, failed: 0, lastAt: '' };
+      if (log.status === 'success') entry.success += 1;
+      else entry.failed += 1;
+      if (!entry.lastAt || (log.sentAt || '') > entry.lastAt) entry.lastAt = log.sentAt || '';
+      map.set(key, entry);
+    });
+    return map;
+  }, [logs]);
+
+  const getMailState = (email: string): 'sent' | 'failed' | 'never' => {
+    const entry = emailLogSummary.get(normalizeEmail(email));
+    if (!entry) return 'never';
+    if (entry.success > 0) return 'sent';
+    return 'failed';
+  };
+
+  // Danh sách ứng viên để chọn (đại biểu / báo cáo viên đã đăng ký)
+  const pickCandidates = React.useMemo(() => {
+    const result: any[] = [];
+    if (pickPool === 'attendees' || pickPool === 'both') {
+      store.getAttendees().forEach(a => {
+        result.push({
+          key: `att:${a.id}`,
+          kind: 'attendee' as const,
+          code: a.id,
+          name: a.fullName,
+          title: a.title || '',
+          email: a.email || '',
+          phone: a.phone || '',
+          organization: a.organization || '',
+          extra: a.paymentStatus === 'paid' ? 'Đã đóng phí' : a.paymentStatus === 'pending_verification' ? 'Chờ đối soát' : 'Chưa đóng phí',
+          registrationDate: a.registrationDate || '',
+          raw: a
+        });
+      });
+    }
+    if (pickPool === 'speakers' || pickPool === 'both') {
+      store.getSpeakers().forEach(s => {
+        result.push({
+          key: `spk:${s.id}`,
+          kind: 'speaker' as const,
+          code: s.id,
+          name: s.fullName,
+          title: s.title || '',
+          email: s.email || '',
+          phone: s.phone || '',
+          organization: s.organization || '',
+          extra: s.presentationTitle || '',
+          registrationDate: s.registrationDate || '',
+          raw: s
+        });
+      });
+    }
+    return result;
+  }, [pickPool, pickRefreshKey]);
+
+  // Nạp lại dữ liệu đăng ký & nhật ký gửi mail mới nhất từ hệ thống
+  const refreshPickData = () => {
+    setLogs([...store.getNotificationLogs()]);
+    setPickRefreshKey(k => k + 1);
+  };
+
+  const filteredPickCandidates = React.useMemo(() => {
+    const q = pickSearch.trim().toLowerCase();
+    return pickCandidates.filter(c => {
+      if (q) {
+        const haystack = `${c.name} ${c.email} ${c.phone} ${c.code} ${c.organization}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      if (pickMailFilter === 'never' && getMailState(c.email) !== 'never') return false;
+      if (pickMailFilter === 'problem' && getMailState(c.email) === 'sent') return false;
+      return true;
+    });
+  }, [pickCandidates, pickSearch, pickMailFilter, emailLogSummary]);
+
+  const togglePicked = (key: string) => {
+    setPickedKeys(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
+
+  const selectAllFiltered = () => {
+    const keys: string[] = filteredPickCandidates.map(c => c.key);
+    setPickedKeys(prev => Array.from(new Set<string>([...prev, ...keys])));
+  };
+
+  const clearPicked = () => {
+    setPickedKeys([]);
+    setPickPasteResult(null);
+  };
+
+  // Dán một danh sách email bất kỳ -> đối chiếu với người đã đăng ký và tự tick chọn
+  const handleMatchPastedEmails = () => {
+    const raw = pickEmailPaste
+      .split(/[\s,;]+/)
+      .map(e => normalizeEmail(e))
+      .filter(Boolean);
+
+    if (raw.length === 0) {
+      setPickPasteResult({ matched: 0, unmatched: [] });
+      return;
+    }
+
+    const unique: string[] = Array.from(new Set<string>(raw));
+    const byEmail = new Map<string, string[]>();
+    pickCandidates.forEach(c => {
+      const key = normalizeEmail(c.email);
+      if (!key) return;
+      byEmail.set(key, [...(byEmail.get(key) || []), c.key]);
+    });
+
+    const matchedKeys: string[] = [];
+    const unmatched: string[] = [];
+    unique.forEach(email => {
+      const found = byEmail.get(email);
+      if (found && found.length > 0) matchedKeys.push(...found);
+      else unmatched.push(email);
+    });
+
+    setPickedKeys(prev => Array.from(new Set<string>([...prev, ...matchedKeys])));
+    setPickPasteResult({ matched: matchedKeys.length, unmatched });
+  };
+
+  // Nạp những người đã tick vào hàng đợi gửi
+  const loadPickedList = () => {
+    const picked = pickCandidates.filter(c => pickedKeys.includes(c.key));
+    if (picked.length === 0) {
+      alert('Chưa chọn người nhận nào. Vui lòng tích chọn ít nhất một người trong danh sách.');
+      return;
+    }
+    const records = picked.map((c, index) =>
+      c.kind === 'attendee' ? buildAttendeeRecord(c.raw, index) : buildSpeakerRecord(c.raw, index)
+    );
+    setExcelData(records);
+    setExcelFileName(`Gửi lại cá nhân (${records.length} người)`);
+    setContactGroupName('Gửi lại thủ công');
     setSendingIndex(-1);
     setBulkLogs([]);
   };
@@ -345,10 +512,17 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     reader.readAsArrayBuffer(file);
   };
 
-  const startBulkSending = async () => {
-    if (excelData.length === 0) {
+  const startBulkSending = async (listOverride?: any[]) => {
+    // listOverride dùng cho thao tác "Gửi lại các dòng thất bại" (bỏ qua state cũ)
+    const workingList = listOverride && Array.isArray(listOverride) ? listOverride : excelData;
+
+    if (workingList.length === 0) {
       alert('Vui lòng tải lên danh sách người nhận từ Excel trước.');
       return;
+    }
+
+    if (listOverride && Array.isArray(listOverride)) {
+      setExcelData(listOverride);
     }
 
     if (bulkChannel === 'email') {
@@ -376,9 +550,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     }
 
     // Auto-save to contacts if enabled and source is file upload
-    if (listSource === 'file' && saveToContacts && excelData.length > 0) {
+    if (listSource === 'file' && saveToContacts && workingList.length > 0) {
       const groupName = (contactGroupName || excelFileName || 'Nhóm mặc định').replace(/\.[^/.]+$/, "").trim();
-      const contactsToSave: Contact[] = excelData.map(d => ({
+      const contactsToSave: Contact[] = workingList.map(d => ({
         id: generateContactId(groupName, d.name, d.email, d.phone),
         name: d.name,
         email: d.email,
@@ -403,9 +577,11 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
     isBulkSendingRef.current = true;
     isBulkPausedRef.current = false;
 
-    let startIndex = sendingIndex === -1 || sendingIndex >= excelData.length ? 0 : sendingIndex;
+    const startIndex = listOverride
+      ? 0
+      : (sendingIndex === -1 || sendingIndex >= workingList.length ? 0 : sendingIndex);
 
-    for (let i = startIndex; i < excelData.length; i++) {
+    for (let i = startIndex; i < workingList.length; i++) {
       if (!isBulkSendingRef.current) break;
 
       while (isBulkPausedRef.current) {
@@ -418,7 +594,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       setSendingIndex(i);
       setExcelData(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'sending' } : item));
 
-      const recipient = excelData[i];
+      const recipient = workingList[i];
       let success = false;
       let errorMsg = '';
 
@@ -623,6 +799,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       setCampaigns([...store.getCampaigns()]);
       alert(`Chiến dịch "${selectedCampaign.name}" đã gửi xong!`);
     }
+  };
+
+  // Chỉ giữ lại các dòng gửi lỗi và gửi lại ngay (retry)
+  const retryFailedRecipients = () => {
+    const failed = excelData.filter(d => d.status === 'failed');
+    if (failed.length === 0) {
+      alert('Không có dòng nào ở trạng thái Thất bại để gửi lại.');
+      return;
+    }
+    const retryList = failed.map((d, index) => ({ ...d, id: index + 1, status: 'pending' as const, error: '' }));
+    setSendingIndex(-1);
+    setBulkLogs(prev => [`[${new Date().toLocaleTimeString()}] Bắt đầu gửi lại ${retryList.length} người nhận bị lỗi...`, ...prev]);
+    startBulkSending(retryList);
   };
 
   const pauseBulkSending = () => {
@@ -2440,7 +2629,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           <div className="flex gap-2">
             {!isBulkSending ? (
               <button
-                onClick={startBulkSending}
+                onClick={() => startBulkSending()}
                 className="px-4 py-2 rounded-xl bg-indigo-650 hover:bg-indigo-755 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
               >
                 <Play className="w-3.5 h-3.5" />
@@ -3731,17 +3920,22 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 <select
                   value={listSource}
                   onChange={(e) => {
-                    const src = e.target.value as 'file' | 'saved' | 'attendees' | 'speakers';
+                    const src = e.target.value as 'file' | 'saved' | 'attendees' | 'speakers' | 'pick';
                     setListSource(src);
                     setExcelData([]);
                     setExcelFileName('');
                     setSelectedGroup('');
                     setContactGroupName('');
-                    
+
                     if (src === 'attendees') {
                       loadAttendeesList();
                     } else if (src === 'speakers') {
                       loadSpeakersList();
+                    } else if (src === 'pick') {
+                      clearPicked();
+                      setPickSearch('');
+                      setPickEmailPaste('');
+                      refreshPickData();
                     }
                   }}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
@@ -3750,8 +3944,198 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                   <option value="saved">👥 Chọn từ danh bạ đã lưu ({Array.from(new Set(contacts.map(c => c.groupName).filter(Boolean))).length} nhóm)</option>
                   <option value="attendees">🎓 Tất cả Đại biểu đã đăng ký ({store.getAttendees().length} người)</option>
                   <option value="speakers">🎙️ Tất cả Báo cáo viên đã đăng ký ({store.getSpeakers().length} người)</option>
+                  <option value="pick">🎯 Chọn cá nhân theo Email (gửi lại thư bị sót)</option>
                 </select>
               </div>
+
+              {listSource === 'pick' && (
+                <div className="space-y-3">
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Tìm và tích chọn <strong>từng cá nhân đã đăng ký</strong> để gửi lại thư cho các trường hợp bị sót. Trạng thái mail được đối chiếu từ <strong>nhật ký gửi</strong> của hệ thống.
+                  </p>
+
+                  {/* Nguồn dữ liệu người nhận */}
+                  <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl">
+                    {([
+                      { v: 'attendees', label: 'Đại biểu' },
+                      { v: 'speakers', label: 'Báo cáo viên' },
+                      { v: 'both', label: 'Cả hai' }
+                    ] as const).map(opt => (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        onClick={() => setPickPool(opt.v)}
+                        className={`py-1.5 rounded-lg font-bold text-[10px] cursor-pointer transition-all border-none ${
+                          pickPool === opt.v ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800 bg-transparent'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Bộ lọc trạng thái mail */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Lọc theo trạng thái gửi Email</label>
+                    <select
+                      value={pickMailFilter}
+                      onChange={(e) => setPickMailFilter(e.target.value as 'all' | 'never' | 'problem')}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs font-semibold text-slate-700"
+                    >
+                      <option value="all">Tất cả người đã đăng ký</option>
+                      <option value="problem">⚠️ Chỉ người CHƯA nhận được mail (sót hoặc lỗi)</option>
+                      <option value="never">🚫 Chỉ người CHƯA từng có log gửi mail</option>
+                    </select>
+                  </div>
+
+                  {/* Ô tìm kiếm + làm mới */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={pickSearch}
+                      onChange={(e) => setPickSearch(e.target.value)}
+                      placeholder="Tìm theo tên, email, SĐT, mã đại biểu..."
+                      className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={refreshPickData}
+                      title="Nạp lại dữ liệu đăng ký & nhật ký gửi mail"
+                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 cursor-pointer border-none transition-colors"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Danh sách chọn */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+                      <span className="text-[10px] font-black text-slate-500 uppercase">
+                        {filteredPickCandidates.length} kết quả · đã chọn {pickedKeys.length}
+                      </span>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={selectAllFiltered}
+                          className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[9.5px] border-none cursor-pointer transition-colors"
+                        >
+                          Chọn tất cả
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearPicked}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-[9.5px] border-none cursor-pointer transition-colors"
+                        >
+                          Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                      {filteredPickCandidates.length === 0 ? (
+                        <div className="px-3 py-6 text-center text-[11px] text-slate-400 italic">
+                          Không tìm thấy người nhận nào khớp điều kiện lọc.
+                        </div>
+                      ) : (
+                        filteredPickCandidates.map(c => {
+                          const mailState = getMailState(c.email);
+                          const checked = pickedKeys.includes(c.key);
+                          return (
+                            <label
+                              key={c.key}
+                              className={`flex items-start gap-2.5 px-3 py-2 cursor-pointer transition-colors ${
+                                checked ? 'bg-indigo-50/60' : 'hover:bg-slate-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => togglePicked(c.key)}
+                                className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[11px] font-bold text-slate-800 truncate">{c.title} {c.name}</span>
+                                  <span className="text-[8.5px] font-mono font-bold text-slate-400">{c.code}</span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
+                                    mailState === 'sent' ? 'bg-emerald-50 text-emerald-700' :
+                                    mailState === 'failed' ? 'bg-rose-50 text-rose-700' :
+                                    'bg-amber-50 text-amber-700'
+                                  }`}>
+                                    {mailState === 'sent' ? 'Đã gửi' : mailState === 'failed' ? 'Gửi lỗi' : 'Chưa có log'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 truncate">
+                                  {c.email || <span className="text-rose-500 italic">Thiếu email</span>}
+                                  {c.phone ? ` · ${c.phone}` : ''}
+                                </div>
+                                {c.extra && <div className="text-[9px] text-slate-400 truncate">{c.extra}</div>}
+                              </div>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dán danh sách email để đối chiếu nhanh */}
+                  <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <label className="text-[10px] font-bold text-slate-500 block">
+                      Hoặc dán danh sách Email cần gửi lại (cách nhau bởi dấu phẩy / xuống dòng)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={pickEmailPaste}
+                      onChange={(e) => setPickEmailPaste(e.target.value)}
+                      placeholder={'bsyenxuan@example.com\nvanphong@benhvien.vn'}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-[11px] font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleMatchPastedEmails}
+                      className="w-full py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs transition-colors border-none cursor-pointer"
+                    >
+                      🔍 Đối chiếu &amp; tự động tích chọn
+                    </button>
+
+                    {pickPasteResult && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="bg-emerald-50 text-emerald-800 p-2 rounded-lg text-[10px] font-bold border border-emerald-100">
+                          Đã khớp và tích chọn <strong>{pickPasteResult.matched}</strong> người nhận.
+                        </div>
+                        {pickPasteResult.unmatched.length > 0 && (
+                          <div className="bg-amber-50 text-amber-800 p-2 rounded-lg text-[10px] leading-relaxed border border-amber-100">
+                            <strong>{pickPasteResult.unmatched.length}</strong> email không tìm thấy trong danh sách đã đăng ký:
+                            <div className="font-mono text-[9px] mt-1 break-all">{pickPasteResult.unmatched.join(', ')}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={loadPickedList}
+                    disabled={pickedKeys.length === 0}
+                    className={`w-full py-2.5 rounded-xl font-bold text-xs transition-colors border-none ${
+                      pickedKeys.length === 0
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-indigo-650 hover:bg-indigo-750 text-white cursor-pointer shadow'
+                    }`}
+                  >
+                    ✅ Nạp {pickedKeys.length} người đã chọn vào hàng đợi gửi
+                  </button>
+
+                  {excelData.length > 0 && (
+                    <div className="bg-emerald-50 text-emerald-800 p-3 rounded-xl text-xs font-medium border border-emerald-100 flex items-center gap-2">
+                      <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        Hàng đợi đang có <strong>{excelData.length}</strong> người nhận. Soạn nội dung thư ở cột bên phải rồi bấm <strong>Bắt Đầu Gửi</strong>.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {listSource === 'file' && (
                 <>
@@ -4345,7 +4729,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 <div className="flex gap-2">
                   {!isBulkSending ? (
                     <button
-                      onClick={startBulkSending}
+                      onClick={() => startBulkSending()}
                       className="px-4 py-2 rounded-xl bg-indigo-650 hover:bg-indigo-750 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
                     >
                       <Play className="w-3.5 h-3.5" />
@@ -4378,6 +4762,17 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         Dừng Hẳn
                       </button>
                     </>
+                  )}
+
+                  {/* Gửi lại riêng các dòng bị lỗi */}
+                  {!isBulkSending && excelData.some(d => d.status === 'failed') && (
+                    <button
+                      onClick={retryFailedRecipients}
+                      className="px-4 py-2 rounded-xl bg-amber-650 hover:bg-amber-750 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow transition-all border-none"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Gửi Lại {excelData.filter(d => d.status === 'failed').length} Dòng Lỗi
+                    </button>
                   )}
                 </div>
 

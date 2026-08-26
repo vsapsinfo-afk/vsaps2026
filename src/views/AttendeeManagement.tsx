@@ -33,6 +33,31 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, checkInFilter]);
 
+  /**
+   * Đối chiếu nhật ký gửi thư để phát hiện đại biểu CHƯA nhận được email nào thành công
+   * (chỉ cảnh báo khi thực sự có log gửi lỗi, tránh báo nhầm hàng loạt khi nhật ký trống).
+   */
+  const [mailLogVersion, setMailLogVersion] = useState(0);
+  const failedEmailSet = React.useMemo(() => {
+    const success = new Set<string>();
+    const failed = new Set<string>();
+    store.getNotificationLogs().forEach(log => {
+      if (log.type !== 'email') return;
+      const key = (log.recipient || '').trim().toLowerCase();
+      if (!key) return;
+      if (log.status === 'success') success.add(key);
+      else failed.add(key);
+    });
+    const result = new Set<string>();
+    failed.forEach(key => {
+      if (!success.has(key)) result.add(key);
+    });
+    return result;
+  }, [attendees, mailLogVersion]);
+
+  const hasMailDeliveryIssue = (email: string) =>
+    failedEmailSet.has((email || '').trim().toLowerCase());
+
   // Monitor network status to allow online/offline actions dynamically
   React.useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -287,6 +312,8 @@ Ban Thư ký Hội nghị VSAPS 2026`
       });
     } finally {
       setIsSendingNotification(false);
+      // Cập nhật lại cảnh báo "Mail chưa gửi được" theo nhật ký mới nhất
+      setMailLogVersion(v => v + 1);
     }
   };
   
@@ -1606,6 +1633,17 @@ Ban Thư ký Hội nghị VSAPS 2026`
                             {att.title} {att.fullName}
                           </span>
                           <span className="text-[10px] text-slate-450 mt-0.5">{att.email} | {att.phone}</span>
+                          {hasMailDeliveryIssue(att.email) && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenNotifyModal(att, 'tmpl-confirmation')}
+                              title="Hệ thống đã ghi nhận lỗi khi gửi email tới địa chỉ này. Bấm để soạn & gửi lại thư xác nhận."
+                              className="mt-1 w-fit px-1.5 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-[8.5px] font-black uppercase border border-rose-100 cursor-pointer transition-colors flex items-center gap-1"
+                            >
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              Mail chưa gửi được — gửi lại
+                            </button>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -1827,6 +1865,16 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       </span>
                       <span className="text-[9px] text-slate-400 mt-0.5 font-mono">{att.id} | {att.phone}</span>
                       <span className="text-[9px] text-slate-400 max-w-[150px] truncate">{att.email}</span>
+                      {hasMailDeliveryIssue(att.email) && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenNotifyModal(att, 'tmpl-confirmation')}
+                          className="mt-1 w-fit px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 text-[8px] font-black uppercase border border-rose-100 cursor-pointer flex items-center gap-1"
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          Mail lỗi — gửi lại
+                        </button>
+                      )}
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-black shrink-0 ${

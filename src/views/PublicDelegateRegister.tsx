@@ -198,6 +198,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [isDoctorProofUploading, setIsDoctorProofUploading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdAttendee, setCreatedAttendee] = useState<Attendee | null>(null);
+  // Ghi nhận kết quả gửi email xác nhận để cảnh báo ngay cho đại biểu nếu thất bại
+  const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -530,14 +532,27 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
         'success'
       );
 
-      // Gửi thông báo tự động (chạy background)
+      // Zalo & WhatsApp gửi nền (không chặn luồng hoàn tất đăng ký)
       try {
         store.sendZaloZNS(saved);
-        store.sendEmail(saved);
         store.sendWhatsapp(saved);
       } catch (err) {
-        console.error('Lỗi khi gửi thông báo tự động:', err);
+        console.error('Lỗi khi gửi thông báo Zalo/WhatsApp:', err);
       }
+
+      // Email xác nhận: chờ kết quả thật để biết thư có đi được hay không.
+      // Trước đây lệnh này chạy nền và nuốt lỗi nên BTC không biết mail bị rớt.
+      let emailOk = false;
+      try {
+        const emailLog = await store.sendEmail(saved);
+        emailOk = emailLog?.status === 'success';
+        if (!emailOk) {
+          console.error('Gửi email xác nhận thất bại:', emailLog?.response);
+        }
+      } catch (err) {
+        console.error('Lỗi khi gửi email xác nhận:', err);
+      }
+      setEmailDeliveryFailed(!emailOk);
 
       setCreatedAttendee(saved);
       setIsSubmitted(true);
@@ -582,16 +597,34 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
             <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-5 text-emerald-900 text-xs space-y-3">
               <div className="flex items-center gap-1.5 font-bold text-emerald-950 font-sans text-sm">
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 animate-pulse" />
-                <span>Thông tin đăng ký đã được gửi thành công qua Email và Zalo của đại biểu.</span>
+                <span>Hồ sơ đăng ký của đại biểu đã được ghi nhận thành công trên hệ thống.</span>
               </div>
               <p className="text-slate-600 leading-relaxed font-sans">
                 Mẫu đăng ký tham gia của đại biểu <strong>{createdAttendee.title} {createdAttendee.fullName}</strong> đã được lưu trữ thành công trên hệ thống hội nghị VSAPS 2026.
               </p>
               <div className="space-y-1 text-slate-650 font-sans pl-1 border-l-2 border-emerald-350">
                 <p>• <strong>Zalo OA:</strong> Phiếu check-in kèm mã QR đã được gửi tự động tới SĐT Zalo: <strong className="text-slate-900">{createdAttendee.phone}</strong></p>
-                <p>• <strong>Email liên hệ:</strong> Thẻ điện tử và hướng dẫn chi tiết hội nghị đã được gửi đến hòm thư: <strong className="text-slate-900">{createdAttendee.email}</strong></p>
+                {!emailDeliveryFailed && (
+                  <p>• <strong>Email liên hệ:</strong> Thẻ điện tử và hướng dẫn chi tiết hội nghị đã được gửi đến hòm thư: <strong className="text-slate-900">{createdAttendee.email}</strong></p>
+                )}
               </div>
             </div>
+
+            {/* Cảnh báo khi hệ thống KHÔNG gửi được email xác nhận */}
+            {emailDeliveryFailed && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-900 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-amber-950 font-sans text-sm">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Hệ thống chưa gửi được thư xác nhận tới email của đại biểu</span>
+                </div>
+                <p className="text-amber-800 leading-relaxed font-sans">
+                  Hồ sơ đăng ký <strong>đã được lưu thành công</strong>, tuy nhiên máy chủ thư điện tử tạm thời chưa gửi được thư tới địa chỉ <strong className="font-mono">{createdAttendee.email}</strong>.
+                </p>
+                <p className="text-amber-800 leading-relaxed font-sans">
+                  Đại biểu vui lòng <strong>chụp lại màn hình này</strong> (đã có đầy đủ mã đại biểu, mã QR check-in và thông tin chuyển khoản) và liên hệ Ban Thư ký để được gửi lại thư xác nhận. Ban Tổ Chức cũng sẽ chủ động gửi lại trong thời gian sớm nhất.
+                </p>
+              </div>
+            )}
 
             {/* Electronic Ticket & Payment Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">

@@ -32,21 +32,29 @@ Hệ thống TỰ ĐỘNG gửi mail XÁC NHẬN THANH TOÁN + QR check-in
 File: [src/views/PublicDelegateRegister.tsx:524-540](../src/views/PublicDelegateRegister.tsx#L524-L540)
 
 - Hồ sơ được lưu với `paymentStatus = 'pending_verification'` (**Chờ đối soát**), **chưa** phải trạng thái đã xác nhận hoàn tất.
-- Hệ thống bắn thông báo qua 3 kênh song song:
+- Hệ thống bắn thông báo qua 3 kênh:
 
 ```ts
+// Zalo & WhatsApp: chạy nền, không chặn luồng hoàn tất đăng ký
 try {
   store.sendZaloZNS(saved);
-  store.sendEmail(saved);
   store.sendWhatsapp(saved);
 } catch (err) {
-  console.error('Lỗi khi gửi thông báo tự động:', err);
+  console.error('Lỗi khi gửi thông báo Zalo/WhatsApp:', err);
 }
+
+// Email: CHỜ kết quả thật để biết thư có đi được hay không
+let emailOk = false;
+try {
+  const emailLog = await store.sendEmail(saved);
+  emailOk = emailLog?.status === 'success';
+} catch (err) { /* ... */ }
+setEmailDeliveryFailed(!emailOk);
 ```
 
-> ⚠️ **Lưu ý quan trọng:** 3 lệnh này **không được `await`**, lỗi chỉ ghi ra console.
-> Vì vậy đại biểu vẫn thấy màn hình "Đăng ký thành công" **kể cả khi mail không gửi được**.
-> Đây là lý do phổ biến nhất khiến BTC không biết mail bị rớt cho tới khi đại biểu phản ánh.
+> ✅ **Đã fix:** trước đây cả 3 lệnh đều **không `await`** và nuốt lỗi, nên đại biểu vẫn thấy màn hình
+> "Đăng ký thành công — đã gửi qua Email" kể cả khi mail rớt. Nay nếu gửi mail thất bại, màn hình
+> hoàn tất sẽ hiện **cảnh báo rõ ràng** thay vì khẳng định sai (xem mục 7).
 
 ### Bước 2 — Mail xác nhận ĐĂNG KÝ
 
@@ -102,11 +110,15 @@ File: [src/dataStore.ts:2710](../src/dataStore.ts#L2710) (hàm `addNotificationL
 | 3 | Lọc nhật ký theo email đó, xem `success` hay `failed` | Module Thông báo → nhật ký |
 | 4 | Nếu `failed`: đọc thông báo lỗi trong log (thường là app-password SMTP hết hạn / sai cấu hình) → sửa ở Cài đặt Email | Cài đặt |
 | 5 | Nếu email sai: sửa lại email trong chi tiết đại biểu | Chi tiết đại biểu |
-| 6 | **Gửi lại thủ công**: bấm nút ✉️ *"Soạn & Gửi Email thông báo nhanh"* → mẫu *Thư xác nhận đăng ký & đóng phí* đã điền sẵn → Gửi (có báo thành công/lỗi ngay tại chỗ) | Quản lý Đại biểu |
-| 7 | Nếu đại biểu đã chuyển khoản: đối soát → đổi trạng thái sang **PAID** → hệ thống tự gửi mail xác nhận thanh toán + QR check-in | Quản lý Đại biểu |
-| 8 | Hướng dẫn đại biểu kiểm tra hòm thư **Spam / Quảng cáo**, hoặc tự tra cứu tại trang *Tra cứu vé điện tử & CME* | — |
+| 6 | **Gửi lại 1 người**: bấm nút ✉️ *"Soạn & Gửi Email thông báo nhanh"* → mẫu *Thư xác nhận đăng ký & đóng phí* đã điền sẵn → Gửi (có báo thành công/lỗi ngay tại chỗ) | Quản lý Đại biểu |
+| 7 | **Gửi lại cho nhiều người bị sót**: dùng nguồn *🎯 Chọn cá nhân theo Email* (xem mục 6) | Thông báo → Gửi Tin Hàng loạt |
+| 8 | Nếu đại biểu đã chuyển khoản: đối soát → đổi trạng thái sang **PAID** → hệ thống tự gửi mail xác nhận thanh toán + QR check-in | Quản lý Đại biểu |
+| 9 | Hướng dẫn đại biểu kiểm tra hòm thư **Spam / Quảng cáo**, hoặc tự tra cứu tại trang *Tra cứu vé điện tử & CME* | — |
 
 Nút gửi lại thủ công: [src/views/AttendeeManagement.tsx:264-291](../src/views/AttendeeManagement.tsx#L264-L291)
+
+> 💡 Trong bảng Quản lý Đại biểu, những đại biểu mà hệ thống **đã ghi nhận lỗi gửi mail** sẽ hiện badge đỏ
+> **"Mail chưa gửi được — gửi lại"** ngay dưới địa chỉ email. Bấm vào badge để mở luôn hộp soạn thư gửi lại.
 
 ---
 
@@ -137,9 +149,48 @@ Nút gửi lại thủ công: [src/views/AttendeeManagement.tsx:264-291](../src/
 
 ---
 
-## 6. Đề xuất cải tiến (chưa triển khai)
+## 6. Gửi lại thư cho các trường hợp bị sót (Gửi Tin Hàng loạt)
 
-- `store.sendEmail` ở form đăng ký hiện **không `await`** và nuốt lỗi → BTC không biết mail nào rớt trừ khi mở nhật ký thủ công.
-  - Đề xuất: `await` kết quả, nếu `failed` thì hiển thị cảnh báo nhẹ trên màn hình thành công ("Nếu không nhận được mail trong 5 phút, vui lòng liên hệ hotline…").
-- Bổ sung badge **"chưa gửi được mail"** trực tiếp trong bảng Quản lý Đại biểu để BTC chủ động gửi lại, không cần chờ đại biểu phản ánh.
-- Cân nhắc cơ chế **retry tự động** cho các log `failed`.
+Vào **Thông báo → Gửi Tin Hàng loạt → 🚀 Gửi Tin Tức Thì**, tại khung *"1. Nạp danh sách liên hệ"* chọn nguồn:
+
+```
+🎯 Chọn cá nhân theo Email (gửi lại thư bị sót)
+```
+
+Màn hình chọn gồm:
+
+| Thành phần | Công dụng |
+|---|---|
+| **Đại biểu / Báo cáo viên / Cả hai** | Chọn nhóm dữ liệu người đã đăng ký để tìm |
+| **Lọc theo trạng thái gửi Email** | `Tất cả` · `⚠️ Chỉ người CHƯA nhận được mail (sót hoặc lỗi)` · `🚫 Chỉ người CHƯA từng có log gửi mail` |
+| **Ô tìm kiếm** | Tìm theo tên, email, SĐT, mã đại biểu, đơn vị |
+| **Danh sách tick chọn** | Mỗi dòng hiện tên, mã, email, SĐT kèm badge trạng thái mail: `Đã gửi` / `Gửi lỗi` / `Chưa có log` |
+| **Chọn tất cả / Bỏ chọn** | Thao tác nhanh trên toàn bộ kết quả đang lọc |
+| **Ô dán danh sách Email** | Dán nhiều email (cách nhau bởi dấu phẩy/xuống dòng) → bấm *Đối chiếu & tự động tích chọn*. Hệ thống báo rõ số email khớp và **liệt kê các email không tìm thấy** trong danh sách đã đăng ký |
+| **Nút Nạp N người đã chọn** | Đưa những người đã tick vào hàng đợi gửi |
+| 🔄 (nút làm mới) | Nạp lại dữ liệu đăng ký & nhật ký gửi mail mới nhất |
+
+Sau khi nạp: soạn nội dung thư ở cột bên phải (hoặc chọn mẫu thư sẵn có) → bấm **Bắt Đầu Gửi Hàng Loạt**.
+
+**Quy trình khuyến nghị để quét các ca bị sót:**
+
+1. Chọn nguồn *🎯 Chọn cá nhân theo Email*
+2. Đặt bộ lọc **⚠️ Chỉ người CHƯA nhận được mail**
+3. Bấm **Chọn tất cả** → **Nạp … người đã chọn vào hàng đợi gửi**
+4. Chọn mẫu thư xác nhận → **Bắt Đầu Gửi Hàng Loạt**
+5. Dòng nào lỗi → bấm nút cam **🔄 Gửi Lại N Dòng Lỗi** để retry riêng các dòng đó
+
+Các placeholder khả dụng khi soạn thư: `{{Tên}}`, `{{Email}}`, `{{Số điện thoại}}`, `{{title}}`, `{{fullname}}`, `{{code}}`, `{{package}}`, `{{payment_status}}`, `{{package_fee}}`, `{{organization}}`, `{{qr_url}}` (đại biểu) và `{{presentation_title}}`, `{{track}}` (báo cáo viên).
+
+Code: [src/views/NotificationSystem.tsx](../src/views/NotificationSystem.tsx)
+
+---
+
+## 7. Các cải tiến đã triển khai
+
+| # | Vấn đề | Đã xử lý |
+|---|---|---|
+| 1 | `store.sendEmail` ở form đăng ký **không `await`** và nuốt lỗi → BTC không biết mail nào rớt | Đã `await` kết quả gửi mail. Nếu thất bại, màn hình đăng ký thành công hiển thị **cảnh báo màu hổ phách** yêu cầu đại biểu chụp màn hình & liên hệ Ban Thư ký; đồng thời **không còn khẳng định sai** là "đã gửi thành công qua Email". Zalo/WhatsApp vẫn chạy nền như cũ. → [PublicDelegateRegister.tsx](../src/views/PublicDelegateRegister.tsx) |
+| 2 | BTC phải mở nhật ký thủ công mới biết ai bị rớt mail | Badge đỏ **"Mail chưa gửi được — gửi lại"** hiện ngay dưới email trong bảng Quản lý Đại biểu (cả bản desktop & mobile), bấm vào mở luôn hộp soạn thư. Badge chỉ hiện khi **thực sự có log gửi lỗi và chưa có log thành công** → tránh báo nhầm hàng loạt khi nhật ký trống. → [AttendeeManagement.tsx](../src/views/AttendeeManagement.tsx) |
+| 3 | Chưa có cơ chế retry cho các dòng gửi lỗi | Nút **🔄 Gửi Lại N Dòng Lỗi** trong Bảng điều khiển & Tiến trình gửi — lọc riêng các dòng `Thất bại`, reset trạng thái và gửi lại ngay. → [NotificationSystem.tsx](../src/views/NotificationSystem.tsx) |
+| 4 | Không có cách gửi lại cho một nhóm cá nhân bất kỳ | Nguồn danh sách **🎯 Chọn cá nhân theo Email** (mục 6). |
