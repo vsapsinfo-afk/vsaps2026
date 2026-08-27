@@ -9,7 +9,7 @@ import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { Attendee, RegistrationPackage, AddOnService } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
-import { getProvinceList, getDistrictsOf, getWardsOf } from '../data/vnProvinces';
+import { getProvinceList } from '../data/vnProvinces';
 import SepayPaymentChecker from '../components/SepayPaymentChecker';
 import { useFormLabel } from '../hooks/useFormLabel';
 
@@ -174,9 +174,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [email, setEmail] = useState('');
   const [organization, setOrganization] = useState('');
   const [department, setDepartment] = useState('');
-  const [province, setProvince] = useState('Hồ Chí Minh');
-  const [district, setDistrict] = useState('Thành phố Thủ Đức');
-  const [ward, setWard] = useState('Phường Thảo Điền');
+  // Không đặt mặc định theo địa phương nào: đại biểu tự chọn Tỉnh/Thành phố của mình
+  const [province, setProvince] = useState('');
   const [address, setAddress] = useState('');
   // const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>(getInitialLang);
@@ -339,6 +338,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       setErrorMsg('Vui lòng điền địa chỉ liên hệ.');
       return false;
     }
+    if (nationality === 'vietname' && !province) {
+      setErrorMsg('Vui lòng chọn Tỉnh / Thành phố của đại biểu.');
+      return false;
+    }
     setErrorMsg('');
     return true;
   };
@@ -351,8 +354,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
   const selectedPackage = packages.find(p => p.id === packageId) || packages[0];
   const provincesList = getProvinceList();
-  const districts = getDistrictsOf(province);
-  const wards = getWardsOf(province, district);
   const cleanPhoneInput = phone.trim().replace(/\s+/g, '');
   const cleanFullNameAscii = fullName.trim().toUpperCase()
     .normalize('NFD')
@@ -400,34 +401,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   // Dynamic preview for bank transfer using VietQR
   const currentVietQRUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${calculatedTotalFee}&addInfo=${encodeURIComponent(transferMessage)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
 
-  // Vietnam address selectors handlers
-  const handleProvinceChange = (selectedProv: string) => {
-    setProvince(selectedProv);
-    const districts = getDistrictsOf(selectedProv);
-    if (districts.length > 0) {
-      setDistrict(districts[0]);
-      const wards = getWardsOf(selectedProv, districts[0]);
-      if (wards.length > 0) {
-        setWard(wards[0]);
-      } else {
-        setWard('');
-      }
-    } else {
-      setDistrict('');
-      setWard('');
-    }
-  };
-
-  const handleDistrictChange = (selectedDist: string) => {
-    setDistrict(selectedDist);
-    const wards = getWardsOf(province, selectedDist);
-    if (wards.length > 0) {
-      setWard(wards[0]);
-    } else {
-      setWard('');
-    }
-  };
-
   const handleToggleCme = (val: boolean) => {
     setAddOnSelections(prev => ({ ...prev, 'addon-cme': val }));
   };
@@ -472,6 +445,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       setErrorMsg('Vui lòng điền địa chỉ liên hệ.');
       return;
     }
+    if (nationality === 'vietname' && !province) {
+      setErrorMsg('Vui lòng quay lại Bước 1 và chọn Tỉnh / Thành phố của đại biểu.');
+      return;
+    }
 
     if (calculatedTotalFee > 0 && !proofImage) {
       setErrorMsg('⚠️ BẮT BUỘC: Vui lòng đính kèm hình ảnh biên lai chuyển khoản (Để BTC Đối Soát Nhanh) trước khi gửi đăng ký.');
@@ -491,7 +468,13 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       const newId = `VSAPS2026-${randomSeq}`;
       const qrCodeValue = `${newId}-${fullName.replace(/\s+/g, '').toUpperCase()}`;
 
-      const fullAddress = `${address.trim()}${ward ? ', ' + ward : ''}${district ? ', ' + district : ''}`;
+      // Giữ nguyên văn địa chỉ đại biểu tự nhập, chỉ bổ sung Tỉnh/Thành phố đã chọn nếu chưa có trong chuỗi
+      const addressInput = address.trim().replace(/[,\s]+$/, '');
+      const provinceSelected = province.trim();
+      const alreadyHasProvince = provinceSelected
+        ? addressInput.toLowerCase().includes(provinceSelected.toLowerCase())
+        : true;
+      const fullAddress = alreadyHasProvince ? addressInput : `${addressInput}, ${provinceSelected}`;
 
       const isCmeSelected = addOnServices.some(s => s.id.toLowerCase().includes('cme') && addOnSelections[s.id]);
       const isGalaSelected = addOnServices.some(s => s.id.toLowerCase().includes('gala') && addOnSelections[s.id]);
@@ -1201,7 +1184,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     </div>
 
                     {/* Address */}
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="col-span-1">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
                           {L.f('address', 'Địa chỉ liên hệ *', 'Contact Address *')}
@@ -1211,10 +1194,29 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                           required
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
-                          placeholder={L.p('ví dụ: Phường Thảo Điền, Thành phố Thủ Đức, Hồ Chí Minh', 'e.g. Thao Dien, Thu Duc City, Ho Chi Minh City')}
+                          placeholder={L.p('ví dụ: 229 Khuất Duy Tiến, Thanh Xuân', 'e.g. 229 Khuat Duy Tien, Thanh Xuan')}
                           className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
                         />
                       </div>
+
+                      {nationality === 'vietname' && (
+                        <div className="col-span-1">
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            {L.f('province', 'Tỉnh / Thành phố *', 'Province / City *')}
+                          </label>
+                          <select
+                            required
+                            value={province}
+                            onChange={(e) => setProvince(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none cursor-pointer"
+                          >
+                            <option value="">{L.t('— Chọn Tỉnh / Thành phố —', '— Select Province / City —')}</option>
+                            {provincesList.map((prov) => (
+                              <option key={prov} value={prov}>{prov}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Navigation Button Step 1 */}

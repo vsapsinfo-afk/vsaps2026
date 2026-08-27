@@ -217,3 +217,40 @@ Khi BTC duyệt hồ sơ BCH sang **Đã đóng phí**, hệ thống trước đ
 | `src/views/PublicEventDetails.tsx` | Lọc `pkg-bch` khỏi bảng giá công khai |
 | `src/views/AttendeeManagement.tsx` | Nhãn màu hồng `★ BCH` ở 3 vị trí |
 | `src/dataStore.ts` | Ẩn hướng dẫn chuyển khoản trong email khi phí = 0; chặn phiếu thu 0đ |
+
+---
+
+## 7. Phụ lục — Sửa lỗi địa chỉ bị nối thêm "Phường Thảo Điền, Thành phố Thủ Đức"
+
+**Triệu chứng:** BS ThS.BS TRẦN LÂM HÙNG (Hà Nội) đăng ký, địa chỉ lưu thành
+`229 Khuất Duy Tiến, Thanh Xuân, Hà Nội, Phường Thảo Điền, Thành phố Thủ Đức`.
+
+**Nguyên nhân:** form giữ 3 giá trị mặc định cứng của TP.HCM trong state (`province = 'Hồ Chí Minh'`, `district = 'Thành phố Thủ Đức'`, `ward = 'Phường Thảo Điền'`), rồi nối `ward` + `district` vào sau địa chỉ khi lưu:
+
+```ts
+// CŨ — luôn nối đuôi mặc định của TP.HCM
+const fullAddress = `${address.trim()}${ward ? ', ' + ward : ''}${district ? ', ' + district : ''}`;
+```
+
+Trong khi đó **3 dropdown Tỉnh/Quận/Phường đã bị gỡ khỏi giao diện từ trước** — `getDistrictsOf`, `getWardsOf`, `handleProvinceChange`, `handleDistrictChange` vẫn khai báo nhưng không JSX nào dùng. Đại biểu **không có cách nào** đổi được 3 giá trị đó.
+
+> ⚠️ Lỗi này ảnh hưởng **mọi đại biểu**, không riêng hồ sơ BCH: cột `province` của toàn bộ hồ sơ đăng ký trước bản vá đều là `'Hồ Chí Minh'` → sai thống kê theo tỉnh và sai nơi gửi chứng chỉ CME giấy.
+
+**Đã sửa:**
+
+1. Bỏ hẳn state `district` / `ward` và 2 handler chết; `province` mặc định để **trống** thay vì `'Hồ Chí Minh'`.
+2. Thêm lại **dropdown "Tỉnh / Thành phố"** (63 tỉnh/thành từ `getProvinceList()`) cạnh ô địa chỉ, chỉ hiện với đại biểu trong nước, **bắt buộc chọn** — kiểm tra ở cả `validateStep1()` lẫn `handleSubmit()`.
+3. Địa chỉ lưu **nguyên văn** đại biểu nhập; chỉ bổ sung tên tỉnh/thành nếu chuỗi chưa chứa sẵn:
+
+```ts
+const addressInput = address.trim().replace(/[,\s]+$/, '');
+const provinceSelected = province.trim();
+const alreadyHasProvince = provinceSelected
+  ? addressInput.toLowerCase().includes(provinceSelected.toLowerCase())
+  : true;
+const fullAddress = alreadyHasProvince ? addressInput : `${addressInput}, ${provinceSelected}`;
+```
+
+4. Đổi placeholder ô địa chỉ từ `"ví dụ: Phường Thảo Điền, Thành phố Thủ Đức, Hồ Chí Minh"` (gợi ý sai, khiến đại biểu gõ trùng tỉnh/thành) sang `"ví dụ: 229 Khuất Duy Tiến, Thanh Xuân"`.
+
+**Dữ liệu cũ:** các hồ sơ đăng ký trước bản vá vẫn còn đuôi sai và `province = 'Hồ Chí Minh'` — Ban Thư ký sửa tay trong **Quản lý đại biểu**.
