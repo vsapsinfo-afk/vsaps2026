@@ -120,6 +120,22 @@ const getInitialLang = (): 'vietname' | 'foreign' => {
   return 'vietname'; // mặc định tiếng Việt
 };
 
+// Gói miễn phí dành riêng cho Ủy viên BCH Hội, chỉ hiện khi vào bằng link riêng
+const BCH_PACKAGE_ID = 'pkg-bch';
+
+const getInitialBchMode = (): boolean => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const view = (params.get('view') || '').toLowerCase();
+    if (view.endsWith('/bch')) return true;
+    const bch = (params.get('bch') || '').toLowerCase();
+    return ['1', 'true', 'yes'].includes(bch);
+  } catch {
+    /* ignore */
+  }
+  return false;
+};
+
 export default function PublicDelegateRegister({ onNavigate }: PublicDelegateRegisterProps) {
   const packages = store.getPackages().filter(p => p.isActive);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -185,7 +201,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [masterclassRequired, setMasterclassRequired] = useState(false);
   const [tourRequired, setTourRequired] = useState(false);
 
-  const [packageId, setPackageId] = useState(packages[0]?.id || 'pkg-standard');
+  const [isBchMode] = useState(getInitialBchMode);
+  const [packageId, setPackageId] = useState(packages.find(p => p.id !== BCH_PACKAGE_ID)?.id || 'pkg-standard');
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
@@ -352,6 +369,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       'pkg-student': 1000000,
       'pkg-foreign': 3750000, // $150
       'pkg-free': 0,
+      'pkg-bch': 0,
     },
     post_10_11: {
       'pkg-member': 3000000,
@@ -359,19 +377,22 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       'pkg-student': 1500000,
       'pkg-foreign': 5000000, // $200
       'pkg-free': 0,
+      'pkg-bch': 0,
     }
   };
 
   const currentPrices = PRICING[period];
-  const baseFee = currentPrices[packageId as keyof typeof currentPrices] ?? 0;
+  // Ủy viên BCH Hội được miễn phí toàn bộ: gói cơ bản lẫn dịch vụ phụ trợ
+  const isFeeExempt = isBchMode && packageId === BCH_PACKAGE_ID;
+  const bchPackage = packages.find(p => p.id === BCH_PACKAGE_ID);
+  const getAddOnFee = (svc: AddOnService) =>
+    isFeeExempt ? 0 : (period === 'post_10_11' && svc.feePost ? svc.feePost : svc.fee);
+  const baseFee = isFeeExempt ? 0 : (currentPrices[packageId as keyof typeof currentPrices] ?? 0);
 
   // Calculate add-on fees dynamically from config
   const addOnFeeDetails = addOnServices
     .filter(s => addOnSelections[s.id])
-    .map(s => {
-      const fee = period === 'post_10_11' && s.feePost ? s.feePost : s.fee;
-      return { id: s.id, nameVi: s.nameVi, nameEn: s.nameEn, fee };
-    });
+    .map(s => ({ id: s.id, nameVi: s.nameVi, nameEn: s.nameEn, fee: getAddOnFee(s) }));
   const totalAddOnFee = addOnFeeDetails.reduce((sum, d) => sum + d.fee, 0);
 
   const calculatedTotalFee = baseFee + totalAddOnFee;
@@ -489,6 +510,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
         const customNames = customAddOns.map(s => s.nameVi).join(', ');
         finalNotes = notes ? `${notes}\n[Đăng ký thêm: ${customNames}]` : `[Đăng ký thêm: ${customNames}]`;
       }
+      // Đánh dấu hồ sơ miễn phí để Ban thư ký đối chiếu danh sách Ủy viên BCH Hội
+      if (isFeeExempt) {
+        finalNotes = `[ỦY VIÊN BCH HỘI – MIỄN PHÍ]${finalNotes ? '\n' + finalNotes : ''}`;
+      }
 
       const attendeeData: Attendee = {
         id: newId,
@@ -574,6 +599,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       .replace(/[đĐ]/g, 'D')
       .replace(/[^A-Z0-9\s]/g, '');
     const transferMessageSub = `VSAPS26-${cleanFullNameAsciiSub} ${createdAttendee.phone}`;
+    // Hồ sơ miễn phí (Ủy viên BCH Hội, Chủ tọa/Báo cáo viên...) không hiện thông tin chuyển khoản
+    const isFreeTicket = (createdAttendee.packageFee || 0) <= 0;
     const vietQrSuccessUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${createdAttendee.packageFee}&addInfo=${encodeURIComponent(transferMessageSub)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
 
     return (
@@ -627,7 +654,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
             )}
 
             {/* Electronic Ticket & Payment Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
+            <div className={`grid grid-cols-1 gap-6 border-t border-slate-100 pt-6 ${isFreeTicket ? '' : 'md:grid-cols-2'}`}>
 
               {/* Left Column: CHECK-IN PASS GỒM ẢNH QR VÉ */}
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm flex flex-col justify-between">
@@ -672,6 +699,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
               </div>
 
               {/* Right Column: THANH TOÁN CHUYỂN KHOẢN VIETQR */}
+              {!isFreeTicket && (
               <div className="border border-amber-200 rounded-2xl overflow-hidden bg-amber-50/20 shadow-sm flex flex-col justify-between">
                 <div className="bg-amber-500 text-amber-950 p-3.5 text-center border-b border-amber-300">
                   <span className="text-[10px] uppercase font-black tracking-wider block">QUYỂN THANH TOÁN VIETQR</span>
@@ -703,9 +731,27 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   ⚠️ Quét QR bằng ứng dụng ngân hàng để tự điền nội dung & số tiền chính xác.
                 </div>
               </div>
+              )}
             </div>
 
+            {/* Xác nhận miễn lệ phí cho Ủy viên BCH Hội */}
+            {isFreeTicket && (
+              <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-5 text-emerald-900 text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 font-black text-emerald-950 font-sans text-sm uppercase tracking-wide">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Miễn lệ phí tham dự</span>
+                </div>
+                <p className="leading-relaxed font-sans">
+                  Hồ sơ đăng ký theo diện <strong>{createdAttendee.packageName}</strong> được <strong>miễn toàn bộ lệ phí</strong>. Quý đại biểu <strong>không cần chuyển khoản</strong> và không cần đính kèm biên lai.
+                </p>
+                <p className="leading-relaxed font-sans">
+                  Ban thư ký sẽ đối chiếu danh sách và kích hoạt vé QR check-in chính thức, sau đó gửi lại qua Email và Zalo của quý đại biểu.
+                </p>
+              </div>
+            )}
+
             {/* Proof of Payment file uploader on Step 4 */}
+            {!isFreeTicket && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                 <Upload className="w-4 h-4 text-teal-600 animate-bounce" />
@@ -752,6 +798,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 </div>
               )}
             </div>
+            )}
 
             {/* CME specific confirmation data display if requested */}
             {createdAttendee.cmeRequired && (
@@ -764,11 +811,20 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
             {/* Instruction Footer action buttons */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed">
-              <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Sau khi hoàn thành chuyển tiền qua QR ngân hàng và tải lên biên lai, trạng thái đóng phí của đại biểu sẽ được duyệt sang màu xanh <strong>PAID (Đã đóng phí)</strong> trên ứng dụng.
+              {isFreeTicket ? (
+                <>
+                  <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Đại biểu thuộc diện miễn lệ phí không cần thực hiện bất kỳ giao dịch chuyển khoản nào. Ban thư ký sẽ đối chiếu danh sách và kích hoạt vé QR check-in cho quý đại biểu.
+                </>
+              ) : (
+                <>
+                  <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Sau khi hoàn thành chuyển tiền qua QR ngân hàng và tải lên biên lai, trạng thái đóng phí của đại biểu sẽ được duyệt sang màu xanh <strong>PAID (Đã đóng phí)</strong> trên ứng dụng.
+                </>
+              )}
             </div>
 
             {/* SePay auto payment check */}
             {(() => {
+              if (isFreeTicket) return null;
               const sepay = store.getSepayConfig();
               if (!sepay.isEnabled || !sepay.apiToken) return null;
               return (
@@ -1302,6 +1358,47 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         })}
                     </div>
 
+                    {/* DÒNG ĐĂNG KÝ RIÊNG: ỦY VIÊN BCH HỘI (miễn phí, chỉ hiện qua link riêng) */}
+                    {isBchMode && nationality === 'vietname' && bchPackage && (
+                      <div className="space-y-2">
+                        <label
+                          onClick={() => handleSelectPackage(BCH_PACKAGE_ID)}
+                          className={`w-full p-5 rounded-2xl border cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${isFeeExempt
+                            ? 'bg-teal-50/40 border-teal-600 ring-2 ring-teal-600/20 shadow-lg'
+                            : 'bg-white border-slate-200 hover:border-slate-350 shadow-sm'
+                            }`}
+                        >
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                {L.t('★ Ủy viên BCH Hội', '★ Executive Committee')}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-teal-50 text-teal-800 border border-teal-100 rounded text-[7.5px] font-black">
+                                {L.t('✓ MIỄN PHÍ – KHÔNG CẦN CHUYỂN KHOẢN', '✓ FREE – NO BANK TRANSFER REQUIRED')}
+                              </span>
+                              {isFeeExempt && <span className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs">✓</span>}
+                            </div>
+
+                            <span className="font-black text-xs md:text-sm text-slate-950 block leading-tight">{bchPackage.name}</span>
+
+                            <span className="text-[9.5px] text-slate-400 block uppercase font-bold tracking-wider font-mono">{L.t('QUYỀN LỢI ĐI KÈM:', 'BENEFITS INCLUDED:')}</span>
+                            <ul className="text-[10px] text-slate-500 space-y-1.5 list-disc pl-3">
+                              {bchPackage.benefits.map((b, i) => (
+                                <li key={i} className="leading-tight">{b}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="font-mono font-black text-slate-950 text-base md:text-lg border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-5 text-right shrink-0">
+                            0 <span className="text-[10px] font-normal text-slate-400 font-sans">VNĐ</span>
+                          </div>
+                        </label>
+                        <p className="text-[9.5px] text-slate-500 leading-snug pl-1">
+                          {L.t('* Dành riêng cho Ủy viên Ban Chấp hành Hội. Ban Tổ Chức sẽ đối chiếu danh sách BCH trước khi cấp vé QR check-in.', '* Reserved for Executive Committee members. The secretariat will verify the committee list before issuing the QR check-in ticket.')}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Navigation Buttons Step 2 */}
                     <div className="pt-6 border-t border-slate-100 flex justify-between gap-4">
                       <button
@@ -1342,7 +1439,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {addOnServices.filter(svc => svc.isEnabled).map((svc) => {
                         const isSelected = addOnSelections[svc.id] || false;
-                        const svcFee = period === 'post_10_11' && svc.feePost ? svc.feePost : svc.fee;
+                        const svcFee = getAddOnFee(svc);
                         const colorMap: Record<string, { bg: string; border: string; ring: string; text: string; checkbox: string }> = {
                           teal: { bg: 'bg-teal-50/40', border: 'border-teal-600', ring: 'ring-teal-600/10', text: 'text-teal-900', checkbox: 'text-teal-800' },
                           amber: { bg: 'bg-amber-50/40', border: 'border-amber-500', ring: 'ring-amber-500/10', text: 'text-amber-850', checkbox: 'text-amber-600' },
@@ -1374,7 +1471,9 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                               />
                               <div>
                                 <span className={`text-xs font-black ${c.text} block uppercase`}>
-                                  {L.t(`${svc.nameVi} (+ ${svcFee.toLocaleString()}đ)`, `${svc.nameEn} (+ ${svcFee.toLocaleString()} VND)`)}
+                                  {isFeeExempt
+                                    ? L.t(`${svc.nameVi} (Miễn phí)`, `${svc.nameEn} (Free)`)
+                                    : L.t(`${svc.nameVi} (+ ${svcFee.toLocaleString()}đ)`, `${svc.nameEn} (+ ${svcFee.toLocaleString()} VND)`)}
                                 </span>
                                 <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
                                   {L.t(svc.descriptionVi, svc.descriptionEn)}
@@ -1416,13 +1515,27 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         {addOnFeeDetails.map(d => (
                           <div key={d.id} className="flex justify-between">
                             <span>• {L.t(d.nameVi, d.nameEn)}:</span>
-                            <span className="font-mono text-slate-905">+{d.fee.toLocaleString()} VNĐ</span>
+                            <span className="font-mono text-slate-905">
+                              {isFeeExempt ? L.t('Miễn phí', 'Free') : `+${d.fee.toLocaleString()} VNĐ`}
+                            </span>
                           </div>
                         ))}
-                        <div className="flex justify-between text-teal-900 bg-teal-50 border border-teal-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
-                          <span>{L.t('TỔNG LỆ PHÍ ĐĂNG KÝ CẦN ĐÓNG:', 'TOTAL REGISTRATION FEE:')}</span>
-                          <span className="font-mono">{calculatedTotalFee.toLocaleString()} VNĐ</span>
-                        </div>
+                        {isFeeExempt ? (
+                          <div className="flex justify-between items-center text-emerald-900 bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
+                            <span>{L.t('MIỄN PHÍ – ỦY VIÊN BCH HỘI:', 'FREE – EXECUTIVE COMMITTEE:')}</span>
+                            <span className="font-mono">0 VNĐ</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-teal-900 bg-teal-50 border border-teal-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
+                            <span>{L.t('TỔNG LỆ PHÍ ĐĂNG KÝ CẦN ĐÓNG:', 'TOTAL REGISTRATION FEE:')}</span>
+                            <span className="font-mono">{calculatedTotalFee.toLocaleString()} VNĐ</span>
+                          </div>
+                        )}
+                        {isFeeExempt && (
+                          <p className="text-[10px] text-emerald-800 leading-snug font-medium pt-1">
+                            {L.t('Quý đại biểu không cần chuyển khoản và không cần đính kèm biên lai. Bấm nút bên dưới để hoàn tất đăng ký.', 'No bank transfer or payment receipt is required. Please click the button below to complete your registration.')}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1542,7 +1655,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         className="px-8 py-3 rounded-xl bg-teal-900 hover:bg-teal-950 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider cursor-pointer shadow-lg hover:shadow-xl transition-all border border-amber-400/40 relative group overflow-hidden"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-                        {isSubmitting ? L.t('Đang gửi thông tin đăng ký...', 'Submitting registration details...') : L.t('Xác Nhận Đăng Ký & Đi Đến Thanh Toán ⚡', 'Confirm Registration & Go to Payment ⚡')}
+                        {isSubmitting
+                          ? L.t('Đang gửi thông tin đăng ký...', 'Submitting registration details...')
+                          : isFeeExempt
+                            ? L.t('Xác Nhận Đăng Ký (Miễn Phí) ⚡', 'Confirm Registration (Free) ⚡')
+                            : L.t('Xác Nhận Đăng Ký & Đi Đến Thanh Toán ⚡', 'Confirm Registration & Go to Payment ⚡')}
                       </button>
                     </div>
                   </div>

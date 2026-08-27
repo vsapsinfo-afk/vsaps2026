@@ -1652,6 +1652,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+                        att.packageId === 'pkg-bch' ? 'bg-rose-50 text-rose-700' :
                         att.packageId === 'pkg-vip' ? 'bg-amber-50 text-amber-700' :
                         att.packageId === 'pkg-standard' ? 'bg-teal-50/50 text-teal-700' : 'bg-slate-100 text-slate-700'
                       }`}>
@@ -1878,6 +1879,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded text-[8px] uppercase font-black shrink-0 ${
+                    att.packageId === 'pkg-bch' ? 'bg-rose-50 text-rose-700' :
                     att.packageId === 'pkg-vip' ? 'bg-amber-50 text-amber-700' :
                     att.packageId === 'pkg-standard' ? 'bg-teal-50/50 text-teal-700' : 'bg-slate-100 text-slate-700'
                   }`}>
@@ -4737,10 +4739,12 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       {kioskCheckInAttendee.id}
                     </span>
                     <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${
+                      kioskCheckInAttendee.packageId === 'pkg-bch' ? 'bg-rose-100 text-rose-800' :
                       kioskCheckInAttendee.packageId === 'pkg-vip' ? 'bg-amber-100 text-amber-800' :
                       kioskCheckInAttendee.id.includes('SPK') ? 'bg-indigo-150 text-indigo-800' : 'bg-emerald-100 text-emerald-800'
                     }`}>
-                      {kioskCheckInAttendee.packageId === 'pkg-vip' ? '★ VIP' : 
+                      {kioskCheckInAttendee.packageId === 'pkg-bch' ? '★ BCH' :
+                       kioskCheckInAttendee.packageId === 'pkg-vip' ? '★ VIP' :
                        kioskCheckInAttendee.id.includes('SPK') ? 'Báo cáo viên' : 'Đại biểu'}
                     </span>
                   </div>

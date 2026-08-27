@@ -1253,7 +1253,7 @@ export class DataStore {
     }
     
     // Auto-create an income transaction if paid
-    if (updatedAttendee.paymentStatus === 'paid' && !this.finance.find(f => f.referenceId === updatedAttendee.id)) {
+    if (updatedAttendee.paymentStatus === 'paid' && updatedAttendee.packageFee > 0 && !this.finance.find(f => f.referenceId === updatedAttendee.id)) {
       this.addFinancialRecord({
         id: 'TXN-' + Math.floor(Math.random() * 90000 + 10000),
         date: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -3057,7 +3057,7 @@ export class DataStore {
             </div>
             ` : ''}
 
-            ${!isPaid && isRegistrationEmail ? `
+            ${!isPaid && isRegistrationEmail && attendee.packageFee > 0 ? `
             <div style="background-color: #fffbeb; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; margin: 20px 0; border: 1px solid #fde68a;">
               <h4 style="margin: 0 0 12px 0; color: #b45309; font-size: 14px; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #fde68a; padding-bottom: 6px;">
                 Hướng Dẫn Thanh Toán Lệ Phí / Payment Instructions
