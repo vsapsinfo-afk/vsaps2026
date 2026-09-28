@@ -72,6 +72,9 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
   const [listSource, setListSource] = useState<'file' | 'saved' | 'attendees' | 'speakers' | 'pick'>('file');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [saveToContacts, setSaveToContacts] = useState<boolean>(true);
+  // Gửi tiếp danh sách dở dang: bỏ qua người đã nhận thư của chiến dịch này.
+  // Dùng khi chia nhỏ danh sách ra nhiều ngày để không vượt hạn mức nhà cung cấp.
+  const [skipAlreadySent, setSkipAlreadySent] = useState<boolean>(true);
   const [contactGroupName, setContactGroupName] = useState<string>('');
   const [isSavedSuccessfully, setIsSavedSuccessfully] = useState<boolean>(false);
 
@@ -549,6 +552,49 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
     }
 
+    // Đối chiếu lịch sử để không gửi trùng cho người đã nhận ở lần trước.
+    let alreadySent = new Set<string>();
+    if (bulkChannel === 'email' && skipAlreadySent) {
+      const historyCampaignId = selectedCampaign?.id || 'instant-bulk';
+      try {
+        const activities = await store.getCampaignActivities(historyCampaignId);
+        alreadySent = new Set(
+          activities
+            .map(a => (a.recipient_email || '').trim().toLowerCase())
+            .filter(Boolean)
+        );
+      } catch (err) {
+        console.error('Không đọc được lịch sử gửi của chiến dịch:', err);
+      }
+
+      const willSkip = workingList.filter(d =>
+        alreadySent.has((d.email || '').trim().toLowerCase())
+      ).length;
+
+      if (willSkip === workingList.length) {
+        alert(
+          `Cả ${workingList.length} người trong danh sách đều đã nhận thư này trước đó.
+
+` +
+          `Không còn ai để gửi. Nếu vẫn muốn gửi lại cho tất cả, hãy bỏ dấu tích ` +
+          `"Bỏ qua người đã nhận thư" rồi bấm gửi lại.`
+        );
+        return;
+      }
+
+      if (willSkip > 0) {
+        const ok = window.confirm(
+          `Có ${willSkip}/${workingList.length} người đã nhận thư này ở lần gửi trước.
+
+` +
+          `Bấm OK để chỉ gửi cho ${workingList.length - willSkip} người còn lại.
+` +
+          `Bấm Cancel để dừng (muốn gửi cho tất cả thì bỏ dấu tích "Bỏ qua người đã nhận thư").`
+        );
+        if (!ok) return;
+      }
+    }
+
     // Auto-save to contacts if enabled and source is file upload
     if (listSource === 'file' && saveToContacts && workingList.length > 0) {
       const groupName = (contactGroupName || excelFileName || 'Nhóm mặc định').replace(/\.[^/.]+$/, "").trim();
@@ -590,6 +636,16 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
 
       if (!isBulkSendingRef.current) break;
+
+      if (bulkChannel === 'email' && alreadySent.has((workingList[i].email || '').trim().toLowerCase())) {
+        setSendingIndex(i);
+        setExcelData(prev => prev.map((item, idx) => idx === i ? {
+          ...item,
+          status: 'skipped',
+          error: 'Đã nhận thư này ở lần gửi trước',
+        } : item));
+        continue;
+      }
 
       setSendingIndex(i);
       setExcelData(prev => prev.map((item, idx) => idx === i ? { ...item, status: 'sending' } : item));
@@ -2625,6 +2681,25 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           Bảng điều khiển &amp; Tiến trình gửi
         </span>
 
+        {bulkChannel === 'email' && (
+          <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700 cursor-pointer select-none bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+            <input
+              type="checkbox"
+              checked={skipAlreadySent}
+              onChange={(e) => setSkipAlreadySent(e.target.checked)}
+              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 mt-0.5 shrink-0"
+            />
+            <span>
+              Bỏ qua người đã nhận thư{selectedCampaign ? <> của chiến dịch <strong>{selectedCampaign.name}</strong></> : ' ở các lần gửi tức thì trước'}
+              <span className="block font-medium text-slate-500 mt-0.5 leading-relaxed">
+                Dùng khi gửi tiếp danh sách dở dang, hoặc chia nhỏ ra nhiều ngày để không vượt hạn mức của nhà cung cấp.
+                Chỉ cần tải lại đúng file Excel cũ, hệ thống tự đối chiếu và bỏ qua người đã nhận.
+              </span>
+            </span>
+          </label>
+        )}
+
+
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex gap-2">
             {!isBulkSending ? (
@@ -2712,11 +2787,13 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                       <td className="px-4 py-2 text-center">
                         <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-bold text-[8.5px] ${
                           item.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
+                          item.status === 'skipped' ? 'bg-amber-50 text-amber-700' :
                           item.status === 'failed' ? 'bg-rose-50 text-rose-700' :
                           item.status === 'sending' ? 'bg-indigo-100 text-indigo-805 animate-pulse' :
                           'bg-slate-100 text-slate-550'
                         }`}>
                           {item.status === 'success' ? 'Thành công' :
+                           item.status === 'skipped' ? 'Đã gửi trước' :
                            item.status === 'failed' ? 'Thất bại' :
                            item.status === 'sending' ? 'Đang gửi...' : 'Chờ gửi'}
                         </span>
@@ -4725,6 +4802,25 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                 Bảng điều khiển &amp; Tiến trình gửi
               </span>
 
+              {bulkChannel === 'email' && (
+                <label className="flex items-start gap-2 text-[11px] font-bold text-slate-700 cursor-pointer select-none bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+                  <input
+                    type="checkbox"
+                    checked={skipAlreadySent}
+                    onChange={(e) => setSkipAlreadySent(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 mt-0.5 shrink-0"
+                  />
+                  <span>
+                    Bỏ qua người đã nhận thư{selectedCampaign ? <> của chiến dịch <strong>{selectedCampaign.name}</strong></> : ' ở các lần gửi tức thì trước'}
+                    <span className="block font-medium text-slate-500 mt-0.5 leading-relaxed">
+                      Dùng khi gửi tiếp danh sách dở dang, hoặc chia nhỏ ra nhiều ngày để không vượt hạn mức của nhà cung cấp.
+                      Chỉ cần tải lại đúng file Excel cũ, hệ thống tự đối chiếu và bỏ qua người đã nhận.
+                    </span>
+                  </span>
+                </label>
+              )}
+
+
               <div className="flex flex-wrap gap-2 items-center justify-between">
                 <div className="flex gap-2">
                   {!isBulkSending ? (
@@ -4826,11 +4922,13 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                             <td className="px-4 py-2 text-center">
                               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full font-bold text-[8.5px] ${
                                 item.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
+                                item.status === 'skipped' ? 'bg-amber-50 text-amber-700' :
                                 item.status === 'failed' ? 'bg-rose-50 text-rose-700' :
                                 item.status === 'sending' ? 'bg-indigo-100 text-indigo-800 animate-pulse' :
                                 'bg-slate-100 text-slate-550'
                               }`}>
                                 {item.status === 'success' ? 'Thành công' :
+                                 item.status === 'skipped' ? 'Đã gửi trước' :
                                  item.status === 'failed' ? 'Thất bại' :
                                  item.status === 'sending' ? 'Đang gửi...' : 'Chờ gửi'}
                               </span>
