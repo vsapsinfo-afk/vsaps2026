@@ -180,7 +180,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     html: payload.body,
   };
 
-  const MAX_ATTEMPTS = 3;
+  // Giữ tổng thời gian chạy dưới giới hạn mặc định của Vercel:
+  // xấu nhất = gửi + 1,5s chờ + gửi lại. Trường hợp bị chặn kéo dài thì dùng
+  // nút "Gửi lại các dòng thất bại" ở màn hình gửi hàng loạt.
+  const MAX_ATTEMPTS = 2;
   let lastError: any = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -201,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       disposeCachedTransport();
 
       if (attempt === MAX_ATTEMPTS || !isTransientError(err)) break;
-      await new Promise((r) => setTimeout(r, attempt * 2000));
+      await new Promise((r) => setTimeout(r, 1500));
     }
   }
 

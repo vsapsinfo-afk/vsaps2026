@@ -22,11 +22,15 @@ email lại là một lần gọi serverless function riêng. Gửi 134 thư = 1
    module, khoá theo cấu hình SMTP. Các lần gọi liên tiếp rơi vào cùng container
    serverless đang "ấm" sẽ dùng lại đúng kết nối đó — số lần đăng nhập giảm từ 134
    xuống còn vài lần. Kèm `maxConnections: 1` và `rateLimit: 3/giây`.
-2. **Thử lại có giãn cách.** Tối đa 3 lượt, chờ 2s rồi 4s, và **chỉ** với lỗi tạm thời
-   (SMTP 421/450/451/452/454). Lỗi vĩnh viễn (`535` sai mật khẩu, `550` không tồn tại)
-   trả về ngay. Response có thêm cờ `retryable`.
+2. **Thử lại có giãn cách.** Tối đa 2 lượt, chờ 1,5s giữa hai lượt, và **chỉ** với lỗi
+   tạm thời (SMTP 421/450/451/452/454). Lỗi vĩnh viễn (`535` sai mật khẩu, `550` không
+   tồn tại) trả về ngay. Response có thêm cờ `retryable`. Nếu bị chặn kéo dài thì dùng
+   nút **"Gửi lại các dòng thất bại"** ở màn hình gửi hàng loạt.
 3. Mỗi lần lỗi đều huỷ kết nối trong pool, tránh socket chết sau khi container bị đóng băng.
-4. `vercel.json`: thêm `maxDuration: 60` cho function này để cơ chế thử lại đủ thời gian.
+
+> **Không thêm `maxDuration` vào `vercel.json`.** Đã thử và deploy bị *"internal Vercel
+> error"* ngay sau khi Vite build xong. Vì vậy cơ chế thử lại được giữ ngắn (xấu nhất
+> khoảng 5,5 giây) để nằm gọn trong giới hạn thời gian mặc định của Vercel.
 
 > Bản vá này là code chạy phía máy chủ — **phải deploy lại** mới có tác dụng.
 
@@ -99,5 +103,4 @@ Khoá lịch sử là `selectedCampaign?.id || 'instant-bulk'`:
 | File | Nội dung |
 |---|---|
 | `api/email/send.ts` | Gộp kết nối SMTP (`pool`), thử lại có giãn cách, phân loại lỗi tạm thời/vĩnh viễn |
-| `vercel.json` | `maxDuration: 60` cho `api/email/send.ts` |
 | `src/views/NotificationSystem.tsx` | Ô tích "Bỏ qua người đã nhận thư", đối chiếu lịch sử trước khi gửi, trạng thái "Đã gửi trước" trong bảng kết quả |
