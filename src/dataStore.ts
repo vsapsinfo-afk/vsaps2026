@@ -2226,16 +2226,47 @@ export class DataStore {
     return this.getLocalStorage(DataStore.KEY_CAMPAIGN_ACTIVITIES, []);
   }
 
+  /**
+   * Supabase chặn mỗi truy vấn ở 1000 dòng. Trước đây hai hàm dưới đây select
+   * thẳng không phân trang, nên khi bảng vượt 1000 dòng thì lần gửi mới nhất
+   * không hiện trong thống kê, và tính năng "bỏ qua người đã nhận" cũng đọc
+   * thiếu lịch sử dẫn tới gửi trùng. Phải lấy theo từng trang cho tới hết.
+   *
+   * Sắp xếp kèm `id` để phân trang ổn định: nếu nhiều dòng trùng `sent_at`,
+   * chỉ dựa vào `sent_at` có thể lặp hoặc bỏ sót dòng giữa các trang.
+   */
+  private async fetchCampaignActivityPaged(campaignId?: string): Promise<CampaignActivity[]> {
+    const PAGE_SIZE = 1000;
+    const MAX_ROWS = 100000; // chặn an toàn, tránh vòng lặp vô hạn
+    const rows: CampaignActivity[] = [];
+
+    for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+      let query = supabase
+        .from('campaign_activity')
+        .select('*')
+        .order('sent_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      rows.push(...data);
+      if (data.length < PAGE_SIZE) break;
+    }
+
+    return rows;
+  }
+
   async getCampaignActivities(campaignId: string): Promise<CampaignActivity[]> {
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await supabase
-          .from('campaign_activity')
-          .select('*')
-          .eq('campaign_id', campaignId);
-        if (!error && data) {
-          return data;
-        }
+        return await this.fetchCampaignActivityPaged(campaignId);
       } catch (err) {
         console.error('Error fetching activities from Supabase:', err);
       }
@@ -2247,12 +2278,7 @@ export class DataStore {
   async getAllCampaignActivities(): Promise<CampaignActivity[]> {
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await supabase
-          .from('campaign_activity')
-          .select('*');
-        if (!error && data) {
-          return data;
-        }
+        return await this.fetchCampaignActivityPaged();
       } catch (err) {
         console.error('Error fetching all activities from Supabase:', err);
       }

@@ -1691,7 +1691,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
         return false;
       }
       if (trackingFilter === 'sent') return act.status === 'sent' && !act.opened_at;
-      if (trackingFilter === 'opened') return act.status === 'opened' || !!act.opened_at;
+      if (trackingFilter === 'opened') return act.status === 'opened' || act.status === 'clicked' || !!act.opened_at;
       if (trackingFilter === 'clicked') return act.status === 'clicked' || !!act.clicked_at;
       return true;
     });
@@ -1797,7 +1797,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           <div className="flex flex-wrap items-center gap-1.5">
             {[
               { filter: 'all', label: `Tất cả (${allActivities.length})` },
-              { filter: 'opened', label: `👁️ Đã mở (${allActivities.filter(a => a.status === 'opened' || !!a.opened_at).length})` },
+              { filter: 'opened', label: `👁️ Đã mở (${allActivities.filter(a => a.status === 'opened' || a.status === 'clicked' || !!a.opened_at).length})` },
               { filter: 'clicked', label: `🔗 Đã click (${allActivities.filter(a => a.status === 'clicked' || !!a.clicked_at).length})` },
               { filter: 'sent', label: `✉️ Chưa mở (${allActivities.filter(a => a.status === 'sent' && !a.opened_at).length})` }
             ].map(tab => (
@@ -1932,7 +1932,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       const filteredActivities = campaignActivities.filter(act => {
         if (campaignReportFilter === 'all') return true;
         if (campaignReportFilter === 'sent') return act.status === 'sent';
-        if (campaignReportFilter === 'opened') return act.status === 'opened' || !!act.opened_at;
+        if (campaignReportFilter === 'opened') return act.status === 'opened' || act.status === 'clicked' || !!act.opened_at;
         if (campaignReportFilter === 'clicked') return act.status === 'clicked' || !!act.clicked_at;
         return true;
       });
@@ -2002,7 +2002,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               {[
                 { filter: 'all', label: `Tất cả (${campaignActivities.length})` },
                 { filter: 'sent', label: `Đã gửi (Chưa mở) (${campaignActivities.filter(a => a.status === 'sent').length})` },
-                { filter: 'opened', label: `Đã mở (${campaignActivities.filter(a => a.status === 'opened' || !!a.opened_at).length})` },
+                { filter: 'opened', label: `Đã mở (${campaignActivities.filter(a => a.status === 'opened' || a.status === 'clicked' || !!a.opened_at).length})` },
                 { filter: 'clicked', label: `Đã click liên kết (${campaignActivities.filter(a => a.status === 'clicked' || !!a.clicked_at).length})` }
               ].map(tab => (
                 <button
