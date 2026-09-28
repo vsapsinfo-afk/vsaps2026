@@ -77,13 +77,45 @@ const getTransporter = (config: any) => {
 };
 
 // Mã SMTP 4xx là lỗi tạm thời (nghẽn, chặn tạm) -> đáng thử lại.
-const TRANSIENT_SMTP = /(?:^|[^0-9])(421|450|451|452|454)(?:[^0-9]|$)/;
+const TRANSIENT_SMTP = /(?:^|[^0-9])(421|450|451|452)(?:[^0-9]|$)/;
 
-const isTransientError = (err: any) =>
-  TRANSIENT_SMTP.test(String(err?.responseCode ?? '')) ||
-  TRANSIENT_SMTP.test(String(err?.response ?? '')) ||
-  TRANSIENT_SMTP.test(String(err?.message ?? '')) ||
-  ['ETIMEDOUT', 'ECONNECTION', 'ECONNRESET', 'ESOCKET'].includes(err?.code);
+/**
+ * 454-4.7.0 "Too many login attempts" là Google tạm khoá đăng nhập.
+ * Thử lại sau vài giây chỉ tạo thêm một lần đăng nhập nữa và KÉO DÀI thời gian
+ * bị khoá, nên tuyệt đối không retry trong cùng một lượt gọi. Khoá này tính
+ * bằng giờ, phải để người dùng dừng lại và chờ.
+ */
+const AUTH_THROTTLED = /454[-\s]?4\.7\.0|too many login attempts/i;
+
+const errText = (err: any) =>
+  [err?.responseCode, err?.response, err?.message].map(v => String(v ?? '')).join(' ');
+
+const isTransientError = (err: any) => {
+  const text = errText(err);
+  if (AUTH_THROTTLED.test(text)) return false;
+  return (
+    TRANSIENT_SMTP.test(text) ||
+    ['ETIMEDOUT', 'ECONNECTION', 'ECONNRESET', 'ESOCKET'].includes(err?.code)
+  );
+};
+
+/** Dịch mã lỗi SMTP khó hiểu thành hướng xử lý cụ thể cho Ban thư ký. */
+const explainSmtpError = (err: any) => {
+  const msg = String(err?.message ?? '') || 'Lỗi khi gửi mail SMTP';
+  const text = errText(err);
+  if (AUTH_THROTTLED.test(text)) {
+    return msg + ' — Google đang TẠM KHOÁ đăng nhập vì có quá nhiều lần thử. '
+      + 'Hãy DỪNG gửi và chờ ít nhất 1 giờ. Mỗi lần bấm thử lại sẽ kéo dài thêm thời gian khoá.';
+  }
+  if (/534[-\s]?5\.7\.9|webloginrequired/i.test(text)) {
+    return msg + ' — Gmail không chấp nhận mật khẩu. Kiểm tra ô mật khẩu đang là '
+      + 'Mật khẩu ứng dụng 16 ký tự viết liền, không phải mật khẩu Gmail thường.';
+  }
+  if (/535[-\s]?5\.7\.8/i.test(text)) {
+    return msg + ' — Sai tài khoản hoặc mật khẩu SMTP.';
+  }
+  return msg;
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -231,7 +263,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(500).json({
     success: false,
-    error: lastError?.message || "Lỗi khi gửi mail SMTP",
+    error: explainSmtpError(lastError),
     retryable: isTransientError(lastError),
   });
 }

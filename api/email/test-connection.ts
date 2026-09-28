@@ -58,9 +58,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: `Kết nối thành công đến máy chủ SMTP ${smtpHost}!`,
     });
   } catch (err: any) {
+    const raw = String(err?.message ?? '') || 'Lỗi SMTP không xác định';
+    const detail = [err?.responseCode, err?.response, raw].map(v => String(v ?? '')).join(' ');
+    let hint = '';
+    if (/454[-\s]?4\.7\.0|too many login attempts/i.test(detail)) {
+      hint = ' — Google đang TẠM KHOÁ đăng nhập vì có quá nhiều lần thử. Hãy DỪNG lại và chờ ít nhất 1 giờ.'
+        + ' Mỗi lần bấm kiểm tra lại sẽ kéo dài thêm thời gian khoá.';
+    } else if (/534[-\s]?5\.7\.9|webloginrequired/i.test(detail)) {
+      hint = ' — Gmail không chấp nhận mật khẩu. Kiểm tra ô mật khẩu đang là Mật khẩu ứng dụng 16 ký tự viết liền.';
+    } else if (/535[-\s]?5\.7\.8/i.test(detail)) {
+      hint = ' — Sai tài khoản hoặc mật khẩu SMTP.';
+    }
     return res.json({
       success: false,
-      message: `Hệ thống từ chối kết nối: ${err.message || "Lỗi SMTP không xác định"}`,
+      message: `Hệ thống từ chối kết nối: ${raw}${hint}`,
     });
   }
 }
