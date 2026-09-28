@@ -11,10 +11,30 @@ import { createClient } from '@supabase/supabase-js';
  * trên cùng một container serverless đang "ấm" sẽ dùng lại đúng một kết nối đã
  * xác thực, thay vì đăng nhập lại từ đầu.
  */
+/**
+ * Google hiển thị Mật khẩu ứng dụng thành 4 nhóm 4 ký tự có dấu cách
+ * ("apbu pqsm kpbw jhnt"). Dán nguyên dấu cách vào ô mật khẩu sẽ bị Gmail
+ * từ chối với lỗi "534-5.7.9 WebLoginRequired", nên bỏ sạch khoảng trắng
+ * khi máy chủ là Gmail/Google. Với máy chủ khác chỉ cắt khoảng trắng hai đầu
+ * để không phá mật khẩu có dấu cách hợp lệ.
+ */
+const normalizeSmtp = (c: any) => {
+  const host = String(c?.smtpHost ?? '').trim();
+  const rawPass = String(c?.smtpPass ?? '');
+  return {
+    host,
+    port: Number(c?.smtpPort) || 587,
+    user: String(c?.smtpUser ?? '').trim(),
+    pass: /gmail|google/i.test(host) ? rawPass.replace(/\s+/g, '') : rawPass.trim(),
+  };
+};
+
 let cachedTransport: { key: string; transporter: nodemailer.Transporter } | null = null;
 
-const buildTransportKey = (c: any) =>
-  [c.smtpHost, c.smtpPort, c.smtpUser, c.smtpPass].join('|');
+const buildTransportKey = (c: any) => {
+  const n = normalizeSmtp(c);
+  return [n.host, n.port, n.user, n.pass].join('|');
+};
 
 const disposeCachedTransport = () => {
   if (!cachedTransport) return;
@@ -33,13 +53,14 @@ const getTransporter = (config: any) => {
   }
   disposeCachedTransport();
 
+  const n = normalizeSmtp(config);
   const transporter = nodemailer.createTransport({
-    host: config.smtpHost,
-    port: Number(config.smtpPort) || 587,
-    secure: Number(config.smtpPort) === 465,
+    host: n.host,
+    port: n.port,
+    secure: n.port === 465,
     auth: {
-      user: config.smtpUser,
-      pass: config.smtpPass,
+      user: n.user,
+      pass: n.pass,
     },
     pool: true,
     maxConnections: 1,

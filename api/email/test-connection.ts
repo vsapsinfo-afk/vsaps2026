@@ -1,6 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
 
+/**
+ * Google hiển thị Mật khẩu ứng dụng thành 4 nhóm 4 ký tự có dấu cách
+ * ("apbu pqsm kpbw jhnt"). Dán nguyên dấu cách vào ô mật khẩu sẽ bị Gmail
+ * từ chối với lỗi "534-5.7.9 WebLoginRequired", nên bỏ sạch khoảng trắng
+ * khi máy chủ là Gmail/Google. Với máy chủ khác chỉ cắt khoảng trắng hai đầu
+ * để không phá mật khẩu có dấu cách hợp lệ.
+ */
+const normalizeSmtp = (c: any) => {
+  const host = String(c?.smtpHost ?? '').trim();
+  const rawPass = String(c?.smtpPass ?? '');
+  return {
+    host,
+    port: Number(c?.smtpPort) || 587,
+    user: String(c?.smtpUser ?? '').trim(),
+    pass: /gmail|google/i.test(host) ? rawPass.replace(/\s+/g, '') : rawPass.trim(),
+  };
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,12 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const isSecure = Number(smtpPort) === 465;
+    const n = normalizeSmtp({ smtpHost, smtpPort, smtpUser, smtpPass });
     const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: Number(smtpPort) || 587,
-      secure: isSecure,
-      auth: { user: smtpUser, pass: smtpPass },
+      host: n.host,
+      port: n.port,
+      secure: n.port === 465,
+      auth: { user: n.user, pass: n.pass },
       tls: { rejectUnauthorized: false },
     });
 
