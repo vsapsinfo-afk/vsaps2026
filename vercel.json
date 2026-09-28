@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/email/send.ts": { "maxDuration": 60 }
+  },
   "rewrites": [
     { "source": "/manifest.json", "destination": "/api/manifest" },
     { "source": "/sw.js", "destination": "/sw.js" },

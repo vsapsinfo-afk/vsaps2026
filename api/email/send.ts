@@ -2,6 +2,68 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 
+/**
+ * Gmail trả về "454-4.7.0 Too many login attempts" khi bị đăng nhập dồn dập.
+ * Trước đây mỗi email tạo một transporter mới => mỗi email là một lần đăng nhập
+ * SMTP riêng; gửi hàng loạt >100 thư chắc chắn bị chặn.
+ *
+ * Transporter dạng pool được giữ ở phạm vi module nên các lần gọi hàm liên tiếp
+ * trên cùng một container serverless đang "ấm" sẽ dùng lại đúng một kết nối đã
+ * xác thực, thay vì đăng nhập lại từ đầu.
+ */
+let cachedTransport: { key: string; transporter: nodemailer.Transporter } | null = null;
+
+const buildTransportKey = (c: any) =>
+  [c.smtpHost, c.smtpPort, c.smtpUser, c.smtpPass].join('|');
+
+const disposeCachedTransport = () => {
+  if (!cachedTransport) return;
+  try {
+    cachedTransport.transporter.close();
+  } catch {
+    /* kết nối đã đóng sẵn */
+  }
+  cachedTransport = null;
+};
+
+const getTransporter = (config: any) => {
+  const key = buildTransportKey(config);
+  if (cachedTransport && cachedTransport.key === key) {
+    return cachedTransport.transporter;
+  }
+  disposeCachedTransport();
+
+  const transporter = nodemailer.createTransport({
+    host: config.smtpHost,
+    port: Number(config.smtpPort) || 587,
+    secure: Number(config.smtpPort) === 465,
+    auth: {
+      user: config.smtpUser,
+      pass: config.smtpPass,
+    },
+    pool: true,
+    maxConnections: 1,
+    maxMessages: Infinity,
+    rateDelta: 1000,
+    rateLimit: 3,
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+
+  cachedTransport = { key, transporter };
+  return transporter;
+};
+
+// Mã SMTP 4xx là lỗi tạm thời (nghẽn, chặn tạm) -> đáng thử lại.
+const TRANSIENT_SMTP = /(?:^|[^0-9])(421|450|451|452|454)(?:[^0-9]|$)/;
+
+const isTransientError = (err: any) =>
+  TRANSIENT_SMTP.test(String(err?.responseCode ?? '')) ||
+  TRANSIENT_SMTP.test(String(err?.response ?? '')) ||
+  TRANSIENT_SMTP.test(String(err?.message ?? '')) ||
+  ['ETIMEDOUT', 'ECONNECTION', 'ECONNRESET', 'ESOCKET'].includes(err?.code);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -108,43 +170,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   }
 
-  try {
-    const isSecure = Number(config.smtpPort) === 465;
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost,
-      port: Number(config.smtpPort) || 587,
-      secure: isSecure,
-      auth: {
-        user: config.smtpUser,
-        pass: config.smtpPass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
+  const mailOptions = {
+    from: {
+      name: config.senderName || "VSAPS 2026 BTC",
+      address: config.senderEmail || config.smtpUser,
+    },
+    to: payload.to,
+    subject: payload.subject || "Thư xác nhận VSAPS 2026",
+    html: payload.body,
+  };
 
-    const mailOptions = {
-      from: {
-        name: config.senderName || "VSAPS 2026 BTC",
-        address: config.senderEmail || config.smtpUser,
-      },
-      to: payload.to,
-      subject: payload.subject || "Thư xác nhận VSAPS 2026",
-      html: payload.body,
-    };
+  const MAX_ATTEMPTS = 3;
+  let lastError: any = null;
 
-    const info = await transporter.sendMail(mailOptions);
-    return res.json({
-      success: true,
-      messageId: info.messageId,
-      response: info.response,
-      server: config.smtpHost,
-    });
-  } catch (err: any) {
-    let errorMessage = err.message || "Lỗi khi gửi mail SMTP";
-    return res.status(500).json({
-      success: false,
-      error: errorMessage,
-    });
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const info = await getTransporter(config).sendMail(mailOptions);
+      return res.json({
+        success: true,
+        messageId: info.messageId,
+        response: info.response,
+        server: config.smtpHost,
+        attempts: attempt,
+      });
+    } catch (err: any) {
+      lastError = err;
+
+      // Socket trong pool có thể đã chết sau khi container bị đóng băng,
+      // hoặc máy chủ vừa chặn tạm: bỏ kết nối cũ để lần sau đăng nhập lại sạch sẽ.
+      disposeCachedTransport();
+
+      if (attempt === MAX_ATTEMPTS || !isTransientError(err)) break;
+      await new Promise((r) => setTimeout(r, attempt * 2000));
+    }
   }
+
+  return res.status(500).json({
+    success: false,
+    error: lastError?.message || "Lỗi khi gửi mail SMTP",
+    retryable: isTransientError(lastError),
+  });
 }
