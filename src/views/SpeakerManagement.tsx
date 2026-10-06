@@ -8,6 +8,7 @@ import { Search, ListFilter, CheckCircle, XCircle, Clock, FileText, Calendar, Ey
 import { store } from '../dataStore';
 import { SpeakerRegistration, Role, SpecialtyTrack } from '../types';
 import { formatDate } from '../lib/dateUtils';
+import * as XLSX from 'xlsx';
 
 interface SpeakerManagementProps {
   role: Role;
@@ -36,6 +37,15 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedSpeaker, setSelectedSpeaker] = useState<SpeakerRegistration | null>(null);
   
+  // Nhập báo cáo viên từ Excel
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importRows, setImportRows] = useState<SpeakerRegistration[]>([]);
+  const [importFeedback, setImportFeedback] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [skipDuplicateSpeakers, setSkipDuplicateSpeakers] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const importInputRef = React.useRef<HTMLInputElement>(null);
+
   // State for delete confirmation
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   
@@ -429,6 +439,229 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const totalTracksSet = new Set(speakers.map(s => s.presentationTrack)).size;
 
   // Real mock CSV exporter
+  /* ===== NHẬP BÁO CÁO VIÊN TỪ EXCEL =====
+   * Nhiều báo cáo viên gửi hồ sơ qua email thay vì điền form, Ban thư ký phải
+   * gõ tay từng người. Luồng này cho phép tổng hợp vào một file Excel rồi nạp
+   * một lượt. File PDF/Word (CV, abstract) không nhét được vào Excel nên dùng
+   * cột đường dẫn Google Drive.
+   */
+  const IMPORT_COLUMNS = {
+    title: 'Học hàm học vị',
+    fullName: 'Họ và tên',
+    email: 'Email',
+    phone: 'Số điện thoại',
+    organization: 'Đơn vị công tác',
+    department: 'Khoa/Phòng',
+    bio: 'Tóm lược quá trình công tác',
+    presentationTitle: 'Tên bài báo cáo',
+    presentationTrack: 'Chuyên đề',
+    abstractText: 'Abstract (Tóm tắt nội dung)',
+    documentUrl: 'Link CV/Abstract (Google Drive)',
+  };
+
+  const downloadSpeakerTemplate = () => {
+    const C = IMPORT_COLUMNS;
+    const defaultTrack = specialtyTracks[0]?.name || 'Tạo hình Thẩm mỹ';
+    const sample = [
+      {
+        [C.title]: 'PGS.TS.BS',
+        [C.fullName]: 'NGUYỄN VĂN AN',
+        [C.email]: 'nguyenvanan@gmail.com',
+        [C.phone]: '0912345678',
+        [C.organization]: 'Bệnh viện Chợ Rẫy',
+        [C.department]: 'Khoa Phẫu thuật Tạo hình Thẩm mỹ',
+        [C.bio]: 'Trưởng khoa Phẫu thuật Tạo hình Thẩm mỹ, 20 năm kinh nghiệm, chủ nhiệm 5 đề tài cấp Bộ.',
+        [C.presentationTitle]: 'Ứng dụng vạt da cân trong tái tạo khuyết hổng vùng mặt',
+        [C.presentationTrack]: defaultTrack,
+        [C.abstractText]: 'Mục tiêu: ... Phương pháp: ... Kết quả: ... Kết luận: ...',
+        [C.documentUrl]: 'https://drive.google.com/file/d/xxxxxxxx/view',
+      },
+      {
+        [C.title]: 'TS.BS',
+        [C.fullName]: 'TRẦN THỊ MAI',
+        [C.email]: 'tranthimai@gmail.com',
+        [C.phone]: '0987654321',
+        [C.organization]: 'Bệnh viện Đại học Y Dược TP.HCM',
+        [C.department]: 'Khoa Thẩm mỹ',
+        [C.bio]: 'Giảng viên bộ môn Tạo hình Thẩm mỹ, 12 năm kinh nghiệm lâm sàng.',
+        [C.presentationTitle]: 'Kỹ thuật tiêm filler an toàn vùng quanh mắt',
+        [C.presentationTrack]: defaultTrack,
+        [C.abstractText]: 'Mục tiêu: ... Phương pháp: ... Kết quả: ... Kết luận: ...',
+        [C.documentUrl]: '',
+      },
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(sample);
+    ws['!cols'] = [
+      { wch: 16 }, { wch: 26 }, { wch: 28 }, { wch: 16 }, { wch: 32 },
+      { wch: 28 }, { wch: 46 }, { wch: 42 }, { wch: 24 }, { wch: 60 }, { wch: 44 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_BCV');
+    XLSX.writeFile(wb, 'Mau_File_Import_Bao_Cao_Vien_VSAPS2026.xlsx');
+  };
+
+  const parseSpeakerFile = (file: File) => {
+    if (!file) return;
+    setImportError(null);
+    setImportFeedback(null);
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+      setImportError('Chỉ hỗ trợ tệp Excel (.xlsx, .xls) hoặc .csv. Vui lòng tải file mẫu để điền đúng định dạng.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(new Uint8Array(ev.target?.result as ArrayBuffer), { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+
+        const usedIds = new Set(store.getSpeakers().map(x => x.id));
+        const genId = () => {
+          let id = '';
+          do {
+            id = 'SPK-' + Math.floor(Math.random() * 90000 + 10000);
+          } while (usedIds.has(id));
+          usedIds.add(id);
+          return id;
+        };
+
+        const parsed: SpeakerRegistration[] = [];
+        let skippedNoName = 0;
+
+        rows.forEach((row) => {
+          const keys = Object.keys(row);
+          // Dò cột linh hoạt vì người dùng hay sửa tiêu đề hoặc thêm dấu *.
+          // Mỗi cột chỉ được gán cho đúng một trường: tiêu đề "Link CV/Abstract"
+          // cũng chứa chữ "abstract", nếu không loại trừ thì cột tóm tắt sẽ bắt
+          // nhầm sang cột link khi người dùng đổi thứ tự cột.
+          const usedKeys = new Set<string>();
+          const pick = (matchers: string[]): string => {
+            for (const m of matchers) {
+              const k = keys.find(key => !usedKeys.has(key) && key.toLowerCase().trim().includes(m));
+              if (k) {
+                usedKeys.add(k);
+                return row[k] === undefined || row[k] === null ? '' : String(row[k]).trim();
+              }
+            }
+            return '';
+          };
+
+          const fullName = pick(['họ và tên', 'họ tên', 'fullname', 'tên báo cáo viên']);
+          if (!fullName) {
+            skippedNoName++;
+            return;
+          }
+
+          // Lấy cột link trước cột abstract, vì tiêu đề link có chứa chữ "abstract"
+          const link = pick(['link', 'đường dẫn', 'drive', 'url', 'tệp đính kèm']);
+          const title = pick(['học hàm', 'học vị', 'chức danh', 'title']);
+          const organization = pick(['đơn vị', 'cơ quan', 'bệnh viện', 'nơi công tác', 'organization']);
+          const department = pick(['khoa/phòng', 'khoa', 'phòng', 'bộ môn', 'department']);
+          const phone = pick(['số điện thoại', 'sđt', 'điện thoại', 'phone', 'sdt']);
+          const email = pick(['email', 'thư điện tử', 'mail']);
+          const bio = pick(['tóm lược', 'quá trình công tác', 'giới thiệu', 'lý lịch', 'bio']);
+          const presentationTitle = pick(['tên bài', 'đề tài', 'tiêu đề báo cáo', 'presentation']);
+          const presentationTrack = pick(['chuyên đề', 'phân ban', 'track']);
+          const abstractText = pick(['abstract', 'tóm tắt']);
+
+          parsed.push({
+            id: genId(),
+            title: title || 'BS.',
+            fullName: fullName.toUpperCase(),
+            organization,
+            department,
+            phone: phone.replace(/\s+/g, ''),
+            email,
+            bio,
+            presentationTitle,
+            presentationTrack: presentationTrack || (specialtyTracks[0]?.name || ''),
+            abstractText,
+            documentUrl: link || undefined,
+            documentName: link ? 'Hồ sơ đính kèm (Google Drive)' : undefined,
+            calendarSynced: false,
+            status: 'pending',
+            registrationDate: new Date().toISOString().split('T')[0],
+            nationality: 'vietname',
+          });
+        });
+
+        if (parsed.length === 0) {
+          setImportError(
+            'Không đọc được dòng nào có "Họ và tên". Vui lòng kiểm tra lại tiêu đề cột, '
+            + 'hoặc tải file mẫu rồi điền theo đúng định dạng.'
+          );
+          setImportRows([]);
+          return;
+        }
+
+        setImportRows(parsed);
+        setImportFeedback(
+          'Đã đọc ' + parsed.length + ' báo cáo viên từ tệp "' + file.name + '".'
+          + (skippedNoName > 0 ? ' Bỏ qua ' + skippedNoName + ' dòng không có họ tên.' : '')
+        );
+      } catch (err) {
+        console.error('Lỗi đọc file Excel báo cáo viên:', err);
+        setImportError('Không đọc được tệp. Tệp có thể bị hỏng hoặc sai định dạng.');
+        setImportRows([]);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleConfirmImportSpeakers = async () => {
+    if (importRows.length === 0) return;
+
+    const existing = store.getSpeakers();
+    let finalRows = importRows;
+    let skipped = 0;
+
+    if (skipDuplicateSpeakers) {
+      // Đối chiếu theo email; email trống thì đối chiếu theo họ tên + đơn vị
+      const keyOf = (sp: { email?: string; fullName: string; organization: string }) =>
+        (sp.email || '').trim().toLowerCase()
+        || (sp.fullName.trim().toLowerCase() + '|' + (sp.organization || '').trim().toLowerCase());
+      const existingKeys = new Set(existing.map(keyOf));
+      finalRows = importRows.filter(sp => {
+        const key = keyOf(sp);
+        if (existingKeys.has(key)) {
+          skipped++;
+          return false;
+        }
+        existingKeys.add(key);
+        return true;
+      });
+    }
+
+    if (finalRows.length === 0) {
+      alert('Cả ' + importRows.length + ' báo cáo viên trong tệp đều đã có trên hệ thống.');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      await store.saveSpeakersBulk(finalRows);
+      alert(
+        'Đã nạp thành công ' + finalRows.length + ' báo cáo viên vào hệ thống.'
+        + (skipped > 0 ? ' Bỏ qua ' + skipped + ' hồ sơ đã có sẵn.' : '')
+        + '\n\nTất cả đang ở trạng thái "Đang chờ" để Ban thư ký rà soát và phê duyệt.'
+      );
+      setShowImportModal(false);
+      setImportRows([]);
+      setImportFeedback(null);
+      setImportError(null);
+      loadAll();
+    } catch (err: any) {
+      console.error('Lỗi nạp báo cáo viên hàng loạt:', err);
+      alert('Không nạp được danh sách: ' + (err?.message || 'lỗi kết nối cơ sở dữ liệu'));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleExportXLSX = () => {
     const headers = ["Mã Hồ Sơ", "Học hàm học vị", "Báo cáo viên chính", "Cơ quan công tác", "Chuyên đề khoa học", "Đề tài báo cáo", "Phiên báo cáo được xếp", "Đồng bộ Lịch", "Trạng thái"];
     const rows = sortedSpeakers.map(s => {
@@ -588,6 +821,20 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Thêm Báo Cáo Viên</span>
               <span className="sm:hidden">Thêm BCV</span>
+            </button>
+          )}
+
+          {/* Import from Excel */}
+          {role !== 'ctv' && (
+            <button
+              type="button"
+              onClick={() => setShowImportModal(true)}
+              className="p-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm w-full sm:w-auto justify-center"
+              title="Nạp danh sách báo cáo viên từ file Excel (dành cho hồ sơ gửi qua email)"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="hidden sm:inline">Nhập Từ Excel</span>
+              <span className="sm:hidden">Nhập Excel</span>
             </button>
           )}
 
@@ -2053,6 +2300,182 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           </div>
         );
       })()}
+
+      {/* ===== HỘP THOẠI NHẬP BÁO CÁO VIÊN TỪ EXCEL ===== */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden">
+
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-emerald-600" />
+                  Nhập Báo Cáo Viên Từ Excel
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Dành cho hồ sơ các bác gửi qua email. Tổng hợp vào một tệp rồi nạp một lượt.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowImportModal(false); setImportRows([]); setImportFeedback(null); setImportError(null); }}
+                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 cursor-pointer border-none bg-transparent"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto">
+
+              {/* Bước 1 */}
+              <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-2">
+                <p className="text-xs font-black text-indigo-900 uppercase tracking-wide">Bước 1 — Tải tệp mẫu</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Tệp mẫu có sẵn 11 cột và 2 dòng ví dụ. Điền theo đúng cột, giữ nguyên dòng tiêu đề.
+                  Cột <strong>Họ và tên</strong> bắt buộc phải có, các cột khác để trống được.
+                </p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  File CV và Abstract dạng PDF/Word không nhét được vào Excel. Quý vị đưa tệp lên
+                  Google Drive, <strong>bật quyền xem cho người có đường dẫn</strong>, rồi dán đường dẫn
+                  vào cột <strong>Link CV/Abstract</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={downloadSpeakerTemplate}
+                  className="mt-1 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer border-none transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Tải Tệp Mẫu Excel
+                </button>
+              </div>
+
+              {/* Bước 2 */}
+              <div className="p-4 rounded-xl border border-slate-200 space-y-2">
+                <p className="text-xs font-black text-slate-800 uppercase tracking-wide">Bước 2 — Chọn tệp đã điền</p>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={(e) => { if (e.target.files?.[0]) parseSpeakerFile(e.target.files[0]); }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer border border-slate-200 transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Chọn tệp Excel (.xlsx, .xls, .csv)
+                </button>
+
+                {importFeedback && (
+                  <p className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    {importFeedback}
+                  </p>
+                )}
+                {importError && (
+                  <p className="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                    {importError}
+                  </p>
+                )}
+              </div>
+
+              {/* Bước 3 — xem trước */}
+              {importRows.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-black text-slate-800 uppercase tracking-wide">
+                    Bước 3 — Kiểm tra lại {importRows.length} hồ sơ trước khi nạp
+                  </p>
+
+                  <div className="border border-slate-200 rounded-xl max-h-72 overflow-auto">
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead className="bg-slate-50 sticky top-0 text-[9.5px] uppercase font-black text-slate-400 tracking-wider">
+                        <tr>
+                          <th className="px-3 py-2 whitespace-nowrap">STT</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Học vị</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Họ và tên</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Email</th>
+                          <th className="px-3 py-2 whitespace-nowrap">SĐT</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Đơn vị</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Tên bài báo cáo</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Abstract</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Hồ sơ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {importRows.map((sp, i) => (
+                          <tr key={sp.id} className="hover:bg-slate-50">
+                            <td className="px-3 py-2 font-mono text-slate-400">{i + 1}</td>
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{sp.title}</td>
+                            <td className="px-3 py-2 font-bold text-slate-900 whitespace-nowrap">{sp.fullName}</td>
+                            <td className="px-3 py-2 font-mono text-slate-600">
+                              {sp.email || <span className="text-amber-600 font-sans font-bold">thiếu</span>}
+                            </td>
+                            <td className="px-3 py-2 font-mono text-slate-600">
+                              {sp.phone || <span className="text-amber-600 font-sans font-bold">thiếu</span>}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 max-w-[160px] truncate" title={sp.organization}>
+                              {sp.organization || '-'}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 max-w-[180px] truncate" title={sp.presentationTitle}>
+                              {sp.presentationTitle || '-'}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {sp.abstractText
+                                ? <span className="text-emerald-700 font-bold">có</span>
+                                : <span className="text-amber-600 font-bold">thiếu</span>}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {sp.documentUrl
+                                ? <a href={sp.documentUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">mở link</a>
+                                : <span className="text-slate-400">-</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-[11px] font-bold text-slate-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={skipDuplicateSpeakers}
+                      onChange={(e) => setSkipDuplicateSpeakers(e.target.checked)}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                    />
+                    Bỏ qua hồ sơ đã có trên hệ thống (đối chiếu theo email; email trống thì theo họ tên và đơn vị)
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+              <p className="text-[10.5px] text-slate-500">
+                Hồ sơ nạp vào sẽ ở trạng thái <strong>Đang chờ</strong> để Ban thư ký rà soát rồi phê duyệt.
+              </p>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setShowImportModal(false); setImportRows([]); setImportFeedback(null); setImportError(null); }}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold cursor-pointer transition-colors"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={importRows.length === 0 || isImporting}
+                  onClick={handleConfirmImportSpeakers}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-black cursor-pointer border-none transition-colors flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  {isImporting ? 'Đang nạp...' : `Nạp ${importRows.length || ''} Hồ Sơ Vào Hệ Thống`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -1353,6 +1353,46 @@ export class DataStore {
 
   // Speakers
   getSpeakers() { return this.speakers; }
+
+  /**
+   * Nạp hàng loạt báo cáo viên (dùng cho chức năng nhập từ Excel).
+   * Cùng cách làm với saveAttendeesBulk: ghi localStorage trước để giao diện
+   * phản hồi ngay, rồi upsert một lượt lên Supabase.
+   *
+   * Lưu ý: hàm này KHÔNG xử lý file base64 như saveSpeakerAsync, vì dữ liệu
+   * nhập từ Excel chỉ mang đường dẫn (Google Drive) chứ không mang file.
+   */
+  async saveSpeakersBulk(newSpeakers: SpeakerRegistration[]): Promise<SpeakerRegistration[]> {
+    if (!newSpeakers || newSpeakers.length === 0) return [];
+
+    newSpeakers.forEach(sp => {
+      const idx = this.speakers.findIndex(x => x.id === sp.id);
+      if (idx >= 0) {
+        this.speakers[idx] = sp;
+      } else {
+        this.speakers.push(sp);
+      }
+    });
+
+    this.saveToLocalStorage(DataStore.KEY_SPEAKERS, this.speakers);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const dbRecords = newSpeakers.map(sp => mapSpeakerToDb(sp));
+        const { error } = await supabase.from('speakers').upsert(dbRecords);
+        if (error) {
+          console.error('Error bulk upserting speakers to Supabase:', error);
+          throw error;
+        }
+      } catch (err) {
+        console.error('Error in saveSpeakersBulk Supabase sync:', err);
+        throw err;
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'speakers' } }));
+    return newSpeakers;
+  }
   saveSpeaker(speaker: SpeakerRegistration) {
     const idx = this.speakers.findIndex(s => s.id === speaker.id);
     const isNew = idx < 0;
