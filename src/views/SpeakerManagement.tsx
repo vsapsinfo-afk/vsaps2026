@@ -861,35 +861,35 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             
             {/* Scroll container */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-auto">
+              <table className="w-full min-w-[1024px] text-left border-collapse table-auto">
                 
                 <thead>
                   <tr className="bg-slate-900 text-slate-200 uppercase font-sans text-[10.5px] font-black tracking-wider border-b border-slate-800 select-none">
-                    <th className="p-4 pl-5 w-[8%]">
+                    <th className="p-4 pl-5 w-[7%]">
                       <button type="button" onClick={() => toggleSort('id')} className="flex items-center gap-1.5 hover:text-white bg-transparent border-none p-0 cursor-pointer text-[10.5px] font-black uppercase">
                         Mã Số
                         <ArrowUpDown className="w-3 h-3 text-indigo-400 shrink-0" />
                       </button>
                     </th>
-                    <th className="p-4 w-[48%] min-w-[360px]">
+                    <th className="p-4 w-[36%] min-w-[300px]">
                       <button type="button" onClick={() => toggleSort('presentationTitle')} className="flex items-center gap-1.5 hover:text-white bg-transparent border-none p-0 cursor-pointer text-[10.5px] font-black uppercase tracking-wider">
                         🧪 ĐỀ TÀI KHOA HỌC CHÍNH (Hiển thị đầy đủ)
                         <ArrowUpDown className="w-3 h-3 text-indigo-400 shrink-0" />
                       </button>
                     </th>
-                    <th className="p-4 w-[20%]">
+                    <th className="p-4 w-[21%] min-w-[200px]">
                       <button type="button" onClick={() => toggleSort('fullName')} className="flex items-center gap-1.5 hover:text-white bg-transparent border-none p-0 cursor-pointer text-[10.5px] font-black uppercase">
                         Báo Cáo Viên chính (BCV)
                         <ArrowUpDown className="w-3 h-3 text-indigo-400 shrink-0" />
                       </button>
                     </th>
-                    <th className="p-4 w-[12%]">
+                    <th className="p-4 w-[14%] min-w-[120px]">
                       <button type="button" onClick={() => toggleSort('presentationTrack')} className="flex items-center gap-1.5 hover:text-white bg-transparent border-none p-0 cursor-pointer text-[10.5px] font-black uppercase">
                         Chuyên Đề
                         <ArrowUpDown className="w-3 h-3 text-indigo-400 shrink-0" />
                       </button>
                     </th>
-                    <th className="p-4 pr-5 w-[12%] text-right font-black text-[10.5px] tracking-wider">Ban hành & Duyệt bài</th>
+                    <th className="p-4 pr-5 w-[22%] min-w-[246px] text-right font-black text-[10.5px] tracking-wider">Ban hành &amp; Duyệt bài</th>
                   </tr>
                 </thead>
 
@@ -915,7 +915,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                           </td>
 
                           {/* 2. Scientific Presentation Title (Highlighted, 100% full wrap) */}
-                          <td className="p-4 w-[48%] min-w-[360px]">
+                          <td className="p-4 w-[36%] min-w-[300px] align-top">
                             <div className="border-l-4 border-indigo-650 pl-4 py-1 animate-fade-in text-left">
                               <span 
                                 title="Bấm để xem tóm tắt khoa học toàn văn"
@@ -974,18 +974,18 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                           </td>
 
                           {/* 4. Color-coded Specialty Track */}
-                          <td className="p-4 whitespace-nowrap">
-                            <span className={`px-2.5 py-1.5 border rounded-lg text-[9.5px] font-black uppercase tracking-tight block text-center shadow-xs ${getTrackColor(spk.presentationTrack)}`}>
+                          <td className="p-4 align-top">
+                            <span className={`px-2.5 py-1.5 border rounded-lg text-[9.5px] font-black uppercase tracking-tight block text-center leading-snug shadow-xs ${getTrackColor(spk.presentationTrack)}`}>
                               {spk.presentationTrack}
                             </span>
                           </td>
 
                           {/* 5. Publication statuses & Compact Action Controls */}
-                          <td className="p-4 pr-5 text-right whitespace-nowrap">
+                          <td className="p-4 pr-5 text-right align-top">
                             <div className="flex flex-col items-end gap-1.5">
                               
                               {/* Status Pill */}
-                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider inline-block text-center border ${
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider inline-block text-center whitespace-nowrap border ${
                                 spk.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 spk.status === 'rejected' ? 'bg-rose-50 text-rose-700 border-rose-250' :
                                 'bg-amber-50 text-amber-700 border-amber-250'
@@ -994,11 +994,11 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                               </span>
 
                               {/* Row Buttons Actions */}
-                              <div className="flex items-center gap-1 mt-0.5">
+                              <div className="flex flex-wrap items-center justify-end gap-1 mt-0.5">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedSpeaker(spk)}
-                                  className="p-1 px-1.5 bg-slate-50 hover:bg-slate-150 text-slate-705 border border-slate-200 font-extrabold rounded text-[10px] transition-colors cursor-pointer"
+                                  className="p-1 px-1.5 bg-slate-50 hover:bg-slate-150 text-slate-705 border border-slate-200 font-extrabold rounded text-[10px] whitespace-nowrap transition-colors cursor-pointer"
                                   title="Xem tóm tắt tóm lược bcv"
                                 >
                                   Đọc bài
@@ -1007,7 +1007,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                                 <button
                                   type="button"
                                   onClick={() => handleEditSpeaker(spk)}
-                                  className="p-1 px-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold rounded text-[10px] transition-colors cursor-pointer"
+                                  className="p-1 px-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold rounded text-[10px] whitespace-nowrap transition-colors cursor-pointer"
                                   title="Chỉnh sửa thông tin báo cáo viên"
                                 >
                                   Sửa
@@ -1017,7 +1017,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteSpeaker(spk.id)}
-                                    className="p-1 px-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-extrabold rounded text-[10px] transition-colors cursor-pointer"
+                                    className="p-1 px-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-extrabold rounded text-[10px] whitespace-nowrap transition-colors cursor-pointer"
                                     title="Xóa hồ sơ báo cáo viên"
                                   >
                                     Xóa
@@ -1030,7 +1030,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateStatus(spk.id, 'approved')}
-                                        className="p-1 px-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded text-[10px] transition-colors cursor-pointer border-none"
+                                        className="p-1 px-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded text-[10px] whitespace-nowrap transition-colors cursor-pointer border-none"
                                         title="Duyệt bài đăng"
                                       >
                                         Duyệt
@@ -1040,7 +1040,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateStatus(spk.id, 'rejected')}
-                                        className="p-1 px-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded text-[10px] transition-colors cursor-pointer border-none"
+                                        className="p-1 px-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded text-[10px] whitespace-nowrap transition-colors cursor-pointer border-none"
                                         title="Hủy/Bác bỏ"
                                       >
                                         Bác bỏ
