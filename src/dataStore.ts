@@ -3379,6 +3379,342 @@ export class DataStore {
     return log;
   }
 
+  // ============================================================
+  // MỤC VIII — MAIL TỰ ĐỘNG CHO HỒ SƠ ĐÃ ĐĂNG KÝ HỢP LỆ
+  // ============================================================
+
+  /** Khung HTML dùng chung cho các thư tự động: banner hội nghị + phần thân. */
+  private buildAutoMailHtml(bodyHtml: string, extraBlocks: string = ''): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" width="550" style="width: 100%; max-width: 550px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" />
+        </div>
+        <div style="font-size: 14px; color: #334155; line-height: 1.6;">
+          ${bodyHtml}
+        </div>
+        ${extraBlocks}
+      </div>
+    `;
+  }
+
+  /**
+   * Khối ảnh chân dung in trong thư.
+   *
+   * Chỉ in được ảnh đã nằm trên Supabase Storage (link http). Ảnh còn ở dạng
+   * base64 (data:) thì bỏ qua: nhúng base64 vào thư làm thư phình rất to và
+   * Gmail, Outlook đều chặn không hiện.
+   */
+  private buildPortraitBlock(avatarUrl: string | undefined, caption: string): string {
+    if (!avatarUrl || !avatarUrl.startsWith('http')) return '';
+    return `
+      <div style="text-align: center; margin: 20px 0;">
+        <img src="${avatarUrl}" alt="${caption}" width="150" style="width: 150px; height: 150px; object-fit: cover; border-radius: 75px; border: 3px solid #e2e8f0; display: block; margin: 0 auto;" />
+        <p style="font-size: 12px; color: #64748b; margin: 8px 0 0 0; font-style: italic;">${caption}</p>
+      </div>
+    `;
+  }
+
+  /** Thay placeholder bằng dữ liệu thật, dùng chung cho các thư tự động. */
+  private fillPlaceholders(text: string, values: Record<string, string>): string {
+    if (!text) return '';
+    let res = text;
+    Object.keys(values).forEach(key => {
+      res = res.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), values[key] ?? '');
+    });
+    return res;
+  }
+
+  /** Gửi một thư tự động qua /api/email/send và ghi nhật ký. */
+  private async dispatchAutoMail(
+    to: string,
+    subject: string,
+    html: string,
+    template: { id: string; name: string },
+  ): Promise<SentNotificationLog> {
+    let status: 'success' | 'failed' = 'success';
+    let responseObj: any = { message: 'Email đã gửi thành công giả lập' };
+
+    const isRealSmtp = this.emailConfig.smtpHost &&
+      this.emailConfig.smtpPass &&
+      this.emailConfig.smtpPass !== '*************' &&
+      this.emailConfig.smtpPass !== '';
+    const canSend = isRealSmtp || isSupabaseConfigured();
+
+    if (!to) {
+      status = 'failed';
+      responseObj = { error: -1, message: 'Hồ sơ không có địa chỉ email nên không gửi được thư.' };
+    } else if (!canSend) {
+      status = 'failed';
+      responseObj = {
+        error: -1,
+        message: "Cổng SMTP chưa được cấu hình. Vào 'Cài Đặt Hệ Thống' để thiết lập máy chủ gửi mail."
+      };
+    } else {
+      try {
+        const response = await fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            config: this.emailConfig,
+            payload: { to, subject, body: html }
+          })
+        });
+        const resData = await response.json();
+        if (resData.success) {
+          responseObj = { status: '250 OK (Real SMTP)', messageId: resData.messageId };
+        } else {
+          status = 'failed';
+          responseObj = { error: -1, message: resData.error || 'Máy chủ Mail báo lỗi' };
+        }
+      } catch (err: any) {
+        status = 'failed';
+        responseObj = { error: -1, message: err?.message || 'Lỗi SMTP Relay' };
+      }
+    }
+
+    const log: SentNotificationLog = {
+      id: 'NTF-' + Math.floor(Math.random() * 90000 + 10000),
+      recipient: to,
+      type: 'email',
+      templateId: template.id,
+      templateName: template.name,
+      sender: this.emailConfig.senderEmail || 'contact@vsapsevent.org',
+      sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      status,
+      payload: { to, subject, body: html },
+      response: responseObj
+    };
+    this.addNotificationLog(log);
+    return log;
+  }
+
+  /**
+   * Lấy mẫu thư, ưu tiên mẫu Ban tổ chức đã sửa trong module Thông báo.
+   *
+   * Dò theo mã mẫu trước rồi mới theo loại, vì trong cơ sở dữ liệu đang có
+   * nhiều mẫu dùng chung một loại: cả thư "nộp bài thành công" và thư "phê
+   * duyệt đề tài" đều mang loại abstract_approved. Nếu chỉ dò theo loại thì
+   * dễ lấy nhầm mẫu.
+   */
+  private findEmailTemplate(
+    type: NotificationTemplate['type'],
+    preferIds: string[],
+    fallback: { id: string; name: string; subject: string; content: string },
+  ): NotificationTemplate {
+    for (const id of preferIds) {
+      const byId = this.templates.find(t => t.channel === 'email' && t.id === id && t.content);
+      if (byId) return byId;
+    }
+    const byType = this.templates.find(t => t.channel === 'email' && t.type === type && t.content);
+    if (byType) return byType;
+    return { ...fallback, type, channel: 'email' };
+  }
+
+  /**
+   * Mục VIII.2 — Thư xác nhận bài báo cáo đã được phê duyệt, kèm ảnh chân
+   * dung, tên bài, phiên, ngày giờ và hội trường.
+   *
+   * Gọi tự động khi Ban tổ chức đổi trạng thái báo cáo viên sang "Đã duyệt".
+   * Trước đây chỗ này gửi bằng đường thư của ĐẠI BIỂU với một đối tượng đại
+   * biểu giả, nên thư không có được lịch trình lẫn ảnh chân dung.
+   */
+  async sendSpeakerApprovedEmail(speaker: SpeakerRegistration): Promise<SentNotificationLog> {
+    const template = this.findEmailTemplate('abstract_approved', [
+      // Mã mẫu Ban tổ chức hay dùng cho thư phê duyệt đề tài
+      'tmpl-speaker-approved-email', 'tmpl-speaker-approved',
+    ], {
+      id: 'tmpl-speaker-approved-email',
+      name: 'Xác nhận bài báo cáo được phê duyệt & lịch trình chính thức (Email)',
+      subject: 'VSAPS 2026 – Xác nhận thông tin bài báo cáo và lịch trình chính thức',
+      content: [
+        'Kính gửi Bác sĩ {{title}} {{fullname}},',
+        '',
+        'Ban Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng cảm ơn Quý Bác sĩ đã đăng ký tham gia với vai trò Báo cáo viên tại Hội nghị. Ban Tổ chức xin thông báo đề tài báo cáo của Quý Bác sĩ đã được phê duyệt và đưa vào chương trình khoa học chính thức.',
+        '',
+        'Kính gửi Quý Bác sĩ thông tin chi tiết về bài báo cáo như sau:',
+      ].join('\n'),
+    });
+
+    const session = this.sessions.find(s => s.id === speaker.scheduledSessionId);
+    const sessionDate = session?.date ? session.date.split('-').reverse().join('/') : 'Sẽ thông báo sau';
+    const sessionTime = session ? `${session.startTime} – ${session.endTime}` : 'Sẽ thông báo sau';
+    const sessionRoom = session?.roomName || 'Sẽ thông báo sau';
+    const sessionName = session?.title || speaker.presentationTrack || 'Sẽ thông báo sau';
+
+    // Thời lượng tính từ giờ bắt đầu và giờ kết thúc của phiên
+    let durationText = 'Sẽ thông báo sau';
+    if (session?.startTime && session?.endTime) {
+      const toMinutes = (hhmm: string) => {
+        const [h, m] = hhmm.split(':').map(v => parseInt(v, 10));
+        return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+      };
+      const minutes = toMinutes(session.endTime) - toMinutes(session.startTime);
+      if (minutes > 0) durationText = `${minutes} phút`;
+    }
+
+    const values: Record<string, string> = {
+      title: speaker.title || '',
+      fullname: speaker.fullName || '',
+      code: speaker.id || '',
+      organization: speaker.organization || '',
+      department: speaker.department || '',
+      presentation_title: speaker.presentationTitle || '',
+      track: speaker.presentationTrack || '',
+      session_name: sessionName,
+      session_date: sessionDate,
+      session_time: sessionTime,
+      session_room: sessionRoom,
+      duration: durationText,
+    };
+
+    const subject = this.fillPlaceholders(template.subject || '', values);
+    const bodyRaw = this.fillPlaceholders(template.content || '', values);
+    const bodyHtml = /<[a-z][\s\S]*>/i.test(bodyRaw) ? bodyRaw : bodyRaw.replace(/\n/g, '<br/>');
+
+    const infoBlock = `
+      ${this.buildPortraitBlock(speaker.avatarUrl, `${speaker.title || ''} ${speaker.fullName}`.trim())}
+      <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 13px; text-transform: uppercase; font-weight: bold;">
+          Thông tin báo cáo viên và bài báo cáo
+        </h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
+          <tr><td style="padding: 6px 0; font-weight: bold; width: 150px;">Họ và tên:</td><td style="padding: 6px 0;">${speaker.title || ''} ${speaker.fullName}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Đơn vị công tác:</td><td style="padding: 6px 0;">${speaker.organization || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Tên bài báo cáo:</td><td style="padding: 6px 0; font-weight: bold; color: #4f46e5;">${speaker.presentationTitle || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Chuyên đề:</td><td style="padding: 6px 0;">${speaker.presentationTrack || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Phiên báo cáo:</td><td style="padding: 6px 0;">${sessionName}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Ngày báo cáo:</td><td style="padding: 6px 0;">${sessionDate}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Thời gian báo cáo:</td><td style="padding: 6px 0;">${sessionTime}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Thời lượng:</td><td style="padding: 6px 0;">${durationText}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Hội trường:</td><td style="padding: 6px 0;">${sessionRoom}</td></tr>
+        </table>
+      </div>
+
+      <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 13px; text-transform: uppercase; font-weight: bold;">Thông tin Hội nghị</h4>
+        <p style="margin: 0; font-size: 13.5px; color: #334155; line-height: 1.7;">
+          Thời gian: <strong>11 – 13/12/2026</strong><br/>
+          Địa điểm: <strong>Bệnh viện Quân y 175, TP. Hồ Chí Minh, Việt Nam.</strong>
+        </p>
+      </div>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
+        Ban Tổ chức kính đề nghị Quý Bác sĩ kiểm tra và xác nhận lại toàn bộ thông tin trên,
+        bao gồm họ tên, hình ảnh, tên bài báo cáo, phiên báo cáo và thời gian trình bày.
+      </p>
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
+        Trong trường hợp có bất kỳ sai sót nào, kính mong Quý Bác sĩ phản hồi email này trong
+        thời gian sớm nhất để Ban Tổ chức kịp thời điều chỉnh. Ban Tổ chức trân trọng cảm ơn sự
+        đồng hành và đóng góp chuyên môn quý báu của Quý Bác sĩ. Rất hân hạnh được đón tiếp
+        Quý Bác sĩ tại VSAPS 2026!
+      </p>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-top: 20px;">
+        Trân trọng,<br/>
+        <strong>BAN TỔ CHỨC VSAPS 2026</strong><br/>
+        Email: vsaps.events@gmail.com<br/>
+        Hotline: +84 964 551 151 (Zalo/WhatsApp)
+      </p>
+    `;
+
+    const html = this.buildAutoMailHtml(bodyHtml, infoBlock);
+    return this.dispatchAutoMail(speaker.email, subject, html, { id: template.id, name: template.name });
+  }
+
+  /**
+   * Mục VIII.1 — Thư mời tự động cho đại biểu, kèm ảnh chân dung để đại biểu
+   * tự dùng khi truyền thông cá nhân.
+   *
+   * Nội dung dưới đây là bản TẠM. Phôi thư mời chính thức (nội dung và thiết
+   * kế) còn chờ Ban tổ chức chốt; sửa lại trong Cài đặt > Mẫu thông báo, mẫu
+   * "Thư mời tham dự (Email)". Vì vậy việc tự động gửi mặc định TẮT, xem cờ
+   * businessConfig.autoSendInvitationLetter.
+   */
+  async sendDelegateInvitationEmail(attendee: Attendee): Promise<SentNotificationLog> {
+    const template = this.findEmailTemplate('invitation_letter', [
+      'tmpl-invitation-letter-email',
+    ], {
+      id: 'tmpl-invitation-letter-email',
+      name: 'Thư mời tham dự VSAPS 2026 (Email)',
+      subject: 'VSAPS 2026 – Thư mời tham dự Hội nghị Khoa học Thường niên lần thứ 10',
+      content: [
+        'Kính gửi {{title}} {{fullname}},',
+        '',
+        'Ban Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng cảm ơn Quý Bác sĩ đã hoàn tất đăng ký tham dự Hội nghị.',
+        '',
+        'Ban Tổ chức xin trân trọng kính mời Quý Bác sĩ tới tham dự Hội nghị với tư cách đại biểu chính thức. Thư mời này kèm ảnh chân dung và thông tin đăng ký của Quý Bác sĩ, Quý Bác sĩ có thể dùng để giới thiệu trên các kênh truyền thông cá nhân.',
+      ].join('\n'),
+    });
+
+    const values: Record<string, string> = {
+      title: attendee.title || '',
+      fullname: attendee.fullName || '',
+      code: attendee.id || '',
+      organization: attendee.organization || '',
+      department: attendee.department || '',
+      package: attendee.packageName || '',
+      email: attendee.email || '',
+      phone: attendee.phone || '',
+    };
+
+    const subject = this.fillPlaceholders(template.subject || '', values);
+    const bodyRaw = this.fillPlaceholders(template.content || '', values);
+    const bodyHtml = /<[a-z][\s\S]*>/i.test(bodyRaw) ? bodyRaw : bodyRaw.replace(/\n/g, '<br/>');
+
+    // Các dịch vụ đại biểu đã đăng ký thêm, in vào thư mời cho đủ thông tin
+    const addOns: string[] = [];
+    if (attendee.cmeRequired) addOns.push('Chứng chỉ CME');
+    if (attendee.galaRequired) addOns.push('Gala Dinner');
+    if (attendee.masterclassRequired) addOns.push('Master Class');
+    if (attendee.tourRequired) addOns.push('Tour tham quan');
+
+    const infoBlock = `
+      ${this.buildPortraitBlock(attendee.avatarUrl, `${attendee.title || ''} ${attendee.fullName}`.trim())}
+      <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #0d9488; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 13px; text-transform: uppercase; font-weight: bold;">
+          Thông tin đại biểu
+        </h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
+          <tr><td style="padding: 6px 0; font-weight: bold; width: 150px;">Họ và tên:</td><td style="padding: 6px 0;">${attendee.title || ''} ${attendee.fullName}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Mã đại biểu:</td><td style="padding: 6px 0; font-family: monospace; font-weight: bold; color: #0d9488;">${attendee.id}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Đơn vị công tác:</td><td style="padding: 6px 0;">${attendee.organization || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Gói tham dự:</td><td style="padding: 6px 0;">${attendee.packageName || ''}</td></tr>
+          ${addOns.length > 0
+            ? `<tr><td style="padding: 6px 0; font-weight: bold;">Dịch vụ đã đăng ký:</td><td style="padding: 6px 0;">${addOns.join(', ')}</td></tr>`
+            : ''}
+        </table>
+      </div>
+
+      <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 13px; text-transform: uppercase; font-weight: bold;">Thông tin Hội nghị</h4>
+        <p style="margin: 0; font-size: 13.5px; color: #334155; line-height: 1.7;">
+          Thời gian: <strong>11 – 13/12/2026</strong><br/>
+          Địa điểm: <strong>Bệnh viện Quân y 175, TP. Hồ Chí Minh, Việt Nam.</strong>
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 25px 0; background-color: #f1f5f9; padding: 20px; border-radius: 8px;">
+        <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; font-weight: bold;">MÃ QR CHECK-IN</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(attendee.qrCodeValue || attendee.id)}" alt="QR check-in" width="180" style="width: 180px; height: 180px;" />
+      </div>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
+        Ban Tổ chức rất hân hạnh được đón tiếp Quý Bác sĩ tại Hội nghị VSAPS 2026!
+      </p>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-top: 20px;">
+        Trân trọng,<br/>
+        <strong>BAN TỔ CHỨC VSAPS 2026</strong><br/>
+        Email: vsaps.events@gmail.com<br/>
+        Hotline: +84 964 551 151 (Zalo/WhatsApp)
+      </p>
+    `;
+
+    const html = this.buildAutoMailHtml(bodyHtml, infoBlock);
+    return this.dispatchAutoMail(attendee.email, subject, html, { id: template.id, name: template.name });
+  }
+
   async sendWhatsappToSpeaker(speaker: SpeakerRegistration, templateId?: string): Promise<SentNotificationLog> {
     const template: NotificationTemplate = (templateId ? this.templates.find(t => t.id === templateId) : null)
       || this.templates.find(t => t.channel === 'whatsapp' && t.type === 'abstract_approved')
@@ -3529,8 +3865,9 @@ export class DataStore {
         name: '📚 Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026',
         type: 'speaker_registered',
         channel: 'email',
-        subject: '🎯 Xác nhận đệ trình đề tài báo cáo khoa học VSAPS 2026',
-        content: 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng thông báo: Đề tài báo cáo khoa học của Quý vị đã được ghi nhận thành công trên hệ thống.\n\nTHÔNG TIN ĐỀ TRÌNH CHI TIẾT:\n• Mã hồ sơ: {{code}}\n• Báo cáo viên: {{title}} {{fullname}}\n• Đơn vị công tác: {{organization}} ({{department}})\n• Tên đề tài báo cáo: "{{presentation_title}}"\n• Chuyên đề đệ trình: {{track}}\n• Trạng thái kiểm duyệt: ĐANG CHỜ BAN KHOA HỌC XÉT DUYỆT (PENDING)\n\nHội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua tài khoản cá nhân hoặc email liên hệ.\n\nTrân trọng cảm ơn sự tham gia và đóng góp khoa học của Quý vị cho thành công của Hội nghị VSAPS 2026!\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+        subject: 'VSAPS 2026 – Xác nhận đăng ký báo cáo thành công',
+        // Nguyên văn mẫu thư Ban tổ chức soạn trong file yêu cầu, mục VIII.2
+        content: 'Kính gửi Bác sĩ {{title}} {{fullname}},\n\nBan Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng chúc mừng Quý Bác sĩ đã đăng ký tham gia báo cáo thành công tại Hội nghị. Ban Tổ chức xin thông báo đề tài báo cáo của Quý Bác sĩ đã được phê duyệt. Thông tin chi tiết về lịch trình và thời gian báo cáo sẽ được Ban Tổ chức cập nhật và thông báo đến Quý Bác sĩ trong thời gian tới.\n\nTHÔNG TIN ĐỀ TÀI ĐÃ ĐỆ TRÌNH:\n• Mã hồ sơ: {{code}}\n• Đơn vị công tác: {{organization}}\n• Tên bài báo cáo: "{{presentation_title}}"\n• Chuyên đề: {{track}}\n\nThông tin Hội nghị:\n- Thời gian: 11 – 13/12/2026\n- Địa điểm: Bệnh viện Quân y 175, TP. Hồ Chí Minh, Việt Nam.\n\nBan Tổ chức trân trọng cảm ơn sự quan tâm và đóng góp của Quý Bác sĩ. Rất mong được đón tiếp Quý Bác sĩ tại Hội nghị VSAPS 2026!\n\nTrân trọng,\nBAN TỔ CHỨC VSAPS 2026\nEmail: vsaps.events@gmail.com\nHotline: +84 964 551 151 (Zalo/WhatsApp)'
       };
     }
 

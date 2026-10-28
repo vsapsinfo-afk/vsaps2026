@@ -96,7 +96,21 @@ UPDATE public.specialty_tracks
 
 
 -- ---------------------------------------------------------------------------
--- 4. Kiểm tra sau khi chạy
+-- 4. THƯ MỜI TỰ ĐỘNG (mục VIII)
+--
+-- Cờ bật/tắt việc tự động gửi thư mời cho đại biểu khi hồ sơ được xác nhận
+-- hợp lệ. Mặc định TẮT, vì nội dung và thiết kế phôi thư mời còn chờ Ban tổ
+-- chức chốt. Bật trong Cài đặt hệ thống khi đã sẵn sàng.
+-- ---------------------------------------------------------------------------
+ALTER TABLE public.business_config
+  ADD COLUMN IF NOT EXISTS auto_send_invitation_letter BOOLEAN DEFAULT FALSE;
+
+COMMENT ON COLUMN public.business_config.auto_send_invitation_letter
+  IS 'TRUE = tự động gửi thư mời cho đại biểu ngay khi hồ sơ hợp lệ';
+
+
+-- ---------------------------------------------------------------------------
+-- 5. Kiểm tra sau khi chạy
 -- ---------------------------------------------------------------------------
 -- Danh mục chuyên đề và số hồ sơ còn tồn ở mỗi chuyên đề:
 --

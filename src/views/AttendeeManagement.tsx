@@ -114,6 +114,7 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [viewDetailAttendee, setViewDetailAttendee] = useState<Attendee | null>(null);
   const [isEditingDetail, setIsEditingDetail] = useState(false);
   const [detailEditForm, setDetailEditForm] = useState<Attendee | null>(null);
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
   
   // Custom QR Bank Transfer scanner component for unpaid attendees
   const [unpaidAttendeeForQR, setUnpaidAttendeeForQR] = useState<Attendee | null>(null);
@@ -1121,12 +1122,46 @@ Ban Thư ký Hội nghị VSAPS 2026`
           store.sendZaloZNS(found, zTmpl?.id || 'payment_confirmed');
           store.sendEmail(found, undefined, undefined, eTmpl?.id || 'payment_confirmed');
           store.sendWhatsapp(found, wTmpl?.id || 'payment_confirmed');
+
+          // Thư mời tự động (mục VIII.1). Mặc định TẮT vì nội dung và thiết
+          // kế phôi thư mời còn chờ Ban tổ chức chốt. Bật trong Cài đặt hệ thống.
+          if (store.getBusinessConfig().autoSendInvitationLetter) {
+            store.sendDelegateInvitationEmail(found);
+          }
         } catch (err) {
           console.error('Lỗi gửi tin nhắn khi cập nhật trạng thái thanh toán:', err);
         }
       }
       
       loadAll();
+    }
+  };
+
+  /**
+   * Gửi thư mời tham dự cho một đại biểu, do Ban tổ chức bấm tay.
+   *
+   * Cần thiết vì thư mời tự động chỉ chạy ở bước đổi trạng thái sang đã đóng
+   * phí; vé miễn phí của Ủy viên BCH Hội không đi qua bước đó.
+   */
+  const handleSendInvitation = async (attendee: Attendee) => {
+    if (!attendee.email) {
+      alert('Hồ sơ này chưa có địa chỉ email nên không gửi được thư mời.');
+      return;
+    }
+    setIsSendingInvitation(true);
+    try {
+      const log = await store.sendDelegateInvitationEmail(attendee);
+      if (log.status === 'success') {
+        alert(`Đã gửi thư mời tới ${attendee.email}.`);
+        playSoundSound('success');
+      } else {
+        alert(`Gửi thư mời thất bại: ${log.response?.message || 'không rõ nguyên nhân'}.\n\nXem chi tiết trong nhật ký gửi ở module Thông báo.`);
+      }
+    } catch (err: any) {
+      console.error('Lỗi gửi thư mời:', err);
+      alert(`Lỗi khi gửi thư mời: ${err?.message || err}`);
+    } finally {
+      setIsSendingInvitation(false);
     }
   };
 
@@ -3454,6 +3489,20 @@ Ban Thư ký Hội nghị VSAPS 2026`
                         </span>
                       )}
                     </div>
+
+                    {/* Gửi thư mời thủ công (mục VIII). Cần cho những hồ sơ
+                        không đi qua bước đổi trạng thái sang đã đóng phí,
+                        ví dụ vé miễn phí của Ủy viên BCH Hội. */}
+                    <button
+                      type="button"
+                      disabled={isSendingInvitation}
+                      onClick={() => handleSendInvitation(viewDetailAttendee)}
+                      className="px-4 py-2 text-[11px] font-bold text-teal-700 hover:text-white bg-teal-50 border border-teal-200 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                      title="Gửi thư mời tham dự kèm ảnh chân dung và mã QR check-in cho đại biểu này"
+                    >
+                      <Mail className="w-4 h-4" />
+                      {isSendingInvitation ? 'Đang gửi thư mời...' : 'Gửi Thư Mời'}
+                    </button>
 
                     {/* Main Checkin Status change button */}
                     <button

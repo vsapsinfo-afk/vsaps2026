@@ -1618,6 +1618,28 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                       </button>
                     </div>
 
+                    {/* Tự động gửi thư mời đại biểu (mục VIII file đề xuất) */}
+                    <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-150">
+                      <div className="pr-3">
+                        <span className="text-xs font-bold text-slate-850 block">Tự động gửi thư mời đại biểu</span>
+                        <span className="text-[10px] text-slate-400">
+                          Gửi thư mời kèm ảnh chân dung và mã QR ngay khi đại biểu được xác nhận đã đóng phí.
+                          Nên bật sau khi đã chốt nội dung phôi thư mời ở mẫu <strong>Thư mời tham dự (Email)</strong>.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setBusinessConfig({ ...businessConfig, autoSendInvitationLetter: !businessConfig.autoSendInvitationLetter })}
+                        className="p-1 cursor-pointer border-none bg-transparent hover:scale-105 transition-transform shrink-0"
+                      >
+                        {businessConfig.autoSendInvitationLetter ? (
+                          <ToggleRight className="w-10 h-7 text-indigo-600" />
+                        ) : (
+                          <ToggleLeft className="w-10 h-7 text-slate-350" />
+                        )}
+                      </button>
+                    </div>
+
                     {/* Toggle require practice code */}
                     <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-150">
                       <div>

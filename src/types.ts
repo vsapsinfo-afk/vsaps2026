@@ -253,7 +253,7 @@ export interface WhatsappConfig {
 export interface NotificationTemplate {
   id: string;
   name: string;
-  type: 'registration_success' | 'payment_confirmed' | 'abstract_approved' | 'reminder_event' | 'sponsor_registered' | 'sponsor_paid' | 'sponsor_contract' | 'thank_you_survey' | 'speaker_registered';
+  type: 'registration_success' | 'payment_confirmed' | 'abstract_approved' | 'reminder_event' | 'sponsor_registered' | 'sponsor_paid' | 'sponsor_contract' | 'thank_you_survey' | 'speaker_registered' | 'invitation_letter';
   channel: 'email' | 'zalo' | 'whatsapp';
   subject?: string;
   content: string; // Chứa placeholder {{fullname}}, {{package}}, {{code}}...
@@ -438,6 +438,12 @@ export interface BusinessConfig {
   allowSelfCancellation: boolean;
   autoSendZns: boolean;
   requirePracticeCode: boolean;
+  /**
+   * Tự động gửi thư mời cho đại biểu ngay khi hồ sơ được xác nhận hợp lệ.
+   * Mặc định tắt: nội dung và thiết kế phôi thư mời cần Ban tổ chức chốt
+   * trước, bật lên rồi thư mới gửi đi hàng loạt.
+   */
+  autoSendInvitationLetter?: boolean;
   pwaName?: string;
   pwaShortName?: string;
   pwaDescription?: string;

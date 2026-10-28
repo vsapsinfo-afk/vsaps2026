@@ -227,27 +227,20 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       store.saveSpeaker(found);
       loadAll();
       
-      // If approved, trigger real email notification
+      // Phê duyệt xong thì gửi thư xác nhận kèm ảnh chân dung và lịch báo cáo
+      // (mục VIII.2 file yêu cầu). Trước đây chỗ này gửi bằng đường thư của
+      // ĐẠI BIỂU với một đối tượng đại biểu giả, nên thư không có lịch trình
+      // lần ảnh chân dung.
       if (newStatus === 'approved' && oldStatus !== 'approved') {
         try {
-          const mockAttendee = {
-            id: found.id,
-            title: found.title,
-            fullName: found.fullName,
-            email: found.email,
-            phone: found.phone,
-            organization: found.organization,
-            packageName: 'Báo cáo viên',
-            packageFee: 0,
-            paymentStatus: 'paid' as const,
-            qrCodeValue: `VSAPS2026-${found.id}-${found.fullName.split(' ').pop()?.toUpperCase() || 'SPK'}`,
-            presentationTitle: found.presentationTitle,
-            presentationTrack: found.presentationTrack
-          };
-          await store.sendEmail(mockAttendee as any, undefined, undefined, 'tmpl-speaker-approved');
-          alert(`Đã hệ thống hóa Phê Duyệt! Email thông báo tóm tắt lịch trình đã phát tự động gửi tới Bác Sĩ ${found.fullName}.`);
+          const log = await store.sendSpeakerApprovedEmail(found);
+          if (log.status === 'success') {
+            alert(`Đã phê duyệt đề tài. Thư xác nhận kèm lịch báo cáo đã gửi tới ${found.email}.`);
+          } else {
+            alert(`Đã phê duyệt đề tài, nhưng gửi thư thất bại: ${log.response?.message || 'không rõ nguyên nhân'}. Xem nhật ký gửi trong module Thông báo.`);
+          }
         } catch (error) {
-          console.error("Gửi email phê duyệt thất bại:", error);
+          console.error('Gửi email phê duyệt thất bại:', error);
           alert(`Đã phê duyệt đề tài, nhưng xảy ra lỗi khi gửi email tự động: ${error instanceof Error ? error.message : String(error)}`);
         }
       }

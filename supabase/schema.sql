@@ -41,6 +41,7 @@ CREATE TABLE public.business_config (
     require_payment_proof BOOLEAN DEFAULT TRUE,
     allow_self_cancellation BOOLEAN DEFAULT FALSE,
     auto_send_zns BOOLEAN DEFAULT TRUE,
+    auto_send_invitation_letter BOOLEAN DEFAULT FALSE,
     require_practice_code BOOLEAN DEFAULT TRUE,
     pwa_name TEXT DEFAULT 'VSAPS 2026 - Hội Nghị Khoa Học Thẩm Mỹ',
     pwa_short_name TEXT DEFAULT 'VSAPS 2026',

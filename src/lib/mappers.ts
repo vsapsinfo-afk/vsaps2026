@@ -468,6 +468,7 @@ export function mapBusinessConfigToDb(c: BusinessConfig): Record<string, any> {
     require_payment_proof: c.requirePaymentProof,
     allow_self_cancellation: c.allowSelfCancellation,
     auto_send_zns: c.autoSendZns,
+    auto_send_invitation_letter: c.autoSendInvitationLetter || false,
     require_practice_code: c.requirePracticeCode,
     pwa_name: c.pwaName || '',
     pwa_short_name: c.pwaShortName || '',
@@ -494,6 +495,8 @@ export function mapDbToBusinessConfig(row: any): BusinessConfig {
     requirePaymentProof: row.require_payment_proof !== false,
     allowSelfCancellation: Boolean(row.allow_self_cancellation),
     autoSendZns: row.auto_send_zns !== false,
+    // Cột mới: hàng cũ trả về null thì coi như tắt
+    autoSendInvitationLetter: row.auto_send_invitation_letter === true,
     requirePracticeCode: row.require_practice_code !== false,
     pwaName: row.pwa_name || '',
     pwaShortName: row.pwa_short_name || '',
