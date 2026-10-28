@@ -205,14 +205,21 @@ Anh ngay dưới bản tiếng Việt tương ứng.
 
 ## VI. Mẫu Excel xuất thông tin báo cáo viên
 
-Nút **Xuất File Báo Cáo** đổi từ CSV 9 cột sang **.xlsx 25 cột**:
+Nút **Xuất File Báo Cáo** đổi từ CSV 9 cột sang **.xlsx 27 cột**:
 
 Mã hồ sơ · Học hàm học vị · Họ và tên · Ngày sinh · Nơi sinh · Số CCCD ·
 Đơn vị công tác · Khoa/Phòng · Số điện thoại · Email · Quốc tịch ·
 Tóm lược quá trình công tác · **Tóm lược (tiếng Anh)** · Tên bài báo cáo · Chuyên đề ·
 Abstract · **Abstract (tiếng Anh)** · **Link ảnh chân dung** · **Link ảnh bằng cấp** ·
-**Link tệp đính kèm** · Tên tệp đính kèm · Phiên báo cáo · Đồng bộ Calendar ·
-Trạng thái · Ngày đăng ký
+**Link CV** · **Link Abstract** · **Link tệp đính kèm khác** · Tên tệp đính kèm ·
+Phiên báo cáo · Đồng bộ Calendar · Trạng thái · Ngày đăng ký
+
+Theo phản hồi của Ban Thư ký, **Link CV và Link Abstract là hai cột riêng**, không gộp
+chung một cột như trước.
+
+Một bác sĩ **nộp được nhiều bài báo cáo**: ghi thành nhiều dòng, mỗi dòng một bài.
+Trước đây khóa đối chiếu trùng chỉ tính theo người nên bài thứ hai bị bỏ qua mất;
+nay tính cả tên bài báo cáo.
 
 Nội dung HTML trong các ô soạn thảo được chuyển về chữ thuần để Excel đọc được, vẫn
 giữ ngắt dòng giữa các đoạn.

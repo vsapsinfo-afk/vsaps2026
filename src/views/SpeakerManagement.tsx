@@ -529,7 +529,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     abstractEn: 'Abstract (tiếng Anh)',
     avatarUrl: 'Link ảnh chân dung',
     degreeProofUrl: 'Link ảnh bằng cấp',
-    documentUrl: 'Link CV/Abstract (Google Drive)',
+    cvUrl: 'Link CV (Google Drive)',
+    abstractUrl: 'Link Abstract (Google Drive)',
+    otherFileUrl: 'Link tệp đính kèm khác',
   };
 
   const downloadSpeakerTemplate = () => {
@@ -558,7 +560,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         [C.abstractEn]: 'Objective: ... Methods: ... Results: ... Conclusion: ...',
         [C.avatarUrl]: 'https://drive.google.com/file/d/anh-chan-dung/view',
         [C.degreeProofUrl]: 'https://drive.google.com/file/d/anh-bang-cap/view',
-        [C.documentUrl]: 'https://drive.google.com/file/d/xxxxxxxx/view',
+        [C.cvUrl]: 'https://drive.google.com/file/d/cv-nguyen-van-an/view',
+        [C.abstractUrl]: 'https://drive.google.com/file/d/abstract-vat-da-can/view',
+        [C.otherFileUrl]: '',
       },
       {
         [C.title]: 'TS.BS',
@@ -578,7 +582,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         [C.abstractEn]: '',
         [C.avatarUrl]: '',
         [C.degreeProofUrl]: '',
-        [C.documentUrl]: '',
+        [C.cvUrl]: '',
+        [C.abstractUrl]: '',
+        [C.otherFileUrl]: '',
       },
     ];
 
@@ -589,6 +595,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       { wch: 46 }, { wch: 46 },
       { wch: 42 }, { wch: 22 },
       { wch: 60 }, { wch: 60 },
+      { wch: 38 }, { wch: 38 },
       { wch: 38 }, { wch: 38 }, { wch: 38 },
     ];
     const wb = XLSX.utils.book_new();
@@ -649,9 +656,18 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             return;
           }
 
-          // Link tệp đính kèm lấy trước cột Abstract, vì tiêu đề mẫu
-          // "Link CV/Abstract" cũng chứa chữ "abstract".
-          const link = pickBy([any('tệp đính kèm', 'link', 'đường dẫn', 'drive', 'url')]);
+          // Ba cột đường dẫn tệp phải lấy TRƯỚC cột Abstract nội dung, vì
+          // tiêu đề "Link Abstract" cũng chứa chữ "abstract". Cột Link
+          // Abstract lại phải có thêm dấu hiệu là đường dẫn, nếu không nó sẽ
+          // nuốt luôn cột "Abstract (Tóm tắt nội dung)".
+          const isLinkHeader = (k: string) =>
+            k.includes('link') || k.includes('đường dẫn') || k.includes('drive') || k.includes('url');
+          const cvLink = pickBy([
+            k => isLinkHeader(k) && k.includes('cv'),
+            any('cv'),
+          ]);
+          const abstractLink = pickBy([k => isLinkHeader(k) && k.includes('abstract')]);
+          const otherLink = pickBy([any('tệp đính kèm', 'link', 'đường dẫn', 'drive', 'url')]);
           const title = pickBy([any('học hàm', 'học vị', 'chức danh'), any('title')]);
           const dateOfBirth = pickBy([any('ngày sinh', 'ngày tháng năm sinh', 'date of birth', 'dob')]);
           const placeOfBirth = pickBy([any('nơi sinh', 'place of birth')]);
@@ -664,6 +680,13 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           const presentationTitle = pickBy([any('tên bài', 'đề tài', 'tiêu đề báo cáo', 'presentation')]);
           const presentationTrack = pickBy([any('chuyên đề', 'phân ban', 'track')]);
           const abstractText = pickBy([any('abstract', 'tóm tắt')]);
+
+          const attachments: { url: string; name: string }[] = [];
+          if (cvLink) attachments.push({ url: cvLink, name: 'CV' });
+          if (abstractLink) attachments.push({ url: abstractLink, name: 'Abstract' });
+          if (otherLink) attachments.push({ url: otherLink, name: 'Tệp đính kèm khác' });
+          const attachmentUrls = attachments.map(a => a.url);
+          const attachmentNames = attachments.map(a => a.name);
 
           parsed.push({
             id: genId(),
@@ -685,8 +708,11 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             // Chỉ nhận link thật; ô đánh dấu "chưa có link" của tệp xuất bị bỏ qua.
             avatarUrl: fromImportLink(avatarLink),
             degreeProofUrl: fromImportLink(degreeLink),
-            documentUrl: link || undefined,
-            documentName: link ? 'Hồ sơ đính kèm (Google Drive)' : undefined,
+            // Ba đường dẫn gộp vào danh sách tệp đính kèm, mỗi tệp kèm một
+            // nhãn để màn hình quản trị và tệp xuất biết đâu là CV, đâu là
+            // abstract.
+            documentUrl: attachmentUrls.join('|') || undefined,
+            documentName: attachmentNames.join('|') || undefined,
             calendarSynced: false,
             status: 'pending',
             registrationDate: new Date().toISOString().split('T')[0],
@@ -725,10 +751,14 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     let skipped = 0;
 
     if (skipDuplicateSpeakers) {
-      // Đối chiếu theo email; email trống thì đối chiếu theo họ tên + đơn vị
-      const keyOf = (sp: { email?: string; fullName: string; organization: string }) =>
-        (sp.email || '').trim().toLowerCase()
-        || (sp.fullName.trim().toLowerCase() + '|' + (sp.organization || '').trim().toLowerCase());
+      // Một bác sĩ có thể nộp NHIỀU bài báo cáo, nên khóa đối chiếu phải tính
+      // cả tên bài. Trước đây chỉ đối chiếu theo người, nên bài thứ hai của
+      // cùng một bác sĩ bị bỏ qua mất.
+      const keyOf = (sp: { email?: string; fullName: string; organization: string; presentationTitle?: string }) => {
+        const who = (sp.email || '').trim().toLowerCase()
+          || (sp.fullName.trim().toLowerCase() + '|' + (sp.organization || '').trim().toLowerCase());
+        return who + '||' + (sp.presentationTitle || '').trim().toLowerCase();
+      };
       const existingKeys = new Set(existing.map(keyOf));
       finalRows = importRows.filter(sp => {
         const key = keyOf(sp);
@@ -767,6 +797,36 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
   };
 
+  /**
+   * Tách danh sách tệp đính kèm của một hồ sơ thành CV, Abstract và phần còn
+   * lại, dựa vào tên tệp. Hồ sơ nhập từ Excel mang sẵn nhãn "CV" / "Abstract";
+   * hồ sơ do báo cáo viên tự tải lên thì đoán theo tên tệp thật.
+   */
+  const splitAttachments = (sp: SpeakerRegistration) => {
+    const urls = (sp.documentUrl || '').split('|').filter(Boolean);
+    const names = (sp.documentName || '').split('|');
+    const bucket = { cv: [] as string[], abstract: [] as string[], other: [] as string[] };
+
+    urls.forEach((url, i) => {
+      const name = (names[i] || '').toLowerCase();
+      const link = toExportLink(url);
+      if (name.includes('cv') || name.includes('lý lịch') || name.includes('ly lich')) {
+        bucket.cv.push(link);
+      } else if (name.includes('abstract') || name.includes('tóm tắt') || name.includes('tom tat')) {
+        bucket.abstract.push(link);
+      } else {
+        bucket.other.push(link);
+      }
+    });
+
+    // Trả về cả dạng mảng: tệp xuất cần chuỗi nối dòng, còn bảng xem trước
+    // chỉ cần đường dẫn đầu tiên để bấm thử.
+    return bucket;
+  };
+
+  /** Nối nhiều đường dẫn thành một ô Excel nhiều dòng. */
+  const joinLinks = (links: string[]) => links.join('\n');
+
   const handleExportXLSX = () => {
     const headers = [
       'Mã hồ sơ', 'Học hàm học vị', 'Họ và tên', 'Ngày sinh', 'Nơi sinh', 'Số CCCD',
@@ -775,11 +835,13 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       'Tên bài báo cáo', 'Chuyên đề',
       'Abstract (Tóm tắt nội dung)', 'Abstract (tiếng Anh)',
       'Link ảnh chân dung', 'Link ảnh bằng cấp',
-      'Link tệp đính kèm (CV/Abstract)', 'Tên tệp đính kèm',
+      'Link CV (Google Drive)', 'Link Abstract (Google Drive)', 'Link tệp đính kèm khác',
+      'Tên tệp đính kèm',
       'Phiên báo cáo được xếp', 'Đồng bộ Google Calendar', 'Trạng thái', 'Ngày đăng ký',
     ];
 
     const rows = sortedSpeakers.map(sp => {
+      const files = splitAttachments(sp);
       const session = sessions.find(ss => ss.id === sp.scheduledSessionId);
       const sessionTime = session
         ? `${session.date} ${session.startTime}-${session.endTime} (${session.roomName})`
@@ -804,8 +866,11 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         sp.abstractEn || '',
         toExportLink(sp.avatarUrl),
         toExportLink(sp.degreeProofUrl),
-        // Một hồ sơ có thể đính kèm nhiều tệp, trong dữ liệu nối bằng dấu |
-        (sp.documentUrl || '').split('|').filter(Boolean).map(toExportLink).join('\n'),
+        // Một hồ sơ có thể đính kèm nhiều tệp, trong dữ liệu nối bằng dấu |.
+        // Tách riêng CV và Abstract ra hai cột theo đúng yêu cầu của Ban thư ký.
+        joinLinks(files.cv),
+        joinLinks(files.abstract),
+        joinLinks(files.other),
         (sp.documentName || '').split('|').filter(Boolean).join('\n'),
         sessionTime,
         sp.calendarSynced ? 'Đã đồng bộ' : 'Chưa đồng bộ',
@@ -823,7 +888,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       { wch: 45 }, { wch: 22 },
       { wch: 60 }, { wch: 60 },
       { wch: 40 }, { wch: 40 },
-      { wch: 40 }, { wch: 28 },
+      { wch: 40 }, { wch: 40 }, { wch: 40 }, { wch: 28 },
       { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
     ];
 
@@ -2507,7 +2572,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                 <div className="bg-indigo-50/40 border border-indigo-150 rounded-2xl p-4 space-y-3">
                   <div>
                     <span className="text-[9.5px] font-extrabold text-indigo-700 uppercase tracking-wider block font-mono">
-                      Bản tiếng Anh để in kỷ yếu
+                      Bản tiếng Anh để in kỷ yếu — nội bộ điền
                     </span>
                     <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
                       Hai ô này do Ban tổ chức tự dịch, báo cáo viên không nhập. Để trống nếu chưa dịch.
@@ -2673,13 +2738,19 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/50 space-y-2">
                 <p className="text-xs font-black text-indigo-900 uppercase tracking-wide">Bước 1 — Tải tệp mẫu</p>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Tệp mẫu có sẵn 11 cột và 2 dòng ví dụ. Điền theo đúng cột, giữ nguyên dòng tiêu đề.
+                  Tệp mẫu có sẵn 20 cột và 2 dòng ví dụ, đặt trùng tên cột với tệp ở nút
+                  <strong> Xuất File Báo Cáo</strong>. Điền theo đúng cột, giữ nguyên dòng tiêu đề.
                   Cột <strong>Họ và tên</strong> bắt buộc phải có, các cột khác để trống được.
                 </p>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
                   File CV và Abstract dạng PDF/Word không nhét được vào Excel. Quý vị đưa tệp lên
                   Google Drive, <strong>bật quyền xem cho người có đường dẫn</strong>, rồi dán đường dẫn
-                  vào cột <strong>Link CV/Abstract</strong>.
+                  vào đúng cột: <strong>Link CV</strong> và <strong>Link Abstract</strong> là hai cột
+                  riêng.
+                </p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Một bác sĩ nộp <strong>nhiều bài báo cáo</strong> thì ghi thành nhiều dòng, mỗi dòng
+                  một bài, lặp lại thông tin cá nhân ở các cột đầu. Hệ thống không coi đó là trùng.
                 </p>
                 <button
                   type="button"
@@ -2741,7 +2812,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                           <th className="px-3 py-2 whitespace-nowrap">Đơn vị</th>
                           <th className="px-3 py-2 whitespace-nowrap">Tên bài báo cáo</th>
                           <th className="px-3 py-2 whitespace-nowrap">Abstract</th>
-                          <th className="px-3 py-2 whitespace-nowrap">Hồ sơ</th>
+                          <th className="px-3 py-2 whitespace-nowrap">CV</th>
+                          <th className="px-3 py-2 whitespace-nowrap">Abstract (tệp)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -2767,11 +2839,20 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                                 ? <span className="text-emerald-700 font-bold">có</span>
                                 : <span className="text-amber-600 font-bold">thiếu</span>}
                             </td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {sp.documentUrl
-                                ? <a href={sp.documentUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">mở link</a>
-                                : <span className="text-slate-400">-</span>}
-                            </td>
+                            {(() => {
+                              const files = splitAttachments(sp);
+                              const cell = (links: string[]) => (
+                                links.length > 0
+                                  ? <a href={links[0]} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline font-bold">mở link</a>
+                                  : <span className="text-amber-600 font-bold">thiếu</span>
+                              );
+                              return (
+                                <>
+                                  <td className="px-3 py-2 whitespace-nowrap">{cell(files.cv)}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap">{cell(files.abstract)}</td>
+                                </>
+                              );
+                            })()}
                           </tr>
                         ))}
                       </tbody>
@@ -2785,7 +2866,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       onChange={(e) => setSkipDuplicateSpeakers(e.target.checked)}
                       className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
                     />
-                    Bỏ qua hồ sơ đã có trên hệ thống (đối chiếu theo email; email trống thì theo họ tên và đơn vị)
+                    Bỏ qua hồ sơ đã có trên hệ thống — đối chiếu theo người và tên bài báo cáo.
+                    Một bác sĩ nộp nhiều bài khác nhau thì vẫn nhận đủ, không bị coi là trùng.
                   </label>
                 </div>
               )}

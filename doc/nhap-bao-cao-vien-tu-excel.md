@@ -19,7 +19,7 @@ Vào **Báo Cáo Viên** → bấm nút **Nhập Từ Excel** (màu xanh lá, c�
 
 ### Bước 1 — Tải tệp mẫu
 
-Bấm **Tải Tệp Mẫu Excel**. Tệp có sẵn 18 cột và 2 dòng ví dụ để tham khảo cách điền.
+Bấm **Tải Tệp Mẫu Excel**. Tệp có sẵn 20 cột và 2 dòng ví dụ để tham khảo cách điền.
 Tên cột đặt trùng với tệp ở nút **Xuất File Báo Cáo**, nên có thể xuất ra, sửa, rồi nạp lại.
 
 | Cột trong tệp | Bắt buộc | Ghi chú |
@@ -41,7 +41,9 @@ Tên cột đặt trùng với tệp ở nút **Xuất File Báo Cáo**, nên c�
 | Abstract (tiếng Anh) | Không | Bản dịch để in kỷ yếu |
 | Link ảnh chân dung | Không | Xem mục 3 |
 | Link ảnh bằng cấp | Không | Xem mục 3 |
-| Link CV/Abstract (Google Drive) | Không | Xem mục 3 |
+| Link CV (Google Drive) | Không | Xem mục 3 |
+| Link Abstract (Google Drive) | Không | Xem mục 3 |
+| Link tệp đính kèm khác | Không | Xem mục 3 |
 
 **Không cần giữ nguyên tên tiêu đề tuyệt đối.** Hệ thống dò cột linh hoạt: "Họ tên",
 "Học vị *", "Mail liên hệ", "SĐT", "Cơ quan công tác", "Bộ môn", "Đề tài", "Phân ban",
@@ -54,11 +56,11 @@ Nhận các định dạng `.xlsx`, `.xls`, `.csv`. Hệ thống đọc **trang 
 ### Bước 3 — Kiểm tra rồi nạp
 
 Bảng xem trước liệt kê từng hồ sơ. Những ô còn thiếu được tô chữ **thiếu** màu cam để
-dễ phát hiện trước khi nạp. Cột Hồ sơ có nút **mở link** để kiểm tra đường dẫn Drive
-có xem được không.
+dễ phát hiện trước khi nạp. Hai cột **CV** và **Abstract (tệp)** có nút **mở link** để
+kiểm tra đường dẫn Drive có xem được không.
 
-Tuỳ chọn **"Bỏ qua hồ sơ đã có trên hệ thống"** (mặc định bật) đối chiếu theo email;
-nếu email trống thì đối chiếu theo họ tên kết hợp đơn vị công tác.
+Tuỳ chọn **"Bỏ qua hồ sơ đã có trên hệ thống"** (mặc định bật) đối chiếu theo
+**người kết hợp tên bài báo cáo** — xem mục 3b.
 
 Sau khi nạp, toàn bộ hồ sơ ở trạng thái **Đang chờ** để Ban Thư ký rà soát rồi phê duyệt
 như hồ sơ đăng ký qua form.
@@ -78,7 +80,9 @@ Excel chỉ chứa được chữ, không chứa được ảnh hay tệp đính
 |---|---|
 | Link ảnh chân dung | Ảnh chân dung báo cáo viên, dùng in kỷ yếu và thẻ đại biểu |
 | Link ảnh bằng cấp | Ảnh bằng cấp, cần để cấp chứng chỉ CME |
-| Link CV/Abstract | File CV, abstract hoặc bài đầy đủ |
+| Link CV | File CV / sơ yếu lý lịch của báo cáo viên |
+| Link Abstract | File abstract hoặc bài đầy đủ của bài báo cáo |
+| Link tệp đính kèm khác | Các tệp còn lại, nếu có |
 
 Đường dẫn được lưu vào hồ sơ báo cáo viên và hiển thị như tệp đính kèm bình thường.
 
@@ -87,6 +91,23 @@ Nếu một người có nhiều tệp, có thể gom vào một thư mục Driv
 > Hai cột ảnh chỉ nhận đường dẫn thật bắt đầu bằng `http`. Ô nào ghi chữ khác — ví dụ
 > ghi chú *"Ảnh lưu trong hệ thống, chưa có link"* của tệp xuất — sẽ được bỏ qua chứ
 > không bị lưu thành đường dẫn sai.
+
+---
+
+## 3b. Một bác sĩ nộp nhiều bài báo cáo
+
+Ghi thành **nhiều dòng, mỗi dòng một bài**, lặp lại thông tin cá nhân ở các cột đầu.
+Hệ thống không coi đó là trùng lặp.
+
+Tùy chọn *Bỏ qua hồ sơ đã có trên hệ thống* đối chiếu theo **người kết hợp tên bài báo cáo**:
+
+- Cùng bác sĩ, **tên bài khác nhau** → nhận đủ cả hai
+- Cùng bác sĩ, **cùng tên bài** → coi là trùng, bỏ qua dòng sau
+
+Người được nhận diện theo email; email để trống thì theo họ tên kết hợp đơn vị công tác.
+
+> Trước đây khóa đối chiếu chỉ tính theo người, nên bài thứ hai của cùng một bác sĩ
+> bị bỏ qua mất. Đã sửa.
 
 ---
 
@@ -101,6 +122,10 @@ Trường dữ liệu được ghi: `title`, `fullName`, `dateOfBirth`, `placeOf
 `identityNo`, `organization`, `department`, `phone`, `email`, `bio`, `bioEn`,
 `presentationTitle`, `presentationTrack`, `abstractText`, `abstractEn`, `avatarUrl`,
 `degreeProofUrl`, `documentUrl`.
+
+Ba đường dẫn tệp được gộp vào `documentUrl` (nối bằng dấu `|`), kèm nhãn tương ứng
+trong `documentName` là `CV`, `Abstract`, `Tệp đính kèm khác`. Nhờ nhãn này mà tệp xuất
+tách lại đúng ba cột, và màn hình quản trị hiển thị đúng tên từng tệp.
 Hệ thống tự đặt `status: 'pending'`, `calendarSynced: false`, `registrationDate` là ngày
 nạp, và sinh mã `SPK-xxxxx` không trùng với hồ sơ sẵn có.
 
@@ -109,14 +134,17 @@ nạp, và sinh mã `SPK-xxxxx` không trùng với hồ sơ sẵn có.
 Bộ dò cột dùng chung ở `src/lib/exportHelpers.ts` — `createColumnPicker`.
 
 Mỗi cột trong tệp **chỉ được gán cho đúng một trường**, và thứ tự dò đi từ cột cụ thể
-tới cột chung. Ba cái bẫy phải tránh:
+tới cột chung. Bốn cái bẫy phải tránh:
 
 - Tiêu đề `"Link CV/Abstract"` cũng chứa chữ *abstract*, nên cột đường dẫn luôn được
   đọc **trước** cột Abstract
 - Tiêu đề bản tiếng Anh chứa trọn tiêu đề tiếng Việt: `"Abstract (tiếng Anh)"` chứa
   `"Abstract"`, nên hai cột tiếng Anh được đọc **trước** hai cột tiếng Việt
-- Ba cột ảnh và tệp đều bắt đầu bằng chữ `"Link"`, nên hai cột ảnh được đọc bằng từ
-  khóa riêng (*chân dung*, *bằng cấp*) **trước** cột tệp đính kèm
+- Năm cột ảnh và tệp đều bắt đầu bằng chữ `"Link"`, nên thứ tự đọc là: hai cột ảnh
+  (*chân dung*, *bằng cấp*) → *CV* → *Abstract* → cột tệp đính kèm chung
+- `"Link Abstract"` cũng chứa chữ *abstract* như cột `"Abstract (Tóm tắt nội dung)"`,
+  nên cột đường dẫn phải thỏa thêm điều kiện là tiêu đề có chứa *link*, *đường dẫn*,
+  *drive* hoặc *url*; thiếu điều kiện này thì cột đường dẫn sẽ nuốt luôn cột nội dung
 
 Danh sách từ khóa của cột tiếng Anh dùng chung biến `bioKeys` với cột tiếng Việt, nếu
 để lệch thì những tiêu đề như `"Giới thiệu bản thân (English)"` sẽ không khớp.
