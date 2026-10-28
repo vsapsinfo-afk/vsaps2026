@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ArrowLeft, CheckCircle, FileText, Upload, Calendar, AlertCircle, Sparkles, BookOpen } from 'lucide-react';
 import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
@@ -68,6 +68,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const businessConfig = store.getBusinessConfig();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const degreeInputRef = useRef<HTMLInputElement>(null);
   const formCfg = businessConfig.speakerFormConfig;
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>(getInitialLang);
   const L = useFormLabel(formCfg, nationality === 'vietname' ? 'vi' : 'en');
@@ -79,8 +80,16 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
+  // Thong tin bat buoc de cap CME (muc IV file yeu cau).
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
+  const [identityNo, setIdentityNo] = useState('');
+  const [degreeProofImage, setDegreeProofImage] = useState<string | null>(null);
+  const [isDegreeUploading, setIsDegreeUploading] = useState(false);
   const [presentationTitle, setPresentationTitle] = useState('');
-  const [presentationTrack, setPresentationTrack] = useState(store.getSpecialtyTracks()[0]?.name || '');
+  const [presentationTrack, setPresentationTrack] = useState(
+    store.getSpecialtyTracks().filter(t => t.isAcceptingNew !== false)[0]?.name || ''
+  );
   const [abstractText, setAbstractText] = useState('');
   const [fileName, setFileName] = useState('');
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
@@ -90,13 +99,16 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
   const [isDocUploading, setIsDocUploading] = useState(false);
 
   const tracks = store.getSpecialtyTracks();
+  // useMemo để mảng không đổi danh tính mỗi lần vẽ lại, nếu không effect
+  // bên dưới sẽ chạy sau mọi lần render.
+  const openTracks = useMemo(() => tracks.filter(t => t.isAcceptingNew !== false), [tracks]);
   useEffect(() => {
-    if (tracks.length > 0) {
-      if (!presentationTrack || !tracks.some(t => t.name === presentationTrack)) {
-        setPresentationTrack(tracks[0].name);
+    if (openTracks.length > 0) {
+      if (!presentationTrack || !openTracks.some(t => t.name === presentationTrack)) {
+        setPresentationTrack(openTracks[0].name);
       }
     }
-  }, [tracks, presentationTrack]);
+  }, [openTracks, presentationTrack]);
 
   // States
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -112,6 +124,19 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       reader.onloadend = () => {
         setAvatarImage(reader.result as string);
         setIsAvatarUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDegreeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsDegreeUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDegreeProofImage(reader.result as string);
+        setIsDegreeUploading(false);
       };
       reader.readAsDataURL(file);
     }
@@ -164,6 +189,45 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       setErrorMsg(nationality === 'vietname' ? 'Vui lòng điền đầy đủ các thông tin bắt buộc (*).' : 'Please fill in all required fields (*).');
       return;
     }
+    // Bon thong tin duoi day bat buoc vi khong co chung thi khong lam duoc
+    // ho so cap chung chi CME cho bao cao vien.
+    if (!dateOfBirth) {
+      setErrorMsg(nationality === 'vietname'
+        ? 'Vui lòng chọn ngày tháng năm sinh (cần để cấp chứng chỉ CME).'
+        : 'Please select your date of birth (required for the CME certificate).');
+      return;
+    }
+    const dobParts = dateOfBirth.split('-').map(v => parseInt(v, 10));
+    const dobDate = new Date(dateOfBirth + 'T00:00:00');
+    const dobIsReal = dobParts.length === 3 && !isNaN(dobDate.getTime()) &&
+      dobDate.getFullYear() === dobParts[0] &&
+      dobDate.getMonth() + 1 === dobParts[1] &&
+      dobDate.getDate() === dobParts[2] &&
+      dobParts[0] >= 1920 && dobParts[0] <= new Date().getFullYear();
+    if (!dobIsReal) {
+      setErrorMsg(nationality === 'vietname'
+        ? 'Ngày sinh không hợp lệ.'
+        : 'The date of birth is not valid.');
+      return;
+    }
+    if (!placeOfBirth.trim()) {
+      setErrorMsg(nationality === 'vietname'
+        ? 'Vui lòng điền nơi sinh (cần để cấp chứng chỉ CME).'
+        : 'Please enter your place of birth (required for the CME certificate).');
+      return;
+    }
+    if (!identityNo.trim()) {
+      setErrorMsg(nationality === 'vietname'
+        ? 'Vui lòng điền số CCCD / định danh cá nhân (cần để cấp chứng chỉ CME).'
+        : 'Please enter your national ID number (required for the CME certificate).');
+      return;
+    }
+    if (!degreeProofImage) {
+      setErrorMsg(nationality === 'vietname'
+        ? 'Vui lòng tải ảnh bằng cấp (cần để cấp chứng chỉ CME).'
+        : 'Please upload a photo of your degree (required for the CME certificate).');
+      return;
+    }
     setErrorMsg('');
     setIsSubmitting(true);
 
@@ -179,6 +243,10 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
         phone,
         email,
         bio,
+        dateOfBirth,
+        placeOfBirth: placeOfBirth.trim(),
+        identityNo: identityNo.trim(),
+        degreeProofUrl: degreeProofImage || undefined,
         presentationTitle,
         presentationTrack,
         abstractText,
@@ -550,6 +618,113 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                   </div>
                 </div>
 
+                {/* Thong tin bat buoc de cap chung chi CME */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      {L.f('dateOfBirth', 'Ngày tháng năm sinh *', 'Date of Birth *')}
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      min="1920-01-01"
+                      max={new Date().toISOString().split('T')[0]}
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      {L.f('placeOfBirth', 'Nơi sinh *', 'Place of Birth *')}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={placeOfBirth}
+                      onChange={(e) => setPlaceOfBirth(e.target.value)}
+                      placeholder={L.p('ví dụ: Hà Nội', 'e.g. Hanoi')}
+                      className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none placeholder-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      {L.f('identityNo', 'Số CCCD / Định danh cá nhân *', 'National ID Number *')}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      inputMode="numeric"
+                      maxLength={20}
+                      value={identityNo}
+                      onChange={(e) => setIdentityNo(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder={L.p('ví dụ: 001188012345', 'e.g. 001188012345')}
+                      className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm font-mono focus:border-teal-500 focus:outline-none placeholder-slate-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Anh bang cap */}
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div className="relative shrink-0 w-24 h-20 rounded-xl bg-slate-250 border-2 border-dashed border-teal-600/30 flex items-center justify-center overflow-hidden">
+                    {degreeProofImage ? (
+                      <img src={degreeProofImage} className="w-full h-full object-cover" alt="Degree proof" />
+                    ) : (
+                      <span className="text-slate-400 text-[10px] font-bold text-center p-1 leading-none select-none">
+                        {L.t('Chưa có ảnh', 'No Photo')}
+                      </span>
+                    )}
+                    {isDegreeUploading && (
+                      <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center text-[10px] text-white font-mono">
+                        {L.t('Đang tải...', 'Loading...')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1 text-center sm:text-left">
+                    <span className="text-xs font-bold text-slate-850 block uppercase tracking-wide">
+                      {L.f('degreeProof', 'Hình ảnh bằng cấp *', 'Degree Certificate Photo *')}
+                    </span>
+                    <p className="text-[10px] text-slate-500 leading-snug">
+                      {L.t('Ảnh bằng cấp hoặc chứng chỉ chuyên môn, dùng để lập hồ sơ cấp chứng chỉ CME. Ban tổ chức không công bố ảnh này.', 'A photo of your degree or professional certificate, used only to prepare the CME certificate. It is never published.')}
+                    </p>
+                    <div className="flex items-center justify-center sm:justify-start gap-2 pt-1.5">
+                      <div
+                        role="button"
+                        onClick={() => degreeInputRef.current?.click()}
+                        className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-350 text-[11px] font-bold rounded-lg cursor-pointer transition-all select-none"
+                      >
+                        {L.t('Tải ảnh bằng cấp', 'Upload Degree Photo')}
+                        <input
+                          ref={degreeInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDegreeUpload}
+                          className="hidden"
+                        />
+                      </div>
+                      {degreeProofImage && (
+                        <button
+                          type="button"
+                          onClick={() => setDegreeProofImage(null)}
+                          className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-semibold rounded-lg border-none cursor-pointer"
+                        >
+                          {L.t('Xóa ảnh', 'Remove Photo')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Luu y trach nhiem thong tin ca nhan */}
+                <p className="text-[10.5px] text-teal-900 leading-relaxed bg-teal-50/60 border border-teal-200 rounded-xl p-3">
+                  {L.t(
+                    'Lưu ý: Quý Bác sĩ vui lòng kiểm tra và chịu trách nhiệm về tính chính xác của thông tin cá nhân (email, số CCCD, ngày tháng năm sinh). Mọi sai sót cần được thông báo cho Ban Tổ chức trước ngày 12/12/2026. Sau thời gian này, thông tin sẽ không được điều chỉnh.',
+                    'Please note: you are responsible for checking the accuracy of your personal details (email, national ID number, date of birth). Any correction must be reported to the Organizing Committee before 12 December 2026. After that date, no change can be made.'
+                  )}
+                </p>
+
                 <div>
                   <RichTextEditor
                     value={bio}
@@ -592,7 +767,7 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
                       onChange={(e) => setPresentationTrack(e.target.value)}
                       className="w-full px-4 py-2 bg-slate-55 border border-slate-200 rounded-xl text-sm focus:border-teal-500 focus:outline-none"
                     >
-                      {store.getSpecialtyTracks().map((track) => (
+                      {openTracks.map((track) => (
                         <option key={track.id} value={track.name}>
                           {getTrackDisplayName(track.name, nationality === 'foreign', track.nameEn)}
                         </option>
