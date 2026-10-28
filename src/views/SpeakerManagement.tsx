@@ -9,6 +9,10 @@ import { store } from '../dataStore';
 import { SpeakerRegistration, Role, SpecialtyTrack } from '../types';
 import { formatDate } from '../lib/dateUtils';
 import * as XLSX from 'xlsx';
+import {
+  htmlToPlainText, toExportLink, fromImportLink,
+  formatDateVi, parseDateFlexible, normalizeVietnamesePhone, createColumnPicker,
+} from '../lib/exportHelpers';
 
 interface SpeakerManagementProps {
   role: Role;
@@ -631,32 +635,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         let skippedNoName = 0;
 
         rows.forEach((row) => {
-          const keys = Object.keys(row);
-          // Dò cột linh hoạt vì người dùng hay sửa tiêu đề hoặc thêm dấu *.
-          // Mỗi cột chỉ được gán cho đúng một trường, và thứ tự dò ở dưới là
-          // từ cột cụ thể tới cột chung. Hai cái bẫy phải tránh:
-          //   - tiêu đề bản tiếng Anh chứa trọn tiêu đề tiếng Việt
-          //     ("Abstract (tiếng Anh)" chứa "Abstract"),
-          //   - ba cột ảnh/tệp đều bắt đầu bằng chữ "Link".
-          const usedKeys = new Set<string>();
-          const takeCell = (k: string): string =>
-            row[k] === undefined || row[k] === null ? '' : String(row[k]).trim();
-
-          /** Lấy ô của cột chưa dùng đầu tiên thỏa một trong các điều kiện. */
-          const pickBy = (tests: ((key: string) => boolean)[]): string => {
-            for (const test of tests) {
-              const k = keys.find(key => !usedKeys.has(key) && test(key.toLowerCase().trim()));
-              if (k) {
-                usedKeys.add(k);
-                return takeCell(k);
-              }
-            }
-            return '';
-          };
-          /** Khớp nếu tiêu đề chứa bất kỳ từ khóa nào. */
-          const any = (...needles: string[]) => (k: string) => needles.some(n => k.includes(n));
-          /** Tiêu đề của cột bản dịch tiếng Anh. */
-          const isEn = (k: string) => k.includes('tiếng anh') || k.includes('(en') || k.includes('english');
+          // Thứ tự dò ở dưới đi từ cột cụ thể tới cột chung; xem giải thích
+          // trong createColumnPicker.
+          const { pickBy, any, isEn } = createColumnPicker(row);
 
           // Hai cột bản tiếng Anh lấy trước cột tiếng Việt tương ứng.
           // Danh sách từ khóa phải trùng với của cột tiếng Việt bên dưới, nếu không
@@ -691,43 +672,17 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
           const presentationTrack = pickBy([any('chuyên đề', 'phân ban', 'track')]);
           const abstractText = pickBy([any('abstract', 'tóm tắt')]);
 
-          // Ngày sinh trong Excel có thể là 15/03/1975, 1975-03-15, hoặc số
-          // sê-ri ngày của Excel. Chuẩn hóa về YYYY-MM-DD, không nhận dạng
-          // được thì bỏ trống để Ban tổ chức điền tay.
-          const normalizeDob = (raw: string): string | undefined => {
-            if (!raw) return undefined;
-            const text = raw.trim();
-            let m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-            if (m) {
-              return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-            }
-            m = text.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
-            if (m) {
-              return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-            }
-            // Số sê-ri ngày của Excel, mốc 0 là 30/12/1899.
-            if (/^\d{4,6}$/.test(text)) {
-              const serial = parseInt(text, 10);
-              const base = Date.UTC(1899, 11, 30);
-              const d = new Date(base + serial * 86400000);
-              if (!isNaN(d.getTime()) && d.getUTCFullYear() >= 1920) {
-                return d.toISOString().split('T')[0];
-              }
-            }
-            return undefined;
-          };
-
           parsed.push({
             id: genId(),
             title: title || 'BS.',
             fullName: fullName.toUpperCase(),
             organization,
             department,
-            phone: phone.replace(/\s+/g, ''),
+            phone: normalizeVietnamesePhone(phone),
             email,
             bio,
             bioEn: bioEn || undefined,
-            dateOfBirth: normalizeDob(dateOfBirth),
+            dateOfBirth: parseDateFlexible(dateOfBirth),
             placeOfBirth: placeOfBirth || undefined,
             identityNo: identityNo.replace(/\s+/g, '') || undefined,
             presentationTitle,
@@ -735,8 +690,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             abstractText,
             abstractEn: abstractEn || undefined,
             // Chỉ nhận link thật; ô đánh dấu "chưa có link" của tệp xuất bị bỏ qua.
-            avatarUrl: /^https?:\/\//i.test(avatarLink) ? avatarLink : undefined,
-            degreeProofUrl: /^https?:\/\//i.test(degreeLink) ? degreeLink : undefined,
+            avatarUrl: fromImportLink(avatarLink),
+            degreeProofUrl: fromImportLink(degreeLink),
             documentUrl: link || undefined,
             documentName: link ? 'Hồ sơ đính kèm (Google Drive)' : undefined,
             calendarSynced: false,
@@ -819,38 +774,6 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
   };
 
-  /**
-   * Chuyển nội dung HTML của ô soạn thảo về chữ thuần, để Excel đọc được.
-   * Giữ lại ngắt dòng ở các thẻ khối thay vì dán liền các đoạn với nhau.
-   */
-  const htmlToPlainText = (html?: string): string => {
-    if (!html) return '';
-    const withBreaks = html
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
-      .replace(/<li[^>]*>/gi, '• ');
-    const el = document.createElement('div');
-    el.innerHTML = withBreaks;
-    return (el.textContent || '')
-      .replace(/ /g, ' ')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim();
-  };
-
-  /**
-   * Ảnh và tệp được lưu trên Supabase Storage dưới dạng link công khai, nên
-   * xuất thẳng vào Excel là bấm được. Riêng hồ sơ cũ còn giữ ảnh dạng base64
-   * (data:) thì không thể đưa vào ô Excel: một ô chỉ chứa 32.767 ký tự, còn
-   * ảnh base64 thường dài hơn thế nhiều. Những hồ sơ đó được đánh dấu rõ để
-   * Ban tổ chức biết là phải mở trong hệ thống để xem.
-   */
-  const toExportLink = (url?: string): string => {
-    if (!url) return '';
-    if (url.startsWith('data:')) return 'Ảnh lưu trong hệ thống, chưa có link — mở hồ sơ để xem';
-    return url;
-  };
-
   const handleExportXLSX = () => {
     const headers = [
       'Mã hồ sơ', 'Học hàm học vị', 'Họ và tên', 'Ngày sinh', 'Nơi sinh', 'Số CCCD',
@@ -872,7 +795,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         sp.id,
         sp.title,
         sp.fullName,
-        sp.dateOfBirth ? sp.dateOfBirth.split('-').reverse().join('/') : '',
+        formatDateVi(sp.dateOfBirth),
         sp.placeOfBirth || '',
         sp.identityNo || '',
         sp.organization,
