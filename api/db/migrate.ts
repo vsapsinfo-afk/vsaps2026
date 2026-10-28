@@ -10,14 +10,15 @@
  *
  * An toàn:
  *   - Endpoint KHÔNG nhận SQL từ phía người dùng. Chỉ chạy đúng danh sách
- *     bước cố định trong src/lib/dbMigrations.ts.
+ *     bước cố định trong api/db/_migrations.ts.
  *   - Mọi bước đều thuộc dạng chạy lại được, không xóa cột và không xóa dữ liệu.
  *   - POST phải kèm access token của một tài khoản có vai trò admin.
  */
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import pg from 'pg';
-import { MIGRATION_STEPS, buildFullMigrationSql } from '../../src/lib/dbMigrations';
+// pg được nạp ngay trong nhánh POST chứ không nạp ở đầu tệp, để lỗi nạp thư viện
+// này không làm hỏng luôn cả nhánh GET mà giao diện dùng để dò trạng thái.
+import { MIGRATION_STEPS, buildFullMigrationSql } from './_migrations';
 
 /** Địa chỉ Supabase SQL Editor của chính dự án, để giao diện mở nhanh. */
 function buildSqlEditorUrl(supabaseUrl: string | undefined): string | null {
@@ -74,7 +75,7 @@ async function assertAdmin(req: VercelRequest): Promise<string | null> {
   return null;
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handleRequest(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -129,6 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ success: false, error: authError });
   }
 
+  const pg = (await import('pg')).default;
   const client = new pg.Client({
     connectionString,
     ssl: { rejectUnauthorized: false },
@@ -183,4 +185,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `Đã cập nhật xong ${results.length} bước.`
       : `${results.length - failed.length}/${results.length} bước thành công, ${failed.length} bước lỗi.`,
   });
+}
+
+/**
+ * Bọc thêm một lớp bắt lỗi ở ngoài cùng.
+ *
+ * Không có lớp này thì mọi lỗi ngoài dự tính đều ra thành
+ * FUNCTION_INVOCATION_FAILED với một trang lỗi trống, giao diện không đọc được
+ * JSON nên chỉ báo chung chung là "chưa chạy tự động được", rất khó lần ra
+ * nguyên nhân.
+ */
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    return await handleRequest(req, res);
+  } catch (err: any) {
+    console.error('Lỗi không bắt được trong /api/db/migrate:', err);
+    if (res.headersSent) return;
+    return res.status(500).json({
+      success: false,
+      error: `Lỗi hệ thống ở endpoint cập nhật: ${err?.message || String(err)}`,
+    });
+  }
 }

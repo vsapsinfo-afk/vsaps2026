@@ -1,13 +1,13 @@
 -- ============================================================
 -- VSAPS 2026 — Cập nhật cơ sở dữ liệu
--- Sinh tự động từ src/lib/dbMigrations.ts
+-- Sinh tự động từ api/db/_migrations.ts
 -- Chạy lại nhiều lần vẫn an toàn, không làm mất dữ liệu.
 -- ============================================================
 
 -- Cách khác, không cần dán tay: vào admin, Cài đặt > Cơ sở dữ liệu,
 -- bấm "Chạy cập nhật tự động".
 --
--- Tệp này sinh ra từ src/lib/dbMigrations.ts, sửa trực tiếp vào đây sẽ bị ghi đè.
+-- Tệp này sinh ra từ api/db/_migrations.ts, sửa trực tiếp vào đây sẽ bị ghi đè.
 -- Xem scripts/sync-migration-sql.ts.
 
 -- Đại biểu: thêm ngày sinh, nơi sinh và ảnh bằng cấp

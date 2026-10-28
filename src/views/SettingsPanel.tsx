@@ -61,7 +61,7 @@ import {
 import RichTextEditor from '../components/RichTextEditor';
 import { supabase } from '../lib/supabase';
 import { getSession } from '../lib/auth';
-import { buildFullMigrationSql, EXPECTED_COLUMNS } from '../lib/dbMigrations';
+import { buildFullMigrationSql, EXPECTED_COLUMNS } from '../../api/db/_migrations';
 
 interface SettingsPanelProps {
   role: Role;
