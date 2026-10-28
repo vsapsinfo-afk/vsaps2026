@@ -1101,6 +1101,92 @@ export class DataStore {
   // GETTERS & ACTION SETTERS (Offline-First)
   // ==========================================
 
+  /**
+   * Đọc tên cột bị thiếu từ thông báo lỗi của Supabase / PostgREST.
+   * Trả về null nếu lỗi không phải lỗi thiếu cột.
+   */
+  private static extractMissingColumn(error: any): string | null {
+    const text = `${error?.message ?? ''} ${error?.details ?? ''} ${error?.hint ?? ''}`;
+    // PostgREST: Could not find the 'date_of_birth' column of 'attendees' in the schema cache
+    const m1 = text.match(/could not find the '([^']+)' column/i);
+    if (m1) return m1[1];
+    // Postgres: column "date_of_birth" of relation "attendees" does not exist
+    const m2 = text.match(/column "([^"]+)" of relation "[^"]+" does not exist/i);
+    if (m2) return m2[1];
+    // Postgres: column attendees.date_of_birth does not exist
+    const m3 = text.match(/column [\w.]*?([\w]+) does not exist/i);
+    if (m3) return m3[1];
+    return null;
+  }
+
+  /**
+   * Ghi dữ liệu lên Supabase, tự bỏ những cột mà cơ sở dữ liệu chưa có rồi
+   * thử lại.
+   *
+   * Cần thiết vì mã nguồn có thể lên hosting trước khi Ban tổ chức chạy
+   * script SQL bổ sung cột. Nếu không xử lý, PostgREST trả lỗi
+   * "Could not find the 'date_of_birth' column" và từ chối cả bản ghi, nghĩa
+   * là MỌI hồ sơ đăng ký mới đều không lưu được lên cơ sở dữ liệu. Lỗi này
+   * cũng xảy ra trong khoảng thời gian ngắn sau khi chạy ALTER TABLE, lúc
+   * PostgREST còn giữ lược đồ cũ trong bộ đệm.
+   *
+   * Dữ liệu vẫn được lưu, chỉ thiếu các cột mới; chạy script SQL rồi lưu lại
+   * là đủ.
+   */
+  private async writeToSupabase(
+    table: string,
+    record: Record<string, any> | Record<string, any>[],
+    mode: 'insert' | 'upsert' = 'upsert',
+  ): Promise<{ error: any }> {
+    const isBatch = Array.isArray(record);
+    let rows: Record<string, any>[] = isBatch
+      ? (record as Record<string, any>[]).map(r => ({ ...r }))
+      : [{ ...(record as Record<string, any>) }];
+
+    if (rows.length === 0) return { error: null };
+
+    const dropped: string[] = [];
+
+    // Mỗi vòng bỏ đúng một cột còn thiếu rồi thử lại.
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const payload: any = isBatch ? rows : rows[0];
+      const { error } = mode === 'insert'
+        ? await supabase.from(table).insert(payload)
+        : await supabase.from(table).upsert(payload);
+
+      if (!error) {
+        if (dropped.length > 0) {
+          console.warn(
+            `[${table}] Cơ sở dữ liệu chưa có cột: ${dropped.join(', ')}. `
+            + 'Dữ liệu đã lưu nhưng thiếu các cột này. Hãy chạy script '
+            + 'supabase/add_cme_and_track_fields.sql rồi lưu lại hồ sơ.'
+          );
+        }
+        return { error: null };
+      }
+
+      const missing = DataStore.extractMissingColumn(error);
+      // Không phải lỗi thiếu cột, hoặc cột đó vốn không nằm trong dữ liệu gửi
+      // đi: trả lỗi về cho nơi gọi xử lý như trước.
+      if (!missing || !Object.prototype.hasOwnProperty.call(rows[0], missing)) {
+        return { error };
+      }
+
+      rows = rows.map(r => {
+        const copy = { ...r };
+        delete copy[missing];
+        return copy;
+      });
+      dropped.push(missing);
+    }
+
+    return {
+      error: new Error(
+        `Không ghi được vào bảng ${table}: còn quá nhiều cột chưa có trong cơ sở dữ liệu.`
+      )
+    };
+  }
+
   getAttendees() { return this.attendees; }
   saveAttendee(attendee: Attendee) {
     const idx = this.attendees.findIndex(a => a.id === attendee.id);
@@ -1169,11 +1255,9 @@ export class DataStore {
           if (!packageExists) {
             dbRecord.package_id = null;
           }
-          const query = isNew 
-            ? supabase.from('attendees').insert(dbRecord)
-            : supabase.from('attendees').upsert(dbRecord);
-            
-          const { error } = await query;
+          const { error } = await this.writeToSupabase(
+            'attendees', dbRecord, isNew ? 'insert' : 'upsert'
+          );
           if (error) {
             console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
           } else {
@@ -1267,11 +1351,9 @@ export class DataStore {
         if (!packageExists) {
           dbRecord.package_id = null;
         }
-        const query = isNew 
-          ? supabase.from('attendees').insert(dbRecord)
-          : supabase.from('attendees').upsert(dbRecord);
-          
-        const { error } = await query;
+        const { error } = await this.writeToSupabase(
+          'attendees', dbRecord, isNew ? 'insert' : 'upsert'
+        );
         if (error) {
           console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
           throw error;
@@ -1333,7 +1415,7 @@ export class DataStore {
     if (isSupabaseConfigured()) {
       try {
         const dbRecords = newAttendees.map(att => mapAttendeeToDb(att));
-        const { error } = await supabase.from('attendees').upsert(dbRecords);
+        const { error } = await this.writeToSupabase('attendees', dbRecords);
         if (error) {
           console.error('Error bulk upserting attendees to Supabase:', error);
         }
@@ -1409,7 +1491,7 @@ export class DataStore {
     if (isSupabaseConfigured()) {
       try {
         const dbRecords = newSpeakers.map(sp => mapSpeakerToDb(sp));
-        const { error } = await supabase.from('speakers').upsert(dbRecords);
+        const { error } = await this.writeToSupabase('speakers', dbRecords);
         if (error) {
           console.error('Error bulk upserting speakers to Supabase:', error);
           throw error;
@@ -1507,11 +1589,9 @@ export class DataStore {
           if (!sessionExists) {
             dbRecord.scheduled_session_id = null;
           }
-          const query = isNew
-            ? supabase.from('speakers').insert(dbRecord)
-            : supabase.from('speakers').upsert(dbRecord);
-
-          const { error } = await query;
+          const { error } = await this.writeToSupabase(
+            'speakers', dbRecord, isNew ? 'insert' : 'upsert'
+          );
           if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
         } catch (err) {
           console.error('Error during background upload/sync of speaker:', err);
@@ -1605,11 +1685,9 @@ export class DataStore {
         if (!sessionExists) {
           dbRecord.scheduled_session_id = null;
         }
-        const query = isNew
-          ? supabase.from('speakers').insert(dbRecord)
-          : supabase.from('speakers').upsert(dbRecord);
-
-        const { error } = await query;
+        const { error } = await this.writeToSupabase(
+          'speakers', dbRecord, isNew ? 'insert' : 'upsert'
+        );
         if (error) {
           console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
           throw error;
@@ -1645,7 +1723,7 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_SPECIALTY_TRACKS, this.specialtyTracks);
 
     if (isSupabaseConfigured()) {
-      supabase.from('specialty_tracks').upsert(mapTrackToDb(track)).then(({ error }) => {
+      this.writeToSupabase('specialty_tracks', mapTrackToDb(track)).then(({ error }) => {
         if (error) console.error('Error syncing track to Supabase:', error);
       });
     }
@@ -2564,7 +2642,7 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, config);
 
     if (isSupabaseConfigured()) {
-      const { error } = await supabase.from('business_config').upsert(mapBusinessConfigToDb(config));
+      const { error } = await this.writeToSupabase('business_config', mapBusinessConfigToDb(config));
       if (error) console.error('Error saving Business Config to Supabase:', error);
     }
     return config;
@@ -4175,7 +4253,7 @@ export class DataStore {
           dbRecord.package_id = null;
         }
         
-        const { error } = await supabase.from('attendees').upsert(dbRecord);
+        const { error } = await this.writeToSupabase('attendees', dbRecord);
         if (!error) {
           this.removePendingSyncAttendeeId(id);
         } else {
