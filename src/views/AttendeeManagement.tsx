@@ -7,6 +7,10 @@ import React, { useState, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import { Search, Filter, Trash, CheckCircle2, QrCode, Plus, Check, FileDown, Eye, RefreshCcw, Wifi, WifiOff, Sparkles, Printer, Award, FileSpreadsheet, Download, Database, Upload, Edit3, Save, AlertTriangle, User, Calendar, MapPin, Info, CreditCard, Tag, Phone, Mail, UserCheck, Cloud, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import {
+  htmlToPlainText, toExportLink, fromImportLink,
+  formatDateVi, parseDateFlexible, normalizeVietnamesePhone, createColumnPicker,
+} from '../lib/exportHelpers';
 import { store, DEFAULT_CME_TEMPLATE_CONFIG } from '../dataStore';
 import { Attendee, Role } from '../types';
 import { formatDateTime } from '../lib/dateUtils';
@@ -116,6 +120,9 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
 
   // States for Excel Import feature
   const [excelParsedAttendees, setExcelParsedAttendees] = useState<Attendee[]>([]);
+  // Mã của những dòng Excel đã ghi sẵn trạng thái thanh toán. Những dòng
+  // này không bị ghi đè bởi lựa chọn mặc định trong cửa sổ nhập.
+  const [excelExplicitStatusIds, setExcelExplicitStatusIds] = useState<Set<string>>(new Set());
   const [importDefaultPaymentStatus, setImportDefaultPaymentStatus] = useState<'paid' | 'pending_verification' | 'unpaid'>('paid');
   const [skipDuplicates, setSkipDuplicates] = useState<boolean>(true);
 
@@ -366,59 +373,98 @@ Ban Thư ký Hội nghị VSAPS 2026`
     }
   };
 
+  /**
+   * Mục III: tệp mẫu nhập đặt trùng tên và trùng thứ tự cột với tệp xuất, nên
+   * Ban tổ chức xuất ra, sửa, rồi nạp lại được mà không phải đổi tiêu đề.
+   *
+   * Cột "Mã đại biểu" và "Mã QR check-in" chỉ để tham khảo khi đối chiếu; khi
+   * nạp, hệ thống luôn cấp mã mới và bỏ qua hai cột này. Trùng lặp được chặn
+   * theo email và số điện thoại, nên nạp lại tệp vừa xuất sẽ không sinh bản
+   * ghi lặp nếu để bật tùy chọn "Bỏ qua trùng lặp".
+   */
   const downloadSampleExcelTemplate = () => {
-    const sampleData = [
+    const C = DELEGATE_COLUMNS;
+    const firstPackage = store.getPackages().find(p => p.isActive);
+    const samplePackage = firstPackage?.name || 'Không phải Hội viên';
+    const samplePackageFee = String(firstPackage?.fee ?? 3000000);
+
+    const sampleData: Record<string, string>[] = [
       {
-        'Học vị': 'TS.BS.',
-        'Họ và tên': 'NGUYỄN VĂN AN',
-        'Số điện thoại': '0912345678',
-        'Email': 'nguyenvanan@gmail.com',
-        'Đơn vị công tác': 'Bệnh viện Chợ Rẫy',
-        'Năm sinh': '1982',
-        'Số CCCD (Cấp CME)': '079182001234',
-        'Gói đăng ký': 'Gói Đại Biểu Tiêu Chuẩn',
-        'Trạng thái thanh toán': 'PAID'
+        [C.id]: '',
+        [C.title]: 'TS.BS',
+        [C.fullName]: 'NGUYỄN VĂN AN',
+        [C.gender]: 'Nam',
+        [C.dateOfBirth]: '15/03/1982',
+        [C.placeOfBirth]: 'Hà Nội',
+        [C.cmeIdentityNo]: '079182001234',
+        [C.phone]: '0912345678',
+        [C.email]: 'nguyenvanan@gmail.com',
+        [C.organization]: 'Bệnh viện Chợ Rẫy',
+        [C.department]: 'Khoa Tạo hình Thẩm mỹ',
+        [C.province]: 'Hồ Chí Minh',
+        [C.address]: '201B Nguyễn Chí Thanh, Quận 5',
+        [C.nationality]: 'Việt Nam',
+        [C.packageName]: samplePackage,
+        [C.packageFee]: samplePackageFee,
+        [C.registrationPeriod]: 'Trước 10/11',
+        [C.cmeRequired]: 'Có',
+        [C.galaRequired]: 'Có',
+        [C.masterclassRequired]: 'Không',
+        [C.tourRequired]: 'Không',
+        [C.paymentStatus]: 'Đã thanh toán',
+        [C.paymentMethod]: 'Chuyển khoản',
+        [C.registrationDate]: '2026-10-28',
+        [C.avatarUrl]: 'https://drive.google.com/file/d/anh-chan-dung/view',
+        [C.doctorProofUrl]: 'https://drive.google.com/file/d/anh-bang-cap/view',
+        [C.transactionProofUrl]: 'https://drive.google.com/file/d/anh-chuyen-khoan/view',
+        [C.qrCodeValue]: '',
+        [C.isCheckedIn]: 'Chưa',
+        [C.checkInTime]: '',
+        [C.notes]: 'Suất ăn chay',
       },
       {
-        'Học vị': 'BS.CK2',
-        'Họ và tên': 'TRẦN THỊ MAI',
-        'Số điện thoại': '0987654321',
-        'Email': 'tranthimai@gmail.com',
-        'Đơn vị công tác': 'Bệnh viện Đại học Y Dược',
-        'Năm sinh': '1985',
-        'Số CCCD (Cấp CME)': '001185005678',
-        'Gói đăng ký': 'Gói Đại Biểu Tiêu Chuẩn',
-        'Trạng thái thanh toán': 'PAID'
+        [C.id]: '',
+        [C.title]: 'BSCK2',
+        [C.fullName]: 'TRẦN THỊ MAI',
+        [C.gender]: 'Nữ',
+        [C.dateOfBirth]: '1985-07-20',
+        [C.placeOfBirth]: 'Thừa Thiên Huế',
+        [C.cmeIdentityNo]: '001185005678',
+        [C.phone]: '0987654321',
+        [C.email]: 'tranthimai@gmail.com',
+        [C.organization]: 'Bệnh viện Đại học Y Dược',
+        [C.department]: 'Khoa Thẩm mỹ',
+        [C.province]: 'Đà Nẵng',
+        [C.address]: '',
+        [C.nationality]: 'Việt Nam',
+        [C.packageName]: samplePackage,
+        [C.packageFee]: '',
+        [C.registrationPeriod]: 'Trước 10/11',
+        [C.cmeRequired]: 'Không',
+        [C.galaRequired]: 'Không',
+        [C.masterclassRequired]: 'Không',
+        [C.tourRequired]: 'Không',
+        [C.paymentStatus]: 'Chờ đối chiếu',
+        [C.paymentMethod]: 'Chuyển khoản',
+        [C.registrationDate]: '',
+        [C.avatarUrl]: '',
+        [C.doctorProofUrl]: '',
+        [C.transactionProofUrl]: '',
+        [C.qrCodeValue]: '',
+        [C.isCheckedIn]: '',
+        [C.checkInTime]: '',
+        [C.notes]: '',
       },
-      {
-        'Học vị': 'ThS.BS.',
-        'Họ và tên': 'LÊ HOÀNG PHƯƠNG',
-        'Số điện thoại': '0903112233',
-        'Email': 'lhphuong@hmu.edu.vn',
-        'Đơn vị công tác': 'Bệnh viện Bạch Mai',
-        'Năm sinh': '1988',
-        'Số CCCD (Cấp CME)': '001188009988',
-        'Gói đăng ký': 'Gói Đại Biểu Tiêu Chuẩn',
-        'Trạng thái thanh toán': 'PAID'
-      }
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    // header: [] giữ đúng thứ tự cột như tệp xuất, không để json_to_sheet
+    // tự suy thứ tự từ khóa của đối tượng.
+    const header = DELEGATE_COLUMN_ORDER.map(k => DELEGATE_COLUMNS[k]);
+    const worksheet = XLSX.utils.json_to_sheet(sampleData, { header });
+    worksheet['!cols'] = DELEGATE_COLUMN_ORDER.map(k => ({ wch: DELEGATE_COLUMN_WIDTHS[k] }));
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Danh_Sach_Dai_Bieu');
-    
-    worksheet['!cols'] = [
-      { wch: 10 },
-      { wch: 26 },
-      { wch: 16 },
-      { wch: 28 },
-      { wch: 32 },
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 26 },
-      { wch: 22 }
-    ];
-
     XLSX.writeFile(workbook, 'Mau_File_Import_Dai_Bieu_VSAPS2026.xlsx');
   };
 
@@ -444,78 +490,167 @@ Ban Thư ký Hội nghị VSAPS 2026`
           const objectRows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet);
           const parsedAttendees: Attendee[] = [];
           const outputLines: string[] = [];
+          const explicitStatusIds = new Set<string>();
 
           if (objectRows && objectRows.length > 0) {
             objectRows.forEach((rowObj) => {
-              const keys = Object.keys(rowObj);
-              const findVal = (matchers: string[]): string => {
-                for (const m of matchers) {
-                  const foundKey = keys.find(k => k.toLowerCase().trim().includes(m));
-                  if (foundKey && rowObj[foundKey] !== undefined && rowObj[foundKey] !== null) {
-                    return String(rowObj[foundKey]).trim();
-                  }
-                }
-                return '';
-              };
+              // Thứ tự dò đi từ cột cụ thể tới cột chung, vì mỗi cột chỉ được
+              // gán cho đúng một trường. Xem giải thích trong createColumnPicker.
+              const { pickBy, any } = createColumnPicker(rowObj);
 
-              const titleVal = findVal(['học vị', 'xưng hô', 'chức danh', 'title', 'học hàm']) || 'BS.';
-              const nameVal = findVal(['họ và tên', 'họ tên', 'tên đại biểu', 'họ tên đại biểu', 'fullname', 'name']);
-              
+              // Ba cột ảnh lấy trước, vì cả ba đều có chữ "link" và chữ "ảnh".
+              const avatarLink = pickBy([any('chân dung', 'avatar', 'ảnh đại diện')]);
+              const doctorProofLink = pickBy([any('minh chứng', 'bằng cấp', 'chứng chỉ hành nghề')]);
+              const transferLink = pickBy([any('chuyển khoản', 'biên nhận', 'ủy nhiệm chi')]);
+
+              // "Số CCCD" lấy trước "Đăng ký CME", vì tiêu đề cũ của cột CCCD
+              // là "Số CCCD (Cấp CME)" nên cũng chứa chữ "CME".
+              const cccdVal = pickBy([any('cccd', 'cmnd', 'căn cước', 'định danh', 'identity')]);
+              const cmeFlagVal = pickBy([any('đăng ký cme', 'cấp cme', 'cme')]);
+
+              // "Gói đăng ký" và "Thời điểm đăng ký" lấy trước "Ngày đăng ký",
+              // vì cả ba đều chứa chữ "đăng ký".
+              const pkgVal = pickBy([any('gói vé', 'gói đăng ký', 'gói', 'package')]);
+              const periodVal = pickBy([any('thời điểm', 'thời gian đăng ký')]);
+
+              // "Trạng thái thanh toán" lấy trước "Hình thức thanh toán".
+              const paymentStatusVal = pickBy([any('trạng thái thanh toán', 'trạng thái', 'tình trạng')]);
+              const paymentMethodVal = pickBy([any('hình thức thanh toán', 'hình thức', 'phương thức')]);
+
+              // "Mã QR check-in" và "Thời gian check-in" lấy trước "Đã check-in".
+              // Tiêu thụ cột mã QR để cột khác không bắt nhầm; giá trị không dùng
+              // vì khi nạp hệ thống luôn sinh mã QR mới theo mã đại biểu mới.
+              pickBy([any('mã qr', 'qr code')]);
+              const checkInTimeVal = pickBy([any('thời gian check', 'giờ check')]);
+              const checkedInVal = pickBy([any('đã check', 'check-in', 'checkin', 'có mặt')]);
+
+              const titleVal = pickBy([any('học hàm', 'học vị', 'xưng hô', 'chức danh'), any('title')]) || 'BS.';
+              const nameVal = pickBy([any('họ và tên', 'họ tên', 'tên đại biểu', 'fullname')]);
+
               if (nameVal) {
                 const cleanName = nameVal.toUpperCase();
-                const phoneVal = findVal(['số điện thoại', 'sđt', 'điện thoại', 'phone', 'mobile', 'sdt']).replace(/\s+/g, '');
-                const emailVal = findVal(['email', 'hòm thư', 'mail']) || `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Math.floor(Math.random()*1000)}@gmail.com`;
-                const orgVal = findVal(['đơn vị', 'cơ quan', 'bệnh viện', 'nơi công tác', 'trường', 'viện', 'workplace', 'organization']) || 'Bệnh viện / Viện Y khoa';
-                const yobVal = findVal(['năm sinh', 'yob', 'năm', 'birth']) || '1985';
-                const cccdVal = findVal(['cccd', 'cmnd', 'số định danh', 'cme', 'mã cme', 'identity']);
-                const pkgVal = findVal(['gói vé', 'gói đăng ký', 'gói', 'package']);
-                const paymentVal = findVal(['thanh toán', 'đóng phí', 'payment', 'status']).toLowerCase();
+                // Excel cắt chữ số 0 ở đầu số điện thoại, phải khôi phục
+                const phoneVal = normalizeVietnamesePhone(pickBy([any('số điện thoại', 'sđt', 'điện thoại', 'phone', 'mobile', 'sdt')]));
+                const emailVal = pickBy([any('email', 'hòm thư', 'mail')])
+                  || `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '')}${Math.floor(Math.random() * 1000)}@gmail.com`;
+                const orgVal = pickBy([any('đơn vị', 'cơ quan', 'bệnh viện', 'nơi công tác', 'trường', 'viện', 'workplace', 'organization')])
+                  || 'Bệnh viện / Viện Y khoa';
+                const deptVal = pickBy([any('khoa / phòng', 'khoa/phòng', 'khoa', 'phòng', 'bộ môn', 'department')]);
+                const genderVal = pickBy([any('giới tính', 'gender')]);
+                const dobRaw = pickBy([any('ngày sinh', 'ngày tháng năm sinh', 'date of birth', 'dob')]);
+                const yobRaw = pickBy([any('năm sinh', 'yob', 'year of birth')]);
+                const placeOfBirthVal = pickBy([any('nơi sinh', 'place of birth')]);
+                const provinceVal = pickBy([any('tỉnh', 'thành phố', 'province')]);
+                const addressVal = pickBy([any('địa chỉ', 'address')]);
+                const nationalityVal = pickBy([any('quốc tịch', 'nationality')]);
+                const feeRaw = pickBy([any('phí', 'fee', 'số tiền')]);
+                const galaVal = pickBy([any('gala')]);
+                const masterclassVal = pickBy([any('master')]);
+                const tourVal = pickBy([any('tour', 'tham quan')]);
+                const notesVal = pickBy([any('ghi chú', 'note')]);
 
-                let status: 'paid' | 'pending_verification' | 'unpaid' = importDefaultPaymentStatus;
-                if (paymentVal.includes('paid') || paymentVal.includes('đã đóng') || paymentVal.includes('đã thanh toán')) {
-                  status = 'paid';
-                } else if (paymentVal.includes('pending') || paymentVal.includes('chờ')) {
-                  status = 'pending_verification';
-                } else if (paymentVal.includes('unpaid') || paymentVal.includes('chưa')) {
-                  status = 'unpaid';
-                }
+                /**
+                 * Nhận cả "Có/Không", "Đã có mặt/Chưa", "x", "yes/no", "1/0".
+                 * Bắt buộc phải nhận "Đã có mặt" vì đó chính là giá trị tệp xuất
+                 * ghi ra cho cột "Đã check-in"; thiếu thì nạp lại tệp vừa xuất sẽ
+                 * xóa sạch trạng thái check-in của đại biểu.
+                 */
+                const isYes = (v: string): boolean => {
+                  const t = v.trim().toLowerCase();
+                  if (!t) return false;
+                  const startsWithWord = (words: string[]) =>
+                    words.some(w => t === w || t.startsWith(w + ' '));
+                  if (startsWithWord(['không', 'khong', 'chưa', 'chua', 'no', 'n', 'false', '0', '-'])) {
+                    return false;
+                  }
+                  return startsWithWord(['có', 'co', 'đã', 'da', 'x', 'yes', 'y', 'true', '1']);
+                };
+
+                // Ngày sinh ưu tiên cột ngày đầy đủ; hồ sơ cũ chỉ có năm sinh
+                // thì giữ lại năm để các mẫu CME cũ vẫn in ra được.
+                const dateOfBirthVal = parseDateFlexible(dobRaw);
+                const yearOfBirthVal = dateOfBirthVal
+                  ? dateOfBirthVal.slice(0, 4)
+                  : (yobRaw.match(/\d{4}/)?.[0] || dobRaw.match(/\d{4}/)?.[0] || '');
+
+                // Trạng thái thanh toán đọc từ tệp; dòng nào không ghi thì
+                // dùng lựa chọn mặc định ở ô bên dưới cửa sổ nhập.
+                const payText = paymentStatusVal.toLowerCase();
+                let status: 'paid' | 'pending_verification' | 'unpaid' | '' = '';
+                if (payText.includes('paid') && !payText.includes('unpaid')) status = 'paid';
+                else if (payText.includes('đã đóng') || payText.includes('đã thanh toán')) status = 'paid';
+                else if (payText.includes('pending') || payText.includes('chờ')) status = 'pending_verification';
+                else if (payText.includes('unpaid') || payText.includes('chưa')) status = 'unpaid';
+
+                const methodText = paymentMethodVal.toLowerCase();
+                const paymentMethodParsed: Attendee['paymentMethod'] =
+                  methodText.includes('tiền mặt') || methodText.includes('cash') ? 'cash'
+                    : methodText.includes('thẻ') || methodText.includes('card') ? 'credit_card'
+                      : 'bank_transfer';
+
+                // Khớp gói đăng ký theo tên để lấy đúng mã gói và mức phí
+                const allPackages = store.getPackages();
+                const matchedPackage = pkgVal
+                  ? allPackages.find(p => p.name.toLowerCase().trim() === pkgVal.toLowerCase().trim())
+                    || allPackages.find(p => p.name.toLowerCase().includes(pkgVal.toLowerCase().trim()))
+                  : undefined;
+                const feeParsed = feeRaw ? Number(feeRaw.replace(/[^\d]/g, '')) : NaN;
 
                 maxSeq++;
                 const padSeq = String(maxSeq).padStart(3, '0');
                 const newId = `VSAPS2026-${padSeq}`;
+
+                if (status) explicitStatusIds.add(newId);
 
                 parsedAttendees.push({
                   id: newId,
                   title: titleVal,
                   fullName: cleanName,
                   organization: orgVal,
-                  department: 'Thẩm mỹ & Tạo hình',
+                  department: deptVal || 'Thẩm mỹ & Tạo hình',
                   phone: phoneVal,
                   email: emailVal,
-                  address: 'Việt Nam',
-                  nationality: 'vietname',
-                  packageId: 'pkg-standard',
-                  packageName: pkgVal || 'Gói Đại Biểu Tiêu Chuẩn',
-                  packageFee: 1500000,
-                  paymentStatus: status,
-                  paymentMethod: 'bank_transfer',
-                  registrationDate: new Date().toISOString().split('T')[0],
+                  address: addressVal || provinceVal || 'Việt Nam',
+                  nationality: /nước ngoài|foreign|quốc tế/i.test(nationalityVal) ? 'foreign' : 'vietname',
+                  packageId: matchedPackage?.id || 'pkg-standard',
+                  packageName: matchedPackage?.name || pkgVal || 'Gói Đại Biểu Tiêu Chuẩn',
+                  packageFee: !isNaN(feeParsed) && feeParsed > 0
+                    ? feeParsed
+                    : (matchedPackage?.fee ?? 1500000),
+                  paymentStatus: status || importDefaultPaymentStatus,
+                  paymentMethod: paymentMethodParsed,
+                  transactionProofUrl: fromImportLink(transferLink),
+                  registrationDate: parseDateFlexible(pickBy([any('ngày đăng ký', 'ngày nạp')]))
+                    || new Date().toISOString().split('T')[0],
+                  // Mã QR trong tệp chỉ để tham khảo; mã mới sinh theo mã mới
                   qrCodeValue: `${newId}-${cleanName.replace(/\s+/g, '')}`,
-                  isCheckedIn: false,
-                  yearOfBirth: yobVal,
-                  gender: 'Nam',
-                  cmeRequired: !!cccdVal,
+                  isCheckedIn: isYes(checkedInVal),
+                  checkInTime: checkInTimeVal || undefined,
+                  yearOfBirth: yearOfBirthVal || '1985',
+                  dateOfBirth: dateOfBirthVal,
+                  placeOfBirth: placeOfBirthVal || undefined,
+                  gender: genderVal || 'Nam',
+                  // Có số CCCD thì coi như đăng ký CME, kể cả khi cột cờ bỏ trống
+                  cmeRequired: !!cccdVal || isYes(cmeFlagVal),
                   cmeIdentityNo: cccdVal || undefined,
-                  province: 'Hồ Chí Minh'
+                  galaRequired: isYes(galaVal),
+                  masterclassRequired: isYes(masterclassVal),
+                  tourRequired: isYes(tourVal),
+                  registrationPeriod: /sau|post/i.test(periodVal) ? 'post_10_11' : 'pre_10_11',
+                  province: provinceVal || undefined,
+                  avatarUrl: fromImportLink(avatarLink),
+                  doctorProofUrl: fromImportLink(doctorProofLink),
+                  notes: notesVal || undefined,
                 });
 
-                outputLines.push(`${titleVal} | ${cleanName} | ${phoneVal} | ${emailVal} | ${orgVal} | ${yobVal} | ${cccdVal}`);
+                outputLines.push(`${titleVal} | ${cleanName} | ${phoneVal} | ${emailVal} | ${orgVal} | ${yearOfBirthVal} | ${cccdVal}`);
               }
             });
           }
 
           if (parsedAttendees.length > 0) {
             setExcelParsedAttendees(parsedAttendees);
+            setExcelExplicitStatusIds(explicitStatusIds);
             setBulkInputText(outputLines.join('\n'));
             setUploadFeedback(`📥 Tải file Excel thành công! Đã trích xuất ${parsedAttendees.length} đại biểu từ tệp "${file.name}".`);
             playSoundSound('success');
@@ -881,11 +1016,14 @@ Ban Thư ký Hội nghị VSAPS 2026`
       return;
     }
 
-    // Apply default payment status choice
-    finalItems = finalItems.map(item => ({
-      ...item,
-      paymentStatus: importDefaultPaymentStatus
-    }));
+    // Lựa chọn mặc định chỉ áp cho những dòng không ghi sẵn trạng thái
+    // thanh toán trong tệp. Trước đây ghi đè hết, nên cột trạng thái trong
+    // tệp bị bỏ qua hoàn toàn.
+    finalItems = finalItems.map(item => (
+      excelExplicitStatusIds.has(item.id)
+        ? item
+        : { ...item, paymentStatus: importDefaultPaymentStatus }
+    ));
 
     try {
       await store.saveAttendeesBulk(finalItems);
@@ -1185,22 +1323,141 @@ Ban Thư ký Hội nghị VSAPS 2026`
   };
 
   // Simulated Excel/CSV download
-  const handleExportCSV = () => {
-    const filteredRows = getFilteredAttendees();
-    let csvContent = 'ID,Danh xưng,Họ và tên,Cơ quan,Số ĐT,Email,Gói Đăng Ký,Phí (VNĐ),Thanh Toán,Check In\n';
-    
-    filteredRows.forEach(a => {
-      csvContent += `"${a.id}","${a.title}","${a.fullName}","${a.organization}","${a.phone}","${a.email}","${a.packageName}",${a.packageFee},"${a.paymentStatus}","${a.isCheckedIn ? 'Đã có mặt' : 'Chưa'}"\n`;
-    });
+  /**
+   * Tên cột dùng chung cho tệp XUẤT và tệp MẪU NHẬP của Đại biểu
+   * (mục II và III của file "Đề xuất sửa vsapsevent.org": mẫu nhập phải giống
+   * mẫu xuất). Khai một chỗ để hai bên không bao giờ lệch nhau.
+   */
+  const DELEGATE_COLUMNS = {
+    id: 'Mã đại biểu',
+    title: 'Học hàm học vị',
+    fullName: 'Họ và tên',
+    gender: 'Giới tính',
+    dateOfBirth: 'Ngày sinh',
+    placeOfBirth: 'Nơi sinh',
+    cmeIdentityNo: 'Số CCCD',
+    phone: 'Số điện thoại',
+    email: 'Email',
+    organization: 'Đơn vị công tác',
+    department: 'Khoa / Phòng',
+    province: 'Tỉnh / Thành phố',
+    address: 'Địa chỉ liên hệ',
+    nationality: 'Quốc tịch',
+    packageName: 'Gói đăng ký',
+    packageFee: 'Phí đã tính (VNĐ)',
+    registrationPeriod: 'Thời điểm đăng ký',
+    cmeRequired: 'Đăng ký CME',
+    galaRequired: 'Gala Dinner',
+    masterclassRequired: 'Master Class',
+    tourRequired: 'Tour tham quan',
+    paymentStatus: 'Trạng thái thanh toán',
+    paymentMethod: 'Hình thức thanh toán',
+    registrationDate: 'Ngày đăng ký',
+    avatarUrl: 'Link ảnh chân dung',
+    doctorProofUrl: 'Link ảnh minh chứng bác sĩ',
+    transactionProofUrl: 'Link ảnh chuyển khoản',
+    qrCodeValue: 'Mã QR check-in',
+    isCheckedIn: 'Đã check-in',
+    checkInTime: 'Thời gian check-in',
+    notes: 'Ghi chú',
+  };
 
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `DS_Dai_Bieu_VSAPS2026_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  /** Thứ tự cột của tệp xuất và tệp mẫu, dùng chung cho cả hai. */
+  const DELEGATE_COLUMN_ORDER: (keyof typeof DELEGATE_COLUMNS)[] = [
+    'id', 'title', 'fullName', 'gender', 'dateOfBirth', 'placeOfBirth', 'cmeIdentityNo',
+    'phone', 'email', 'organization', 'department', 'province', 'address', 'nationality',
+    'packageName', 'packageFee', 'registrationPeriod',
+    'cmeRequired', 'galaRequired', 'masterclassRequired', 'tourRequired',
+    'paymentStatus', 'paymentMethod', 'registrationDate',
+    'avatarUrl', 'doctorProofUrl', 'transactionProofUrl',
+    'qrCodeValue', 'isCheckedIn', 'checkInTime', 'notes',
+  ];
+
+  const DELEGATE_COLUMN_WIDTHS: Record<keyof typeof DELEGATE_COLUMNS, number> = {
+    id: 18, title: 14, fullName: 26, gender: 10, dateOfBirth: 12, placeOfBirth: 18,
+    cmeIdentityNo: 16, phone: 14, email: 28, organization: 32, department: 22,
+    province: 18, address: 38, nationality: 12, packageName: 30, packageFee: 16,
+    registrationPeriod: 20, cmeRequired: 13, galaRequired: 13, masterclassRequired: 14,
+    tourRequired: 15, paymentStatus: 20, paymentMethod: 20, registrationDate: 14,
+    avatarUrl: 40, doctorProofUrl: 40, transactionProofUrl: 40,
+    qrCodeValue: 26, isCheckedIn: 13, checkInTime: 18, notes: 40,
+  };
+
+  const yesNo = (v?: boolean) => (v ? 'Có' : 'Không');
+
+  const paymentStatusLabel = (s: Attendee['paymentStatus']) =>
+    s === 'paid' ? 'Đã thanh toán'
+      : s === 'pending_verification' ? 'Chờ đối chiếu'
+        : 'Chưa thanh toán';
+
+  const paymentMethodLabel = (m?: Attendee['paymentMethod']) =>
+    m === 'credit_card' ? 'Thẻ tín dụng'
+      : m === 'cash' ? 'Tiền mặt'
+        : 'Chuyển khoản';
+
+  const periodLabel = (p?: Attendee['registrationPeriod']) =>
+    p === 'post_10_11' ? 'Sau 10/11' : 'Trước 10/11';
+
+  /**
+   * Mục II: xuất đầy đủ mọi trường đại biểu đã nhập, ảnh dưới dạng link.
+   *
+   * Xuất ra .xlsx thay cho .csv. Lý do không chỉ là nhiều cột hơn: với .csv,
+   * Excel tự đổi "0912345678" thành số 912345678, mất chữ số 0 ở đầu, gửi tin
+   * nhắn Zalo OA hàng loạt sẽ không tới được. Ô trong .xlsx được ghi kiểu chữ
+   * nên giữ nguyên chữ số 0.
+   */
+  const handleExportDelegatesXLSX = () => {
+    const rows = getFilteredAttendees();
+    const C = DELEGATE_COLUMNS;
+
+    const valueOf = (a: Attendee, key: keyof typeof DELEGATE_COLUMNS): string => {
+      switch (key) {
+        case 'id': return a.id;
+        case 'title': return a.title;
+        case 'fullName': return a.fullName;
+        case 'gender': return a.gender || '';
+        // Hồ sơ cũ chỉ có năm sinh, không có ngày tháng
+        case 'dateOfBirth': return formatDateVi(a.dateOfBirth) || a.yearOfBirth || '';
+        case 'placeOfBirth': return a.placeOfBirth || '';
+        case 'cmeIdentityNo': return a.cmeIdentityNo || '';
+        case 'phone': return normalizeVietnamesePhone(a.phone);
+        case 'email': return a.email;
+        case 'organization': return a.organization;
+        case 'department': return a.department;
+        case 'province': return a.province || '';
+        case 'address': return a.address;
+        case 'nationality': return a.nationality === 'foreign' ? 'Nước ngoài' : 'Việt Nam';
+        case 'packageName': return a.packageName;
+        case 'packageFee': return String(a.packageFee ?? 0);
+        case 'registrationPeriod': return periodLabel(a.registrationPeriod);
+        case 'cmeRequired': return yesNo(a.cmeRequired);
+        case 'galaRequired': return yesNo(a.galaRequired);
+        case 'masterclassRequired': return yesNo(a.masterclassRequired);
+        case 'tourRequired': return yesNo(a.tourRequired);
+        case 'paymentStatus': return paymentStatusLabel(a.paymentStatus);
+        case 'paymentMethod': return paymentMethodLabel(a.paymentMethod);
+        case 'registrationDate': return a.registrationDate || '';
+        case 'avatarUrl': return toExportLink(a.avatarUrl);
+        case 'doctorProofUrl': return toExportLink(a.doctorProofUrl);
+        case 'transactionProofUrl': return toExportLink(a.transactionProofUrl);
+        case 'qrCodeValue': return a.qrCodeValue || '';
+        case 'isCheckedIn': return a.isCheckedIn ? 'Đã có mặt' : 'Chưa';
+        case 'checkInTime': return a.checkInTime || '';
+        case 'notes': return htmlToPlainText(a.notes);
+        default: return '';
+      }
+    };
+
+    const header = DELEGATE_COLUMN_ORDER.map(k => C[k]);
+    const body = rows.map(a => DELEGATE_COLUMN_ORDER.map(k => valueOf(a, k)));
+
+    const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+    ws['!cols'] = DELEGATE_COLUMN_ORDER.map(k => ({ wch: DELEGATE_COLUMN_WIDTHS[k] }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_Dai_Bieu');
+    const today = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `DS_Dai_Bieu_VSAPS2026_${today}.xlsx`);
   };
 
   const getFilteredAttendees = () => {
@@ -1470,11 +1727,12 @@ Ban Thư ký Hội nghị VSAPS 2026`
         <div className="flex flex-wrap items-center gap-2">
           <button
             id="btn-export-attendee-csv"
-            onClick={handleExportCSV}
+            onClick={handleExportDelegatesXLSX}
             className="px-3.5 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            title="Tải file Excel đầy đủ thông tin đại biểu, ảnh xuất dưới dạng link"
           >
             <FileDown className="w-4 h-4" />
-            Sổ Cái Excel (CSV)
+            Sổ Cái Excel
           </button>
 
           <button
@@ -2633,10 +2891,23 @@ Ban Thư ký Hội nghị VSAPS 2026`
                         </div>
 
                         <div>
-                          <span className="text-[10px] text-slate-450 block font-bold mb-0.5">Năm sinh:</span>
+                          <span className="text-[10px] text-slate-450 block font-bold mb-0.5">Ngày sinh:</span>
                           <div className="flex items-center gap-1.5 p-2 bg-slate-50/50 rounded-lg border border-slate-150 text-slate-800 font-mono font-semibold">
                             <Calendar className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                            <span>{viewDetailAttendee.yearOfBirth || 'Chưa cung cấp'}</span>
+                            {/* Hồ sơ cũ chỉ có năm sinh, không có ngày tháng */}
+                            <span>
+                              {viewDetailAttendee.dateOfBirth
+                                ? formatDateVi(viewDetailAttendee.dateOfBirth)
+                                : (viewDetailAttendee.yearOfBirth || 'Chưa cung cấp')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-[10px] text-slate-450 block font-bold mb-0.5">Nơi sinh:</span>
+                          <div className="flex items-center gap-1.5 p-2 bg-slate-50/50 rounded-lg border border-slate-150 text-slate-800 font-semibold">
+                            <MapPin className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                            <span>{viewDetailAttendee.placeOfBirth || 'Chưa cung cấp'}</span>
                           </div>
                         </div>
 
@@ -2826,15 +3097,37 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           </select>
                         </div>
 
-                        {/* Year of birth */}
+                        {/* Ngày sinh đầy đủ và nơi sinh, bắt buộc để cấp CME */}
                         <div>
-                          <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Năm sinh</label>
+                          <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Ngày tháng năm sinh</label>
+                          <input
+                            type="date"
+                            min="1920-01-01"
+                            max={new Date().toISOString().split('T')[0]}
+                            value={detailEditForm.dateOfBirth || ''}
+                            onChange={(e) => setDetailEditForm({
+                              ...detailEditForm,
+                              dateOfBirth: e.target.value,
+                              // Giữ năm sinh đồng bộ cho các mẫu CME cũ vẫn dùng nó
+                              yearOfBirth: e.target.value ? e.target.value.slice(0, 4) : detailEditForm.yearOfBirth,
+                            })}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                          />
+                          {!detailEditForm.dateOfBirth && detailEditForm.yearOfBirth && (
+                            <p className="text-[10px] text-amber-600 font-bold mt-1">
+                              Hồ sơ này chỉ có năm sinh {detailEditForm.yearOfBirth}, cần bổ sung ngày tháng để cấp CME.
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black text-slate-500 block mb-1 uppercase">Nơi sinh</label>
                           <input
                             type="text"
-                            value={detailEditForm.yearOfBirth || ''}
-                            onChange={(e) => setDetailEditForm({ ...detailEditForm, yearOfBirth: e.target.value })}
-                            placeholder="Ví dụ: 1980"
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-semibold focus:outline-none focus:border-indigo-500"
+                            value={detailEditForm.placeOfBirth || ''}
+                            onChange={(e) => setDetailEditForm({ ...detailEditForm, placeOfBirth: e.target.value })}
+                            placeholder="Ví dụ: Hà Nội"
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
                           />
                         </div>
 
@@ -4073,7 +4366,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
               <div className="bg-amber-50/70 border border-amber-250 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
                 <div className="text-xs text-amber-950 font-medium">
                   <span className="font-extrabold text-amber-900 block text-xs">💡 Chưa có mẫu file Excel?</span>
-                  <span className="text-[11px] text-amber-800">Tải file Excel mẫu chuẩn được format sẵn các cột thông tin để nhập dữ liệu nhanh nhất.</span>
+                  <span className="text-[11px] text-amber-800">Tệp mẫu có đủ 31 cột, đặt trùng tên và trùng thứ tự với tệp ở nút <strong>Sổ Cái Excel</strong>, nên có thể xuất ra, sửa, rồi nạp lại. Chỉ cột <strong>Họ và tên</strong> là bắt buộc; các cột khác để trống được. Ảnh đính kèm đưa lên Google Drive rồi dán đường dẫn vào các cột Link.</span>
                 </div>
                 <button
                   type="button"
