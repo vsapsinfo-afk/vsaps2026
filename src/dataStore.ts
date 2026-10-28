@@ -3598,6 +3598,16 @@ export class DataStore {
    * biểu giả, nên thư không có được lịch trình lẫn ảnh chân dung.
    */
   async sendSpeakerApprovedEmail(speaker: SpeakerRegistration): Promise<SentNotificationLog> {
+    // Đường dẫn thiệp mời riêng của báo cáo viên. Không sinh được thì vẫn gửi
+    // thư, chỉ thiếu nút mở thiệp — không chặn cả việc báo tin đã duyệt bài.
+    let invitationUrl = '';
+    try {
+      const links = await this.getInvitationLinks([speaker.id], 'bcv');
+      invitationUrl = links[speaker.id] || '';
+    } catch (err) {
+      console.error('Không sinh được đường dẫn thiệp mời báo cáo viên:', err);
+    }
+
     const template = this.findEmailTemplate('abstract_approved', [
       // Mã mẫu Ban tổ chức hay dùng cho thư phê duyệt đề tài
       'tmpl-speaker-approved-email', 'tmpl-speaker-approved',
@@ -3644,6 +3654,7 @@ export class DataStore {
       session_time: sessionTime,
       session_room: sessionRoom,
       duration: durationText,
+      invitation_url: invitationUrl,
     };
 
     const subject = this.fillPlaceholders(template.subject || '', values);
@@ -3668,6 +3679,22 @@ export class DataStore {
           <tr><td style="padding: 6px 0; font-weight: bold;">Hội trường:</td><td style="padding: 6px 0;">${sessionRoom}</td></tr>
         </table>
       </div>
+
+      ${invitationUrl ? `
+      <div style="text-align: center; margin: 25px 0; background-color: #eef2fb; border: 1px solid #c3d0ec; padding: 22px; border-radius: 12px;">
+        <p style="font-size: 13px; color: #1d3a75; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase;">Thiệp mời báo cáo của Quý Bác sĩ</p>
+        <p style="font-size: 12.5px; color: #2b509e; margin: 0 0 14px 0; line-height: 1.6;">
+          Kèm ảnh chân dung, tên bài báo cáo và lịch trình. Mở ra có thể lưu PDF hoặc chụp màn hình để chia sẻ.
+        </p>
+        <a href="${invitationUrl}" target="_blank"
+           style="display: inline-block; background-color: #2b509e; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13.5px; padding: 12px 26px; border-radius: 8px;">
+          Mở thiệp mời
+        </a>
+        <p style="font-size: 11px; color: #2b509e; margin: 12px 0 0 0; word-break: break-all;">
+          Hoặc sao chép đường dẫn: ${invitationUrl}
+        </p>
+      </div>
+      ` : ''}
 
       <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 13px; text-transform: uppercase; font-weight: bold;">Thông tin Hội nghị</h4>
@@ -3716,7 +3743,7 @@ export class DataStore {
    * không tự dựng được. Nhờ vậy không ai dò ngược ra danh sách đại biểu bằng
    * cách đoán mã tuần tự.
    */
-  async getInvitationLinks(ids: string[]): Promise<Record<string, string>> {
+  async getInvitationLinks(ids: string[], type: 'dl' | 'bcv' = 'dl'): Promise<Record<string, string>> {
     if (!ids || ids.length === 0) return {};
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -3728,7 +3755,7 @@ export class DataStore {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify({ ids, type }),
     });
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.success) {

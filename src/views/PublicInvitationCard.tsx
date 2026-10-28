@@ -20,6 +20,19 @@ import React, { useEffect, useState } from 'react';
 import { Printer, AlertCircle, Loader2 } from 'lucide-react';
 
 interface InvitationData {
+  /** 'dl' = đại biểu, 'bcv' = báo cáo viên */
+  type?: 'dl' | 'bcv';
+  /** Chỉ có với thiệp báo cáo viên */
+  presentation?: {
+    title: string;
+    track: string;
+    approved: boolean;
+    sessionTitle: string;
+    sessionDate: string;
+    startTime: string;
+    endTime: string;
+    roomName: string;
+  };
   attendee: {
     id: string;
     title: string;
@@ -91,6 +104,7 @@ export default function PublicInvitationCard() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id') || '';
     const k = params.get('k') || '';
+    const t = params.get('t') || '';
 
     if (!id || !k) {
       setError('Đường dẫn thư mời không đầy đủ. Vui lòng mở đúng đường dẫn Ban tổ chức đã gửi.');
@@ -99,7 +113,8 @@ export default function PublicInvitationCard() {
     }
 
     let cancelled = false;
-    fetch(`/api/invitation?id=${encodeURIComponent(id)}&k=${encodeURIComponent(k)}`)
+    const typeParam = t ? `&t=${encodeURIComponent(t)}` : '';
+    fetch(`/api/invitation?id=${encodeURIComponent(id)}&k=${encodeURIComponent(k)}${typeParam}`)
       .then(async res => {
         const json = await res.json().catch(() => null);
         if (cancelled) return;
@@ -142,7 +157,8 @@ export default function PublicInvitationCard() {
     );
   }
 
-  const { attendee, event, sessions } = data;
+  const { attendee, event, sessions, presentation } = data;
+  const isSpeaker = data.type === 'bcv';
   const displayName = `${attendee.title || ''} ${attendee.fullName}`.trim();
   const hasPortrait = !!attendee.avatarUrl && attendee.avatarUrl.startsWith('http');
   const workplace = [attendee.organization, attendee.department].filter(Boolean).join(' — ');
@@ -204,7 +220,7 @@ export default function PublicInvitationCard() {
               className="mt-4 text-[32px] sm:text-[44px] leading-none font-black uppercase"
               style={{ color: BRAND_DARK, letterSpacing: '0.03em' }}
             >
-              Thư mời tham dự
+              {isSpeaker ? 'Thư mời báo cáo' : 'Thư mời tham dự'}
             </h1>
 
             <p
@@ -276,8 +292,9 @@ export default function PublicInvitationCard() {
               className="mt-6 text-[12px] sm:text-[13px] font-bold uppercase"
               style={{ color: BRAND, letterSpacing: '0.14em' }}
             >
-              Đại biểu chính thức
-              {attendee.packageName ? ` · ${attendee.packageName}` : ''}
+              {isSpeaker
+                ? `Báo cáo viên${presentation?.track ? ` · ${presentation.track}` : ''}`
+                : `Đại biểu chính thức${attendee.packageName ? ` · ${attendee.packageName}` : ''}`}
             </p>
             <p
               className="mt-2 text-[13px] font-mono font-bold"
@@ -288,6 +305,70 @@ export default function PublicInvitationCard() {
           </div>
 
           <Divider className="my-9" />
+
+          {/* Bài báo cáo — chỉ có trên thiệp của báo cáo viên */}
+          {isSpeaker && presentation?.title && (
+            <div
+              className="mb-9 px-6 py-7 text-center"
+              style={{ backgroundColor: '#f2f5fc', borderRadius: 14, border: `1px solid ${BRAND}26` }}
+            >
+              <p
+                className="text-[11.5px] font-bold uppercase"
+                style={{ color: BRAND, letterSpacing: '0.18em' }}
+              >
+                Bài báo cáo
+              </p>
+              <p
+                className="mt-3 text-[20px] sm:text-[23px] font-bold leading-snug"
+                style={{ color: BRAND_DARK }}
+              >
+                “{presentation.title}”
+              </p>
+
+              {(presentation.sessionTitle || presentation.sessionDate || presentation.startTime) ? (
+                <div
+                  className="mt-5 pt-5 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center"
+                  style={{ borderTop: `1px solid ${BRAND}26` }}
+                >
+                  <div>
+                    <p className="text-[11px] font-bold uppercase" style={{ color: BRAND, letterSpacing: '0.14em' }}>
+                      Phiên
+                    </p>
+                    <p className="mt-1.5 text-[15px] font-bold leading-snug" style={{ color: TEXT }}>
+                      {presentation.sessionTitle || presentation.track || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase" style={{ color: BRAND, letterSpacing: '0.14em' }}>
+                      Ngày giờ
+                    </p>
+                    <p className="mt-1.5 text-[15px] font-bold leading-snug" style={{ color: TEXT }}>
+                      {presentation.sessionDate ? formatSessionDate(presentation.sessionDate) : '—'}
+                      {presentation.startTime && (
+                        <>
+                          <br />
+                          {presentation.startTime}
+                          {presentation.endTime ? ` – ${presentation.endTime}` : ''}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase" style={{ color: BRAND, letterSpacing: '0.14em' }}>
+                      Hội trường
+                    </p>
+                    <p className="mt-1.5 text-[15px] font-bold leading-snug" style={{ color: TEXT }}>
+                      {presentation.roomName || '—'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-[14px] italic" style={{ color: BRAND_SOFT }}>
+                  Phiên và thời gian trình bày sẽ được Ban tổ chức thông báo sau.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Thời gian và địa điểm */}
           <div
@@ -321,7 +402,10 @@ export default function PublicInvitationCard() {
             </div>
           </div>
 
-          {/* Mã QR check-in, dùng như vé điện tử tại sảnh đón tiếp */}
+          {/* Mã QR check-in, dùng như vé điện tử tại sảnh đón tiếp.
+              Báo cáo viên chưa đăng ký làm đại biểu thì không có mã, ẩn khối này
+              thay vì in ra một mã không quét được. */}
+          {!!attendee.qrCodeValue && (
           <div className="mt-10 flex flex-col items-center">
             <p
               className="text-[11.5px] font-bold uppercase"
@@ -346,6 +430,7 @@ export default function PublicInvitationCard() {
               Quý Bác sĩ xuất trình mã này tại quầy đón tiếp để làm thủ tục nhanh.
             </p>
           </div>
+          )}
 
           {/* Chương trình: chỉ hiện khi Ban tổ chức đã nhập lịch trình */}
           {dates.length > 0 ? (

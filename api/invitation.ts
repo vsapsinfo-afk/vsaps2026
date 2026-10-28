@@ -1,12 +1,13 @@
 /**
- * Cấp dữ liệu cho trang Thư mời tham dự của từng đại biểu.
+ * Cấp dữ liệu cho trang Thư mời tham dự, dùng cho cả Đại biểu và Báo cáo viên.
  *
- * GET  ?id=<mã đại biểu>&k=<mã kiểm tra>
- *      Trang thư mời công khai gọi vào đây. Không cần đăng nhập, vì chính đại
- *      biểu sẽ chia sẻ đường dẫn này lên trang cá nhân.
+ * GET  ?id=<mã hồ sơ>&k=<mã kiểm tra>&t=<dl|bcv>
+ *      Trang thư mời công khai gọi vào đây. Không cần đăng nhập, vì chính
+ *      người được mời sẽ chia sẻ đường dẫn này lên trang cá nhân.
+ *      t=dl (mặc định) là đại biểu, t=bcv là báo cáo viên.
  *
- * POST { ids: [...] }  kèm Bearer token của tài khoản Admin
- *      Sinh đường dẫn thư mời cho một hoặc nhiều đại biểu, để màn hình quản trị
+ * POST { ids: [...], type?: 'dl' | 'bcv' }  kèm Bearer token của tài khoản Admin
+ *      Sinh đường dẫn thư mời cho một hoặc nhiều người, để màn hình quản trị
  *      ghép vào email.
  *
  * Vì sao cần mã kiểm tra `k`:
@@ -20,6 +21,10 @@
  *
  * Riêng mã QR check-in được Ban tổ chức yêu cầu in lên thiệp để dùng như vé điện
  * tử. Lưu ý: ai nhìn thấy tấm thiệp đã đăng công khai cũng thấy được mã này.
+ *
+ * Báo cáo viên không có mã QR riêng, vì quầy đón tiếp chỉ đối chiếu trong bảng
+ * đại biểu. Nếu báo cáo viên cũng đăng ký làm đại biểu (trùng email) thì thiệp
+ * lấy đúng mã QR thật của họ; không thì ẩn khối mã QR đi, không bịa mã giả.
  */
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -32,9 +37,23 @@ function getServiceRoleKey(): string | null {
     || null;
 }
 
-/** Chữ ký của một mã đại biểu. Dùng chung cho cả lúc sinh và lúc kiểm tra. */
-function signId(id: string, secret: string): string {
-  return crypto.createHmac('sha256', secret).update(`invitation:${id}`).digest('hex').slice(0, 20);
+type InviteType = 'dl' | 'bcv';
+
+/**
+ * Chữ ký của một mã hồ sơ. Dùng chung cho cả lúc sinh và lúc kiểm tra.
+ *
+ * Đại biểu giữ nguyên công thức cũ để những đường dẫn đã gửi đi vẫn còn hiệu lực.
+ * Báo cáo viên ký theo công thức riêng, nên không thể lấy mã kiểm tra của loại này
+ * dùng cho loại kia.
+ */
+function signId(id: string, secret: string, type: InviteType = 'dl'): string {
+  const payload = type === 'bcv' ? `invitation:speaker:${id}` : `invitation:${id}`;
+  return crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 20);
+}
+
+/** Đọc tham số loại hồ sơ, mặc định là đại biểu. */
+function readType(raw: unknown): InviteType {
+  return String(raw || '').trim().toLowerCase() === 'bcv' ? 'bcv' : 'dl';
 }
 
 /** So sánh chuỗi theo kiểu không lộ thời gian, tránh dò từng ký tự. */
@@ -105,6 +124,7 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
     const authError = await assertAdmin(req, supabaseUrl, serviceRoleKey);
     if (authError) return res.status(403).json({ success: false, error: authError });
 
+    const type = readType((req.body || {}).type);
     const ids: unknown = (req.body || {}).ids;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, error: 'Thiếu danh sách mã đại biểu.' });
@@ -118,7 +138,9 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
     ids.forEach(raw => {
       const id = String(raw || '').trim();
       if (!id) return;
-      links[id] = `${base}/?view=thu-moi&id=${encodeURIComponent(id)}&k=${signId(id, serviceRoleKey)}`;
+      const token = signId(id, serviceRoleKey, type);
+      const suffix = type === 'bcv' ? '&t=bcv' : '';
+      links[id] = `${base}/?view=thu-moi&id=${encodeURIComponent(id)}&k=${token}${suffix}`;
     });
 
     return res.json({ success: true, links });
@@ -131,11 +153,105 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
   // ----- GET: dữ liệu cho trang thư mời -----
   const id = String(req.query.id || '').trim();
   const key = String(req.query.k || '').trim();
+  const type = readType(req.query.t);
   if (!id || !key) {
     return res.status(400).json({ success: false, error: 'Đường dẫn thư mời không đầy đủ.' });
   }
-  if (!safeEqual(key, signId(id, serviceRoleKey))) {
+  if (!safeEqual(key, signId(id, serviceRoleKey, type))) {
     return res.status(404).json({ success: false, error: 'Đường dẫn thư mời không hợp lệ hoặc đã hết hiệu lực.' });
+  }
+
+  // Thông tin hội nghị và chương trình dùng chung cho cả hai loại thiệp
+  const loadCommon = async () => {
+    const { data: sessions } = await db
+      .from('sessions')
+      .select('id, title, date, start_time, end_time, room_name, track, speaker_name')
+      .order('date', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    const { data: config } = await db
+      .from('business_config')
+      .select('event_name, organizer_name, event_date, event_location')
+      .limit(1)
+      .single();
+
+    return {
+      event: {
+        name: config?.event_name || 'Hội nghị Khoa học Thường niên VSAPS 2026',
+        organizer: config?.organizer_name || 'Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam',
+        date: config?.event_date || '11 – 13/12/2026',
+        location: config?.event_location || 'Bệnh viện Quân y 175, TP. Hồ Chí Minh',
+      },
+      sessionRows: sessions || [],
+      sessions: (sessions || []).map(x => ({
+        id: x.id,
+        title: x.title || '',
+        date: x.date || '',
+        startTime: x.start_time || '',
+        endTime: x.end_time || '',
+        roomName: x.room_name || '',
+        track: x.track || '',
+        speakerName: x.speaker_name || '',
+      })),
+    };
+  };
+
+  // ----- Thư mời Báo cáo viên -----
+  if (type === 'bcv') {
+    const { data: speaker, error: speakerError } = await db
+      .from('speakers')
+      .select('id, title, full_name, organization, department, email, avatar_url, nationality, presentation_title, presentation_track, status, scheduled_session_id')
+      .eq('id', id)
+      .single();
+
+    if (speakerError || !speaker) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy hồ sơ báo cáo viên.' });
+    }
+
+    const common = await loadCommon();
+
+    // Phiên đã xếp cho bài báo cáo này, nếu Ban tổ chức đã xếp lịch
+    const mine = common.sessionRows.find(x => x.id === speaker.scheduled_session_id);
+
+    // Báo cáo viên không có mã QR riêng. Nếu họ cũng đăng ký làm đại biểu thì
+    // lấy đúng mã QR thật theo email, còn không thì để trống.
+    let qrCodeValue = '';
+    if (speaker.email) {
+      const { data: matched } = await db
+        .from('attendees')
+        .select('qr_code_value')
+        .ilike('email', speaker.email.trim())
+        .limit(1);
+      if (matched && matched.length > 0) qrCodeValue = matched[0].qr_code_value || '';
+    }
+
+    return res.json({
+      success: true,
+      type: 'bcv',
+      attendee: {
+        id: speaker.id,
+        title: speaker.title || '',
+        fullName: speaker.full_name || '',
+        organization: speaker.organization || '',
+        department: speaker.department || '',
+        packageName: '',
+        avatarUrl: speaker.avatar_url || '',
+        nationality: speaker.nationality || 'vietname',
+        qrCodeValue,
+      },
+      presentation: {
+        title: speaker.presentation_title || '',
+        track: speaker.presentation_track || '',
+        approved: speaker.status === 'approved',
+        sessionTitle: mine?.title || '',
+        sessionDate: mine?.date || '',
+        startTime: mine?.start_time || '',
+        endTime: mine?.end_time || '',
+        roomName: mine?.room_name || '',
+      },
+      event: common.event,
+      sessions: common.sessions,
+    });
   }
 
   const { data: attendee, error: attendeeError } = await db
@@ -148,22 +264,13 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ success: false, error: 'Không tìm thấy hồ sơ đại biểu.' });
   }
 
-  // Chương trình hội nghị. Bảng có thể còn trống nếu Ban tổ chức chưa nhập lịch;
+  // Chương trình hội nghị có thể còn trống nếu Ban tổ chức chưa nhập lịch;
   // khi đó trang thư mời tự ẩn phần chương trình đi.
-  const { data: sessions } = await db
-    .from('sessions')
-    .select('id, title, date, start_time, end_time, room_name, track, speaker_name')
-    .order('date', { ascending: true })
-    .order('start_time', { ascending: true });
-
-  const { data: config } = await db
-    .from('business_config')
-    .select('event_name, organizer_name, event_date, event_location')
-    .limit(1)
-    .single();
+  const common = await loadCommon();
 
   return res.json({
     success: true,
+    type: 'dl',
     attendee: {
       id: attendee.id,
       title: attendee.title || '',
@@ -175,22 +282,8 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
       nationality: attendee.nationality || 'vietname',
       qrCodeValue: attendee.qr_code_value || attendee.id,
     },
-    event: {
-      name: config?.event_name || 'Hội nghị Khoa học Thường niên VSAPS 2026',
-      organizer: config?.organizer_name || 'Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam',
-      date: config?.event_date || '11 – 13/12/2026',
-      location: config?.event_location || 'Bệnh viện Quân y 175, TP. Hồ Chí Minh',
-    },
-    sessions: (sessions || []).map(s => ({
-      id: s.id,
-      title: s.title || '',
-      date: s.date || '',
-      startTime: s.start_time || '',
-      endTime: s.end_time || '',
-      roomName: s.room_name || '',
-      track: s.track || '',
-      speakerName: s.speaker_name || '',
-    })),
+    event: common.event,
+    sessions: common.sessions,
   });
 }
 

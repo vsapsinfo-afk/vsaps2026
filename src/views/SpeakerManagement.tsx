@@ -208,6 +208,21 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
   };
 
+  /** Mở thử thiệp mời của một báo cáo viên, để soát trước khi gửi. */
+  const handlePreviewSpeakerInvitation = async (spk: SpeakerRegistration) => {
+    try {
+      const links = await store.getInvitationLinks([spk.id], 'bcv');
+      const url = links[spk.id];
+      if (!url) {
+        alert('Không sinh được đường dẫn thiệp mời cho hồ sơ này.');
+        return;
+      }
+      window.open(url, '_blank');
+    } catch (err: any) {
+      alert(`Không mở được thiệp mời: ${err?.message || err}`);
+    }
+  };
+
   const handleUpdateStatus = async (id: string, newStatus: 'approved' | 'rejected' | 'pending') => {
     if (role === 'ctv') {
       alert('Tài khoản Cộng tác viên không có quyền phê duyệt đề tài báo cáo khoa học!');
@@ -1702,12 +1717,22 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                   </span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 justify-end">
                   <button
                     onClick={() => setSelectedSpeaker(null)}
-                    className="px-4 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                    className="px-4 py-2 text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl whitespace-nowrap"
                   >
                     Đóng
+                  </button>
+
+                  {/* Xem thử chính tấm thiệp mà báo cáo viên sẽ nhận */}
+                  <button
+                    type="button"
+                    onClick={() => handlePreviewSpeakerInvitation(selectedSpeaker)}
+                    className="px-4 py-2 text-xs bg-slate-50 hover:bg-slate-700 hover:text-white text-slate-700 border border-slate-200 font-bold rounded-xl whitespace-nowrap transition-colors"
+                    title="Mở thử trang thiệp mời của báo cáo viên này trong tab mới"
+                  >
+                    Xem Thiệp Mời
                   </button>
                   {role !== 'ctv' && (
                     <>

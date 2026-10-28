@@ -569,11 +569,19 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           workingList.map((d: any) => String(d.code || '').trim()).filter(Boolean)
         ));
         if (ids.length === 0) {
-          alert('Danh sách người nhận không có mã đại biểu nên không sinh được đường dẫn thư mời.');
+          alert('Danh sách người nhận không có mã hồ sơ nên không sinh được đường dẫn thư mời.');
           return;
         }
+        // Mã báo cáo viên luôn bắt đầu bằng SPK-, còn lại là đại biểu. Hai loại
+        // ký mã kiểm tra khác nhau nên phải xin đường dẫn riêng cho từng nhóm.
+        const speakerIds = ids.filter(x => x.toUpperCase().startsWith('SPK-'));
+        const delegateIds = ids.filter(x => !x.toUpperCase().startsWith('SPK-'));
         try {
-          const links = await store.getInvitationLinks(ids);
+          const [delegateLinks, speakerLinks] = await Promise.all([
+            delegateIds.length > 0 ? store.getInvitationLinks(delegateIds, 'dl') : Promise.resolve({}),
+            speakerIds.length > 0 ? store.getInvitationLinks(speakerIds, 'bcv') : Promise.resolve({}),
+          ]);
+          const links: Record<string, string> = { ...delegateLinks, ...speakerLinks };
           const missing: string[] = [];
           workingList.forEach(d => {
             const link = links[String(d.code || '').trim()];
@@ -583,7 +591,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           if (missing.length > 0) {
             alert(
               `Không sinh được đường dẫn thư mời cho ${missing.length} người. `
-              + 'Những dòng này thiếu mã đại biểu, vui lòng nạp lại danh sách từ nguồn Đại biểu.'
+              + 'Những dòng này thiếu mã hồ sơ, vui lòng nạp lại danh sách từ nguồn Đại biểu hoặc Báo cáo viên.'
             );
             return;
           }
@@ -4621,7 +4629,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         { code: 'payment_status', label: 'Trạng thái thanh toán' },
                         { code: 'organization', label: 'Đơn vị công tác' },
                         { code: 'qr_url', label: 'Link ảnh mã QR check-in' },
-                        { code: 'invitation_url', label: 'Link thư mời riêng của đại biểu' }
+                        { code: 'invitation_url', label: 'Link thư mời riêng (đại biểu và báo cáo viên)' }
                       ].map(ph => (
                         <button
                           key={ph.code}
