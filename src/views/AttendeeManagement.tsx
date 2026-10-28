@@ -1122,12 +1122,6 @@ Ban Thư ký Hội nghị VSAPS 2026`
           store.sendZaloZNS(found, zTmpl?.id || 'payment_confirmed');
           store.sendEmail(found, undefined, undefined, eTmpl?.id || 'payment_confirmed');
           store.sendWhatsapp(found, wTmpl?.id || 'payment_confirmed');
-
-          // Thư mời tự động (mục VIII.1). Mặc định TẮT vì nội dung và thiết
-          // kế phôi thư mời còn chờ Ban tổ chức chốt. Bật trong Cài đặt hệ thống.
-          if (store.getBusinessConfig().autoSendInvitationLetter) {
-            store.sendDelegateInvitationEmail(found);
-          }
         } catch (err) {
           console.error('Lỗi gửi tin nhắn khi cập nhật trạng thái thanh toán:', err);
         }
@@ -1144,6 +1138,16 @@ Ban Thư ký Hội nghị VSAPS 2026`
    * phí; vé miễn phí của Ủy viên BCH Hội không đi qua bước đó.
    */
   const handleSendInvitation = async (attendee: Attendee) => {
+    // Khóa an toàn: chặn mọi đường gửi thư mời cho tới khi Ban tổ chức chốt
+    // xong nội dung và bật công tắc trong Cài đặt hệ thống.
+    if (!store.getBusinessConfig().autoSendInvitationLetter) {
+      alert(
+        'Chức năng gửi thư mời đang tắt.\n\n'
+        + 'Vào Cài đặt hệ thống > Cho phép gửi thư mời đại biểu để bật, '
+        + 'sau khi đã chốt nội dung thư mời.'
+      );
+      return;
+    }
     if (!attendee.email) {
       alert('Hồ sơ này chưa có địa chỉ email nên không gửi được thư mời.');
       return;
@@ -1162,6 +1166,21 @@ Ban Thư ký Hội nghị VSAPS 2026`
       alert(`Lỗi khi gửi thư mời: ${err?.message || err}`);
     } finally {
       setIsSendingInvitation(false);
+    }
+  };
+
+  /** Mở thử trang thư mời của một đại biểu, để soát nội dung trước khi gửi. */
+  const handlePreviewInvitation = async (attendee: Attendee) => {
+    try {
+      const links = await store.getInvitationLinks([attendee.id]);
+      const url = links[attendee.id];
+      if (!url) {
+        alert('Không sinh được đường dẫn thư mời cho hồ sơ này.');
+        return;
+      }
+      window.open(url, '_blank');
+    } catch (err: any) {
+      alert(`Không mở được thư mời: ${err?.message || err}`);
     }
   };
 
@@ -3502,6 +3521,17 @@ Ban Thư ký Hội nghị VSAPS 2026`
                     >
                       <Mail className="w-4 h-4" />
                       {isSendingInvitation ? 'Đang gửi thư mời...' : 'Gửi Thư Mời'}
+                    </button>
+
+                    {/* Xem trước chính tấm thiệp mà đại biểu sẽ nhận */}
+                    <button
+                      type="button"
+                      onClick={() => handlePreviewInvitation(viewDetailAttendee)}
+                      className="px-4 py-2 text-[11px] font-bold text-slate-700 hover:text-white bg-slate-50 border border-slate-200 hover:bg-slate-700 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap"
+                      title="Mở thử trang thư mời của đại biểu này trong tab mới"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Xem Thư Mời
                     </button>
 
                     {/* Main Checkin Status change button */}

@@ -1842,13 +1842,15 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                       </button>
                     </div>
 
-                    {/* Tự động gửi thư mời đại biểu (mục VIII file đề xuất) */}
+                    {/* Khóa an toàn cho thư mời đại biểu (mục VIII file đề xuất) */}
                     <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-150">
                       <div className="pr-3">
-                        <span className="text-xs font-bold text-slate-850 block">Tự động gửi thư mời đại biểu</span>
+                        <span className="text-xs font-bold text-slate-850 block">Cho phép gửi thư mời đại biểu</span>
                         <span className="text-[10px] text-slate-400">
-                          Gửi thư mời kèm ảnh chân dung và mã QR ngay khi đại biểu được xác nhận đã đóng phí.
-                          Nên bật sau khi đã chốt nội dung phôi thư mời ở mẫu <strong>Thư mời tham dự (Email)</strong>.
+                          Khi tắt, mọi đường gửi thư mời đều bị khóa, kể cả gửi tay từng người.
+                          Hệ thống <strong>không bao giờ tự gửi</strong> — Ban tổ chức luôn phải tự chọn người nhận.
+                          Chỉ bật sau khi đã chốt nội dung ở mẫu <strong>Thư mời tham dự (Email)</strong> và
+                          xem thử bằng nút <strong>Xem Thư Mời</strong> trong chi tiết đại biểu.
                         </span>
                       </div>
                       <button

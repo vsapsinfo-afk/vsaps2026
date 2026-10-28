@@ -35,6 +35,7 @@ const PublicDelegateRegister = lazy(() => import('./views/PublicDelegateRegister
 const PublicSpeakerRegister = lazy(() => import('./views/PublicSpeakerRegister'));
 const PublicSponsorRegister = lazy(() => import('./views/PublicSponsorRegister'));
 const PublicCheckRegistration = lazy(() => import('./views/PublicCheckRegistration'));
+const PublicInvitationCard = lazy(() => import('./views/PublicInvitationCard'));
 
 // Middleware permission mapping for views
 const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
@@ -59,7 +60,7 @@ function AppContent() {
       const viewParam = params.get('view');
       const validViews = [
         'overview', 'attendees', 'speakers', 'schedule', 'tasks', 'finances', 'sponsors', 'notifications', 'bulk-send', 'settings',
-        'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'
+        'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration', 'thu-moi'
       ];
       if (viewParam) {
         const baseView = viewParam.replace(/\/(vn|vi|en)$/i, '');
@@ -257,7 +258,7 @@ function AppContent() {
   };
 
   // Check if current view is public or admin-side
-  const isPublicView = ['event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(currentView);
+  const isPublicView = ['event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration', 'thu-moi'].includes(currentView);
 
   // Middleware effect: watch role and view changes, block and redirect unauthorized access
   useEffect(() => {
@@ -277,7 +278,7 @@ function AppContent() {
   }, [currentView, role, isPublicView]);
 
   const handleNavigate = (view: string) => {
-    const isPublic = ['event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(view);
+    const isPublic = ['event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration', 'thu-moi'].includes(view);
     if (!isPublic) {
       const allowedRoles = VIEW_ROLE_PERMISSIONS[view];
       if (allowedRoles && !allowedRoles.includes(role)) {
@@ -333,6 +334,9 @@ function AppContent() {
         return <PublicSponsorRegister onNavigate={handleNavigate} />;
       case 'check-registration':
         return <PublicCheckRegistration onNavigate={handleNavigate} />;
+      // Thư mời tham dự của từng đại biểu, mở bằng đường dẫn riêng kèm mã kiểm tra
+      case 'thu-moi':
+        return <PublicInvitationCard />;
       
       default:
         return <DashboardOverview role={role} />;

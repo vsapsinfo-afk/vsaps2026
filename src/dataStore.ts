@@ -3709,7 +3709,38 @@ export class DataStore {
    * "Thư mời tham dự (Email)". Vì vậy việc tự động gửi mặc định TẮT, xem cờ
    * businessConfig.autoSendInvitationLetter.
    */
+  /**
+   * Xin máy chủ sinh đường dẫn thư mời cho một hoặc nhiều đại biểu.
+   *
+   * Đường dẫn kèm mã kiểm tra ký bằng khóa chỉ máy chủ biết, nên trình duyệt
+   * không tự dựng được. Nhờ vậy không ai dò ngược ra danh sách đại biểu bằng
+   * cách đoán mã tuần tự.
+   */
+  async getInvitationLinks(ids: string[]): Promise<Record<string, string>> {
+    if (!ids || ids.length === 0) return {};
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error('Không đọc được phiên đăng nhập. Vui lòng đăng nhập lại.');
+
+    const res = await fetch('/api/invitation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ids }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) {
+      throw new Error(json?.error || 'Máy chủ không sinh được đường dẫn thư mời.');
+    }
+    return json.links || {};
+  }
+
   async sendDelegateInvitationEmail(attendee: Attendee): Promise<SentNotificationLog> {
+    const links = await this.getInvitationLinks([attendee.id]);
+    const invitationUrl = links[attendee.id] || '';
+
     const template = this.findEmailTemplate('invitation_letter', [
       'tmpl-invitation-letter-email',
     ], {
@@ -3721,7 +3752,9 @@ export class DataStore {
         '',
         'Ban Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng cảm ơn Quý Bác sĩ đã hoàn tất đăng ký tham dự Hội nghị.',
         '',
-        'Ban Tổ chức xin trân trọng kính mời Quý Bác sĩ tới tham dự Hội nghị với tư cách đại biểu chính thức. Thư mời này kèm ảnh chân dung và thông tin đăng ký của Quý Bác sĩ, Quý Bác sĩ có thể dùng để giới thiệu trên các kênh truyền thông cá nhân.',
+        'Ban Tổ chức xin trân trọng kính mời Quý Bác sĩ tới tham dự Hội nghị với tư cách đại biểu chính thức.',
+        '',
+        'Thư mời riêng của Quý Bác sĩ, kèm ảnh chân dung và chương trình hội nghị, đã sẵn sàng ở đường dẫn bên dưới. Quý Bác sĩ có thể mở, lưu thành PDF hoặc chụp màn hình để chia sẻ trên các kênh truyền thông cá nhân.',
       ].join('\n'),
     });
 
@@ -3734,6 +3767,7 @@ export class DataStore {
       package: attendee.packageName || '',
       email: attendee.email || '',
       phone: attendee.phone || '',
+      invitation_url: invitationUrl,
     };
 
     const subject = this.fillPlaceholders(template.subject || '', values);
@@ -3763,6 +3797,22 @@ export class DataStore {
             : ''}
         </table>
       </div>
+
+      ${invitationUrl ? `
+      <div style="text-align: center; margin: 25px 0; background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 22px; border-radius: 12px;">
+        <p style="font-size: 13px; color: #065f46; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase;">Thư mời riêng của Quý Bác sĩ</p>
+        <p style="font-size: 12.5px; color: #047857; margin: 0 0 14px 0; line-height: 1.6;">
+          Kèm ảnh chân dung và chương trình hội nghị. Mở ra có thể lưu PDF hoặc chụp màn hình để chia sẻ.
+        </p>
+        <a href="${invitationUrl}" target="_blank"
+           style="display: inline-block; background-color: #0d9488; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13.5px; padding: 12px 26px; border-radius: 8px;">
+          Mở thư mời
+        </a>
+        <p style="font-size: 11px; color: #047857; margin: 12px 0 0 0; word-break: break-all;">
+          Hoặc sao chép đường dẫn: ${invitationUrl}
+        </p>
+      </div>
+      ` : ''}
 
       <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
         <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 13px; text-transform: uppercase; font-weight: bold;">Thông tin Hội nghị</h4>

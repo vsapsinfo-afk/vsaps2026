@@ -552,6 +552,48 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       }
     }
 
+    // Nếu nội dung thư có dùng {{invitation_url}} thì phải xin máy chủ sinh
+    // đường dẫn thư mời riêng cho từng người. Trình duyệt không tự dựng được
+    // vì đường dẫn có kèm mã kiểm tra ký bằng khóa chỉ máy chủ biết.
+    if (bulkChannel === 'email') {
+      const bodyForCheck = bulkSubTab === 'campaign' && selectedCampaign ? selectedCampaign.body : bulkBody;
+      if ((bodyForCheck || '').includes('{{invitation_url}}')) {
+        if (!store.getBusinessConfig().autoSendInvitationLetter) {
+          alert(
+            'Nội dung thư có dùng đường dẫn thư mời, nhưng chức năng gửi thư mời đang tắt.\n\n'
+            + 'Vào Cài đặt hệ thống > Cho phép gửi thư mời đại biểu để bật.'
+          );
+          return;
+        }
+        const ids: string[] = Array.from(new Set<string>(
+          workingList.map((d: any) => String(d.code || '').trim()).filter(Boolean)
+        ));
+        if (ids.length === 0) {
+          alert('Danh sách người nhận không có mã đại biểu nên không sinh được đường dẫn thư mời.');
+          return;
+        }
+        try {
+          const links = await store.getInvitationLinks(ids);
+          const missing: string[] = [];
+          workingList.forEach(d => {
+            const link = links[String(d.code || '').trim()];
+            if (link) d.invitation_url = link;
+            else missing.push(d.name || d.email || d.code);
+          });
+          if (missing.length > 0) {
+            alert(
+              `Không sinh được đường dẫn thư mời cho ${missing.length} người. `
+              + 'Những dòng này thiếu mã đại biểu, vui lòng nạp lại danh sách từ nguồn Đại biểu.'
+            );
+            return;
+          }
+        } catch (err: any) {
+          alert(`Không sinh được đường dẫn thư mời: ${err?.message || err}`);
+          return;
+        }
+      }
+    }
+
     // Đối chiếu lịch sử để không gửi trùng cho người đã nhận ở lần trước.
     let alreadySent = new Set<string>();
     if (bulkChannel === 'email' && skipAlreadySent) {
@@ -4578,7 +4620,8 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         { code: 'package', label: 'Gói đăng ký' },
                         { code: 'payment_status', label: 'Trạng thái thanh toán' },
                         { code: 'organization', label: 'Đơn vị công tác' },
-                        { code: 'qr_url', label: 'Link ảnh mã QR check-in' }
+                        { code: 'qr_url', label: 'Link ảnh mã QR check-in' },
+                        { code: 'invitation_url', label: 'Link thư mời riêng của đại biểu' }
                       ].map(ph => (
                         <button
                           key={ph.code}
