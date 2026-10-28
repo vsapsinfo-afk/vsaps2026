@@ -35,6 +35,8 @@ export function mapAttendeeToDb(a: Attendee): Record<string, any> {
     check_in_time: a.checkInTime || null,
     notes: a.notes || null,
     year_of_birth: a.yearOfBirth || null,
+    date_of_birth: a.dateOfBirth || null,
+    place_of_birth: a.placeOfBirth || null,
     gender: a.gender || null,
     cme_required: a.cmeRequired || false,
     cme_identity_no: a.cmeIdentityNo || null,
@@ -44,6 +46,9 @@ export function mapAttendeeToDb(a: Attendee): Record<string, any> {
     registration_period: a.registrationPeriod || null,
     province: a.province || null,
     avatar_url: a.avatarUrl || null,
+    // Cột này đã có sẵn trong bảng nhưng trước đây không được ghi, nên ảnh bằng
+    // cấp đại biểu tải lên bị mất mỗi khi đồng bộ lên Supabase.
+    doctor_proof_url: a.doctorProofUrl || null,
   };
 }
 
@@ -70,6 +75,8 @@ export function mapDbToAttendee(row: any): Attendee {
     checkInTime: row.check_in_time || undefined,
     notes: row.notes || undefined,
     yearOfBirth: row.year_of_birth || undefined,
+    dateOfBirth: row.date_of_birth || undefined,
+    placeOfBirth: row.place_of_birth || undefined,
     gender: row.gender || undefined,
     cmeRequired: Boolean(row.cme_required),
     cmeIdentityNo: row.cme_identity_no || undefined,
@@ -79,6 +86,7 @@ export function mapDbToAttendee(row: any): Attendee {
     registrationPeriod: row.registration_period || undefined,
     province: row.province || undefined,
     avatarUrl: row.avatar_url || undefined,
+    doctorProofUrl: row.doctor_proof_url || undefined,
   };
 }
 
@@ -95,9 +103,15 @@ export function mapSpeakerToDb(s: SpeakerRegistration): Record<string, any> {
     phone: s.phone,
     email: s.email,
     bio: s.bio,
+    bio_en: s.bioEn || null,
     presentation_title: s.presentationTitle,
     presentation_track: s.presentationTrack,
     abstract_text: s.abstractText,
+    abstract_en: s.abstractEn || null,
+    date_of_birth: s.dateOfBirth || null,
+    place_of_birth: s.placeOfBirth || null,
+    identity_no: s.identityNo || null,
+    degree_proof_url: s.degreeProofUrl || null,
     document_url: s.documentUrl || null,
     document_name: s.documentName || null,
     calendar_synced: s.calendarSynced,
@@ -119,9 +133,15 @@ export function mapDbToSpeaker(row: any): SpeakerRegistration {
     phone: row.phone || '',
     email: row.email || '',
     bio: row.bio || '',
+    bioEn: row.bio_en || undefined,
     presentationTitle: row.presentation_title || '',
     presentationTrack: row.presentation_track || '',
     abstractText: row.abstract_text || '',
+    abstractEn: row.abstract_en || undefined,
+    dateOfBirth: row.date_of_birth || undefined,
+    placeOfBirth: row.place_of_birth || undefined,
+    identityNo: row.identity_no || undefined,
+    degreeProofUrl: row.degree_proof_url || undefined,
     documentUrl: row.document_url || undefined,
     documentName: row.document_name || undefined,
     calendarSynced: Boolean(row.calendar_synced),
@@ -419,6 +439,7 @@ export function mapTrackToDb(t: SpecialtyTrack): Record<string, any> {
     name: t.name,
     name_en: t.nameEn || null,
     description: t.description || null,
+    is_accepting_new: t.isAcceptingNew !== false,
   };
 }
 
@@ -428,6 +449,8 @@ export function mapDbToTrack(row: any): SpecialtyTrack {
     name: row.name || '',
     nameEn: row.name_en || undefined,
     description: row.description || undefined,
+    // Cột mới: hàng cũ trả về null thì vẫn coi là còn nhận đăng ký.
+    isAcceptingNew: row.is_accepting_new !== false,
   };
 }
 

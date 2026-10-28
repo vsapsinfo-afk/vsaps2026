@@ -54,6 +54,8 @@ CREATE TABLE public.specialty_tracks (
     name TEXT NOT NULL,
     name_en TEXT,
     description TEXT,
+    -- FALSE = ngung nhan dang ky moi, nhung van giu cho ho so cu
+    is_accepting_new BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -135,6 +137,8 @@ CREATE TABLE public.attendees (
     check_in_time TEXT, -- Format: YYYY-MM-DD HH:MM
     notes TEXT,
     year_of_birth INTEGER,
+    date_of_birth TEXT,
+    place_of_birth TEXT,
     gender TEXT,
     cme_required BOOLEAN DEFAULT FALSE,
     cme_identity_no TEXT,
@@ -144,6 +148,7 @@ CREATE TABLE public.attendees (
     registration_period TEXT,
     province TEXT,
     avatar_url TEXT,
+    doctor_proof_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -157,9 +162,15 @@ CREATE TABLE public.speakers (
     phone TEXT,
     email TEXT,
     bio TEXT,
+    bio_en TEXT,
     presentation_title TEXT NOT NULL,
     presentation_track TEXT,
     abstract_text TEXT,
+    abstract_en TEXT,
+    date_of_birth TEXT,
+    place_of_birth TEXT,
+    identity_no TEXT,
+    degree_proof_url TEXT,
     document_url TEXT,
     document_name TEXT,
     calendar_synced BOOLEAN DEFAULT FALSE,

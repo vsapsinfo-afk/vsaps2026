@@ -1135,6 +1135,18 @@ export class DataStore {
             }
           }
 
+          // 3. Upload anh bang cap (minh chung bac si) neu con la base64.
+          //    Thieu buoc nay thi anh khong bao gio ra khoi may dai bieu.
+          if (attendee.doctorProofUrl && attendee.doctorProofUrl.startsWith('data:')) {
+            const ext = attendee.doctorProofUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `doctor-proofs/${attendee.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, attendee.doctorProofUrl);
+            if (publicUrl) {
+              updatedAttendee.doctorProofUrl = publicUrl;
+              changed = true;
+            }
+          }
+
           // Update local memory and storage to reflect clean storage URLs
           if (changed) {
             const idxMemory = this.attendees.findIndex(a => a.id === attendee.id);
@@ -1219,6 +1231,17 @@ export class DataStore {
           const publicUrl = await uploadToSupabaseStorage(path, attendee.transactionProofUrl);
           if (publicUrl) {
             updatedAttendee.transactionProofUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        // 3. Upload anh bang cap (minh chung bac si) neu con la base64.
+        if (attendee.doctorProofUrl && attendee.doctorProofUrl.startsWith('data:')) {
+          const ext = attendee.doctorProofUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `doctor-proofs/${attendee.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, attendee.doctorProofUrl);
+          if (publicUrl) {
+            updatedAttendee.doctorProofUrl = publicUrl;
             changed = true;
           }
         }
@@ -1419,6 +1442,17 @@ export class DataStore {
             }
           }
 
+          // Anh bang cap bao cao vien, bat buoc de cap CME.
+          if (speaker.degreeProofUrl && speaker.degreeProofUrl.startsWith('data:')) {
+            const ext = speaker.degreeProofUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `degree-proofs/${speaker.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, speaker.degreeProofUrl);
+            if (publicUrl) {
+              updatedSpeaker.degreeProofUrl = publicUrl;
+              changed = true;
+            }
+          }
+
           if (speaker.documentUrl && speaker.documentUrl.includes('data:')) {
             const urls = speaker.documentUrl.split('|');
             const uploadedUrls = [];
@@ -1502,6 +1536,17 @@ export class DataStore {
           const publicUrl = await uploadToSupabaseStorage(path, speaker.avatarUrl);
           if (publicUrl) {
             updatedSpeaker.avatarUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        // Anh bang cap bao cao vien, bat buoc de cap CME.
+        if (speaker.degreeProofUrl && speaker.degreeProofUrl.startsWith('data:')) {
+          const ext = speaker.degreeProofUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `degree-proofs/${speaker.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, speaker.degreeProofUrl);
+          if (publicUrl) {
+            updatedSpeaker.degreeProofUrl = publicUrl;
             changed = true;
           }
         }
