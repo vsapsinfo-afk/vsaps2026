@@ -7,21 +7,59 @@
 
 ## 0. Việc phải làm TRƯỚC khi dùng
 
-### Bước 1 — Chạy script bổ sung cột trong cơ sở dữ liệu
+### Bước 1 — Cập nhật cơ sở dữ liệu
 
-Vào **Supabase Dashboard → SQL Editor**, dán toàn bộ nội dung tệp
-`supabase/add_cme_and_track_fields.sql` rồi bấm **Run**.
+Những tính năng mới cần thêm một số cột vào cơ sở dữ liệu. Có **hai cách**, chọn một.
 
-Script này làm 4 việc, chạy lại nhiều lần cũng không sao và không làm mất dữ liệu:
+#### Cách 1 — Bấm nút trong admin (khuyến nghị)
 
-1. Thêm cột ngày sinh và nơi sinh cho đại biểu
-2. Thêm cột ngày sinh, nơi sinh, số CCCD, ảnh bằng cấp và hai bản dịch tiếng Anh cho báo cáo viên
-3. Thêm **10 chuyên đề mới** và ngừng nhận đăng ký vào 2 chuyên đề cũ
-4. Thêm cờ bật/tắt thư mời tự động
+Vào **Cài đặt → Cơ sở dữ liệu**:
 
-> **Không chạy script thì sao?** Hệ thống vẫn chạy được, không bị vỡ. Các trường mới
-> sẽ không lưu lên cơ sở dữ liệu và hệ thống ghi cảnh báo vào console của trình duyệt.
-> Chạy script xong, mở lại từng hồ sơ và bấm Lưu là dữ liệu được ghi đầy đủ.
+1. Bấm **Kiểm tra lại** để xem còn thiếu cột nào — màn hình liệt kê từng cột kèm
+   trạng thái *đã có* / *chưa có*
+2. Bấm **Chạy cập nhật tự động**
+3. Bấm **Kiểm tra lại** lần nữa để xác nhận đã đủ
+
+Chỉ tài khoản **Admin** dùng được nút này. Hệ thống chạy đúng danh sách bước đã cài
+trong mã nguồn, không nhận câu lệnh SQL từ ngoài vào.
+
+> **Cần cấu hình một lần:** nút này cần biến môi trường `DATABASE_URL` trên Vercel.
+> Lấy tại Supabase Dashboard → Project Settings → Database → Connection string, chọn
+> tab **Session pooler**, rồi thêm vào Vercel → Settings → Environment Variables với
+> tên `DATABASE_URL` và deploy lại.
+>
+> Phải dùng chuỗi **Session pooler**. Chuỗi kết nối trực tiếp
+> (`db.<ref>.supabase.co`) chỉ hỗ trợ IPv6 nên hàm serverless của Vercel không gọi
+> tới được. Nếu chưa cấu hình, màn hình sẽ hiện hướng dẫn này ngay tại chỗ và nút
+> chạy tự động bị khóa.
+
+#### Cách 2 — Dán tay vào Supabase SQL Editor
+
+Không cần cấu hình gì thêm. Vẫn trong **Cài đặt → Cơ sở dữ liệu**, phần *Cách 2*:
+
+1. Bấm **Sao chép SQL**
+2. Bấm **Mở Supabase SQL Editor** (đã trỏ đúng dự án)
+3. Dán vào rồi bấm **Run**
+
+Hoặc dán nội dung tệp `supabase/add_cme_and_track_fields.sql`.
+
+#### Các bước cập nhật làm gì
+
+Cả hai cách đều chạy đúng 6 bước sau, chạy lại nhiều lần cũng không sao và không làm
+mất dữ liệu:
+
+1. Thêm cột ngày sinh, nơi sinh và ảnh bằng cấp cho đại biểu
+2. Thêm cột ngày sinh, nơi sinh, số CCCD, ảnh bằng cấp và hai bản dịch tiếng Anh cho
+   báo cáo viên
+3. Thêm cờ ngừng nhận đăng ký mới cho chuyên đề
+4. Thêm cờ tự động gửi thư mời đại biểu
+5. Thêm **10 chuyên đề mới**
+6. Ngừng nhận đăng ký vào 2 chuyên đề cũ, hồ sơ cũ giữ nguyên
+
+> **Chưa cập nhật thì sao?** Hệ thống vẫn chạy bình thường, không bị vỡ: phần ghi dữ
+> liệu tự bỏ qua những cột chưa có thay vì báo lỗi. Nhưng các thông tin mới sẽ chưa
+> được lưu lên cơ sở dữ liệu. Cập nhật xong, mở lại từng hồ sơ và bấm Lưu là dữ liệu
+> được ghi đầy đủ.
 
 ### Bước 2 — Điểm cần lưu ý ngay
 
@@ -256,6 +294,9 @@ dùng đúng đường thư của báo cáo viên.
 | Quản lý chuyên đề | `src/views/SpeakerManagement.tsx` — `handleToggleTrackAccepting` |
 | Mail tự động | `src/dataStore.ts` — `sendSpeakerApprovedEmail`, `sendDelegateInvitationEmail` |
 | Phòng hộ khi thiếu cột | `src/dataStore.ts` — `writeToSupabase` |
+| Cập nhật cơ sở dữ liệu từ admin | `src/views/SettingsPanel.tsx` (mục Cơ sở dữ liệu), `api/db/migrate.ts` |
+| Các bước cập nhật | `src/lib/dbMigrations.ts` — nguồn chính |
+| Sinh lại tệp .sql | `npm run db:sql`, kiểm lệch bằng `npm run db:sql:check` |
 
 ### Về `src/lib/exportHelpers.ts`
 

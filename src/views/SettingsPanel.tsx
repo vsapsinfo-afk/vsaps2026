@@ -59,6 +59,9 @@ import {
   HighlightSpeaker
 } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
+import { supabase } from '../lib/supabase';
+import { getSession } from '../lib/auth';
+import { buildFullMigrationSql, EXPECTED_COLUMNS } from '../lib/dbMigrations';
 
 interface SettingsPanelProps {
   role: Role;
@@ -66,8 +69,157 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout' | 'event-details'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout' | 'event-details' | 'database'>('business');
   const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
+
+  // ============================================================
+  // CẬP NHẬT CƠ SỞ DỮ LIỆU (thay cho việc dán tay script SQL)
+  // ============================================================
+  type DbColumnState = {
+    table: string;
+    column: string;
+    label: string;
+    state: 'ok' | 'missing' | 'unknown';
+    error?: string;
+  };
+
+  const [dbChecking, setDbChecking] = useState(false);
+  const [dbColumnStatus, setDbColumnStatus] = useState<DbColumnState[] | null>(null);
+  const [dbMigrating, setDbMigrating] = useState(false);
+  const [dbMigrateMessage, setDbMigrateMessage] = useState('');
+  const [dbMigrateOk, setDbMigrateOk] = useState(false);
+  const [dbMigrateResults, setDbMigrateResults] = useState<
+    { id: string; label: string; ok: boolean; error?: string }[]
+  >([]);
+  const [dbCanAutoRun, setDbCanAutoRun] = useState<boolean | null>(null);
+  const [dbSqlCopied, setDbSqlCopied] = useState(false);
+
+  const dbMissingCount = dbColumnStatus
+    ? dbColumnStatus.filter(c => c.state === 'missing').length
+    : 0;
+
+  // Nội dung SQL lấy ngay từ module dùng chung, nên luôn đúng với những bước
+  // mà nút "Chạy cập nhật tự động" sẽ thực hiện.
+  const dbMigrationSql = React.useMemo(() => buildFullMigrationSql(), []);
+
+  // Đường dẫn SQL Editor của chính dự án này, suy ra từ URL Supabase
+  const dbSqlEditorUrl = React.useMemo(() => {
+    const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    const m = url?.match(/^https?:\/\/([a-z0-9]+)\.supabase\.co/i);
+    return m ? `https://supabase.com/dashboard/project/${m[1]}/sql/new` : null;
+  }, []);
+
+  // Hỏi phía server xem đã cấu hình DATABASE_URL để chạy tự động được chưa
+  useEffect(() => {
+    if (activeSubTab !== 'database' || dbCanAutoRun !== null) return;
+    let cancelled = false;
+    fetch('/api/db/migrate')
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled) setDbCanAutoRun(!!data?.canRunAutomatically);
+      })
+      .catch(() => {
+        // Không gọi được endpoint (chạy máy cá nhân, chưa deploy...) thì coi
+        // như chưa chạy tự động được, vẫn còn cách dán tay.
+        if (!cancelled) setDbCanAutoRun(false);
+      });
+    return () => { cancelled = true; };
+  }, [activeSubTab, dbCanAutoRun]);
+
+  /**
+   * Kiểm tra từng cột mới đã có trong cơ sở dữ liệu chưa.
+   *
+   * Làm được từ trình duyệt: chọn đúng cột đó với giới hạn 0 dòng. Cột chưa có
+   * thì PostgREST trả lỗi, cột đã có thì không. Dùng limit(0) để không kéo dữ
+   * liệu thật về, tránh vướng quyền đọc trên các bảng có RLS chặt.
+   */
+  const checkDbColumns = async () => {
+    setDbChecking(true);
+    try {
+      const results = await Promise.all(
+        EXPECTED_COLUMNS.map(async (c): Promise<DbColumnState> => {
+          try {
+            const { error } = await supabase.from(c.table).select(c.column).limit(0);
+            if (!error) return { ...c, state: 'ok' };
+
+            const text = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+            const looksMissing = (error as any).code === '42703'
+              || (error as any).code === 'PGRST204'
+              || text.includes('does not exist')
+              || text.includes('could not find');
+            return {
+              ...c,
+              state: looksMissing ? 'missing' : 'unknown',
+              error: error.message,
+            };
+          } catch (err: any) {
+            return { ...c, state: 'unknown', error: err?.message || String(err) };
+          }
+        })
+      );
+      setDbColumnStatus(results);
+    } finally {
+      setDbChecking(false);
+    }
+  };
+
+  /** Gọi endpoint chạy cập nhật, kèm phiên đăng nhập để server kiểm tra quyền admin. */
+  const runDbMigration = async () => {
+    if (!confirm(
+      'Chạy cập nhật cơ sở dữ liệu?\n\n'
+      + 'Các bước chỉ thêm cột và thêm danh mục chuyên đề, không xóa cột và '
+      + 'không làm mất dữ liệu. Chạy lại nhiều lần cũng không sao.'
+    )) return;
+
+    setDbMigrating(true);
+    setDbMigrateMessage('');
+    setDbMigrateResults([]);
+    try {
+      const session = await getSession();
+      const token = session?.access_token;
+      if (!token) {
+        setDbMigrateOk(false);
+        setDbMigrateMessage('Không đọc được phiên đăng nhập. Vui lòng đăng nhập lại rồi thử lại.');
+        return;
+      }
+
+      const res = await fetch('/api/db/migrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+
+      setDbMigrateOk(!!data?.success);
+      setDbMigrateMessage(data?.success ? (data.message || 'Đã cập nhật xong.') : (data?.error || data?.message || 'Cập nhật thất bại.'));
+      setDbMigrateResults(Array.isArray(data?.results) ? data.results : []);
+
+      if (data?.needsDatabaseUrl) setDbCanAutoRun(false);
+
+      if (data?.success) {
+        // Nạp lại danh mục chuyên đề và cấu hình để thấy ngay 10 chuyên đề mới
+        await store.initializeSupabase();
+        await checkDbColumns();
+      }
+    } catch (err: any) {
+      setDbMigrateOk(false);
+      setDbMigrateMessage(`Lỗi khi gọi cập nhật: ${err?.message || err}`);
+    } finally {
+      setDbMigrating(false);
+    }
+  };
+
+  const copyMigrationSql = async () => {
+    try {
+      await navigator.clipboard.writeText(dbMigrationSql);
+      setDbSqlCopied(true);
+      setTimeout(() => setDbSqlCopied(false), 2500);
+    } catch {
+      alert('Trình duyệt không cho sao chép tự động. Quý vị bôi đen đoạn SQL bên dưới rồi sao chép thủ công.');
+    }
+  };
 
   // Printer config states (saved to localStorage for device-specific setup)
   const [printerAutoPrint, setPrinterAutoPrint] = useState(() => {
@@ -1303,6 +1455,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
             <span>Cài đặt Trang Tin Sự Kiện</span>
           </button>
 
+          <button
+            onClick={() => setActiveSubTab('database')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'database'
+                ? 'bg-sky-850 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-sky-50 hover:text-sky-850 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">🗄️</span>
+            <span>Cơ sở dữ liệu</span>
+          </button>
+
           {/* Quick diagnostic tips */}
           <div className="pt-4 mt-4 border-t border-slate-200 px-2 space-y-2 text-[10.5px] text-slate-500 leading-normal">
             <span className="font-extrabold text-slate-800 block text-[10px]">🖥️ DATABASE SYNC:</span>
@@ -1313,6 +1477,202 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
         {/* Right content panel layout */}
         <div className="md:col-span-9 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
           
+          {/* ================= CƠ SỞ DỮ LIỆU ================= */}
+          {activeSubTab === 'database' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <Database className="w-4 h-4 text-sky-700" />
+                  Cập nhật cơ sở dữ liệu
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Những tính năng mới cần thêm một số cột vào cơ sở dữ liệu. Bấm kiểm tra để
+                  xem đã cập nhật chưa, rồi bấm chạy cập nhật. Các bước đều chạy lại được
+                  nhiều lần, không xóa cột và không làm mất dữ liệu.
+                </p>
+              </div>
+
+              {/* Trạng thái từng cột */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-[11px] font-black text-slate-700 uppercase tracking-wide">
+                    Tình trạng các cột cần có
+                  </span>
+                  <button
+                    type="button"
+                    onClick={checkDbColumns}
+                    disabled={dbChecking}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 border border-slate-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${dbChecking ? 'animate-spin' : ''}`} />
+                    {dbChecking ? 'Đang kiểm tra...' : 'Kiểm tra lại'}
+                  </button>
+                </div>
+
+                {dbColumnStatus === null ? (
+                  <p className="text-[11px] text-slate-400 italic bg-slate-50 border border-slate-150 rounded-xl p-3">
+                    Chưa kiểm tra. Bấm <strong>Kiểm tra lại</strong> để xem cơ sở dữ liệu đã có
+                    đủ các cột mới chưa.
+                  </p>
+                ) : (
+                  <>
+                    <div className={`p-3 rounded-xl border text-[11px] font-bold ${
+                      dbMissingCount === 0
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-amber-50 border-amber-200 text-amber-900'
+                    }`}>
+                      {dbMissingCount === 0
+                        ? 'Cơ sở dữ liệu đã có đủ các cột mới. Không cần làm gì thêm.'
+                        : `Còn ${dbMissingCount} cột chưa có. Chạy cập nhật ở phần dưới.`}
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-slate-50 text-[9.5px] uppercase font-black text-slate-400 tracking-wider">
+                          <tr>
+                            <th className="px-3 py-2">Cột</th>
+                            <th className="px-3 py-2 font-mono normal-case">bảng.cột</th>
+                            <th className="px-3 py-2 text-right whitespace-nowrap">Tình trạng</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {dbColumnStatus.map(c => (
+                            <tr key={`${c.table}.${c.column}`} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 font-bold text-slate-800">{c.label}</td>
+                              <td className="px-3 py-2 font-mono text-slate-400">{c.table}.{c.column}</td>
+                              <td className="px-3 py-2 text-right whitespace-nowrap">
+                                {c.state === 'ok' && <span className="text-emerald-700 font-black">đã có</span>}
+                                {c.state === 'missing' && <span className="text-amber-600 font-black">chưa có</span>}
+                                {c.state === 'unknown' && (
+                                  <span className="text-slate-500 font-black" title={c.error || ''}>
+                                    không kiểm tra được
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Chạy cập nhật tự động */}
+              <div className="p-4 rounded-2xl border border-sky-200 bg-sky-50/50 space-y-3">
+                <div>
+                  <span className="text-xs font-black text-sky-900 uppercase tracking-wide block">
+                    Cách 1 — Chạy cập nhật tự động
+                  </span>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Hệ thống tự kết nối cơ sở dữ liệu và chạy các bước cập nhật. Chỉ tài khoản
+                    Admin dùng được. Cần biến môi trường <code className="font-mono bg-white border border-slate-200 px-1 rounded">DATABASE_URL</code> trên Vercel.
+                  </p>
+                </div>
+
+                {dbCanAutoRun === false && (
+                  <div className="p-3 rounded-xl bg-white border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                    <strong className="block mb-1">Chưa cấu hình DATABASE_URL nên chưa chạy tự động được.</strong>
+                    Vào Supabase Dashboard → Project Settings → Database, phần
+                    <strong> Connection string</strong>, chọn tab <strong>Session pooler</strong>,
+                    sao chép chuỗi đó rồi thêm vào Vercel → Settings → Environment Variables với
+                    tên <code className="font-mono">DATABASE_URL</code>, sau đó deploy lại.
+                    <span className="block mt-1.5 text-amber-800">
+                      Phải dùng chuỗi Session pooler, vì chuỗi kết nối trực tiếp chỉ hỗ trợ IPv6
+                      nên Vercel không gọi tới được.
+                    </span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={runDbMigration}
+                  disabled={dbMigrating || dbCanAutoRun === false}
+                  className="px-4 py-2.5 bg-sky-700 hover:bg-sky-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border-none whitespace-nowrap"
+                >
+                  <Database className="w-4 h-4" />
+                  {dbMigrating ? 'Đang chạy cập nhật...' : 'Chạy cập nhật tự động'}
+                </button>
+
+                {dbMigrateMessage && (
+                  <p className={`text-[11px] font-bold rounded-xl px-3 py-2 border ${
+                    dbMigrateOk
+                      ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                      : 'text-rose-800 bg-rose-50 border-rose-200'
+                  }`}>
+                    {dbMigrateMessage}
+                  </p>
+                )}
+
+                {dbMigrateResults.length > 0 && (
+                  <div className="space-y-1.5">
+                    {dbMigrateResults.map(r => (
+                      <div
+                        key={r.id}
+                        className={`text-[10.5px] px-3 py-2 rounded-lg border leading-snug ${
+                          r.ok
+                            ? 'bg-white border-slate-200 text-slate-700'
+                            : 'bg-rose-50 border-rose-200 text-rose-800'
+                        }`}
+                      >
+                        <span className="font-bold">{r.ok ? '✓' : '✕'} {r.label}</span>
+                        {r.error && <span className="block font-mono mt-0.5">{r.error}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Dán tay vào SQL Editor */}
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div>
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide block">
+                    Cách 2 — Dán tay vào Supabase SQL Editor
+                  </span>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Không cần cấu hình gì thêm. Sao chép đoạn SQL rồi dán vào SQL Editor của
+                    Supabase và bấm Run.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copyMigrationSql}
+                    className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {dbSqlCopied ? 'Đã sao chép' : 'Sao chép SQL'}
+                  </button>
+
+                  {dbSqlEditorUrl && (
+                    <a
+                      href={dbSqlEditorUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all no-underline whitespace-nowrap"
+                    >
+                      Mở Supabase SQL Editor
+                    </a>
+                  )}
+                </div>
+
+                {dbMigrationSql && (
+                  <pre className="text-[10px] font-mono bg-slate-900 text-slate-100 p-3 rounded-xl overflow-auto max-h-64 leading-relaxed">
+                    {dbMigrationSql}
+                  </pre>
+                )}
+              </div>
+
+              <p className="text-[10.5px] text-slate-500 leading-relaxed bg-white border border-slate-150 rounded-xl p-3">
+                Trong lúc chưa cập nhật, hệ thống vẫn chạy bình thường: phần ghi dữ liệu tự bỏ
+                qua những cột chưa có thay vì báo lỗi. Nhưng các thông tin mới (ngày sinh, nơi
+                sinh, số CCCD, ảnh bằng cấp, hai bản dịch tiếng Anh) sẽ chưa được lưu lên cơ sở
+                dữ liệu. Cập nhật xong, mở lại từng hồ sơ và bấm Lưu là dữ liệu được ghi đầy đủ.
+              </p>
+            </div>
+          )}
+
           {/* ================= SECTION 1: BUSINESS LOGISTICS ================= */}
           {activeSubTab === 'business' && (
             <div className="space-y-6">

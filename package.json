@@ -9,7 +9,9 @@
     "start": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "db:setup": "node scripts/apply-schema.js"
+    "db:setup": "node scripts/apply-schema.js",
+    "db:sql": "tsx scripts/sync-migration-sql.ts",
+    "db:sql:check": "tsx scripts/sync-migration-sql.ts --check"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
