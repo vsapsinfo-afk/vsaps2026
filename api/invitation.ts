@@ -15,9 +15,11 @@
  *   HMAC của mã đại biểu, không đoán được, và không phải thêm cột nào vào cơ sở
  *   dữ liệu. Khóa ký lấy từ SUPABASE_SERVICE_ROLE_KEY vốn đã có sẵn trên Vercel.
  *
- * Trang thư mời KHÔNG chứa mã QR check-in, số điện thoại, email hay số CCCD.
- * Đường dẫn vốn để đại biểu công khai, nên chỉ trả về đúng những thông tin mà
- * chính họ sẽ đăng lên.
+ * Trang thư mời KHÔNG chứa số điện thoại, email hay số CCCD. Đường dẫn vốn để
+ * đại biểu công khai, nên chỉ trả về đúng những thông tin mà chính họ sẽ đăng lên.
+ *
+ * Riêng mã QR check-in được Ban tổ chức yêu cầu in lên thiệp để dùng như vé điện
+ * tử. Lưu ý: ai nhìn thấy tấm thiệp đã đăng công khai cũng thấy được mã này.
  */
 import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -138,7 +140,7 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
 
   const { data: attendee, error: attendeeError } = await db
     .from('attendees')
-    .select('id, title, full_name, organization, department, package_name, avatar_url, nationality')
+    .select('id, title, full_name, organization, department, package_name, avatar_url, nationality, qr_code_value')
     .eq('id', id)
     .single();
 
@@ -171,6 +173,7 @@ async function handleRequest(req: VercelRequest, res: VercelResponse) {
       packageName: attendee.package_name || '',
       avatarUrl: attendee.avatar_url || '',
       nationality: attendee.nationality || 'vietname',
+      qrCodeValue: attendee.qr_code_value || attendee.id,
     },
     event: {
       name: config?.event_name || 'Hội nghị Khoa học Thường niên VSAPS 2026',

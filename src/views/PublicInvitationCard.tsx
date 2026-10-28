@@ -10,11 +10,14 @@
  * Đại biểu dùng chính trang này để chụp màn hình hoặc lưu PDF rồi đăng lên
  * trang cá nhân, nên trang được dựng theo dạng tấm thiệp và có sẵn nút in.
  *
- * Trang KHÔNG hiển thị mã QR check-in, số điện thoại, email hay số CCCD —
- * đường dẫn vốn để công khai nên chỉ hiện những thông tin đại biểu sẽ tự đăng.
+ * Trang không hiển thị số điện thoại, email hay số CCCD — đường dẫn vốn để
+ * công khai nên chỉ hiện những thông tin đại biểu sẽ tự đăng.
+ *
+ * Riêng mã QR check-in được Ban tổ chức yêu cầu in lên thiệp để dùng như vé điện
+ * tử: ai xem được tấm thiệp đã đăng công khai thì cũng thấy được mã này.
  */
 import React, { useEffect, useState } from 'react';
-import { Printer, AlertCircle, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Printer, AlertCircle, Loader2 } from 'lucide-react';
 
 interface InvitationData {
   attendee: {
@@ -26,6 +29,7 @@ interface InvitationData {
     packageName: string;
     avatarUrl: string;
     nationality: string;
+    qrCodeValue: string;
   };
   event: {
     name: string;
@@ -48,6 +52,14 @@ interface InvitationData {
 const BANNER_URL =
   'https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg';
 
+/** Bảng màu riêng của tấm thiệp: xanh mực và vàng đồng, hợp với banner hội nghị. */
+const INK = '#102a43';
+const INK_SOFT = '#486581';
+const GOLD = '#b08d3f';
+
+/** Font chữ chân, chỉ dùng cho phần trang trọng của thiệp. */
+const SERIF = "'Playfair Display', Georgia, 'Times New Roman', serif";
+
 /** YYYY-MM-DD -> "Thứ ..., DD/MM/YYYY". Không nhận dạng được thì giữ nguyên. */
 const formatSessionDate = (iso: string): string => {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -57,10 +69,34 @@ const formatSessionDate = (iso: string): string => {
   return `${weekday}, ${m[3]}/${m[2]}/${m[1]}`;
 };
 
+/** Đường kẻ trang trí: hai vạch mảnh và một hình thoi nhỏ ở giữa. */
+const Divider: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div className={`flex items-center justify-center gap-3 ${className}`} aria-hidden="true">
+    <span className="h-px w-16 sm:w-24" style={{ backgroundColor: `${GOLD}66` }} />
+    <span
+      className="w-1.5 h-1.5 rotate-45 shrink-0"
+      style={{ backgroundColor: GOLD }}
+    />
+    <span className="h-px w-16 sm:w-24" style={{ backgroundColor: `${GOLD}66` }} />
+  </div>
+);
+
 export default function PublicInvitationCard() {
   const [data, setData] = useState<InvitationData | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Nạp font chữ chân chỉ cho riêng trang này, các trang khác vẫn dùng Roboto
+  useEffect(() => {
+    const id = 'vsaps-invitation-font';
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href =
+      'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap';
+    document.head.appendChild(link);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -120,6 +156,7 @@ export default function PublicInvitationCard() {
   const { attendee, event, sessions } = data;
   const displayName = `${attendee.title || ''} ${attendee.fullName}`.trim();
   const hasPortrait = !!attendee.avatarUrl && attendee.avatarUrl.startsWith('http');
+  const workplace = [attendee.organization, attendee.department].filter(Boolean).join(' — ');
 
   // Gom chương trình theo ngày cho dễ đọc
   const byDate = sessions.reduce<Record<string, typeof sessions>>((acc, s) => {
@@ -130,16 +167,20 @@ export default function PublicInvitationCard() {
   const dates = Object.keys(byDate).sort();
 
   return (
-    <div className="min-h-screen bg-slate-100 py-6 px-4 print:bg-white print:py-0 print:px-0">
+    <div
+      className="min-h-screen py-8 px-4 print:py-0 print:px-0"
+      style={{ background: 'linear-gradient(180deg, #eef2f7 0%, #f8fafc 55%, #eef2f7 100%)' }}
+    >
       {/* Thanh công cụ, không in ra giấy */}
-      <div className="max-w-3xl mx-auto mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="max-w-2xl mx-auto mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <p className="text-[11px] text-slate-500 leading-relaxed">
           Quý Bác sĩ có thể lưu thư mời này thành PDF hoặc chụp màn hình để chia sẻ.
         </p>
         <button
           type="button"
           onClick={() => window.print()}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black flex items-center gap-1.5 cursor-pointer border-none transition-colors whitespace-nowrap"
+          className="px-4 py-2 text-white rounded-full text-xs font-bold flex items-center gap-2 cursor-pointer border-none transition-opacity hover:opacity-90 whitespace-nowrap"
+          style={{ backgroundColor: INK }}
         >
           <Printer className="w-4 h-4" />
           In / Lưu PDF
@@ -147,141 +188,288 @@ export default function PublicInvitationCard() {
       </div>
 
       {/* Tấm thiệp */}
-      <div className="max-w-3xl mx-auto bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden print:shadow-none print:border-0 print:rounded-none">
-        <img
-          src={BANNER_URL}
-          alt={event.name}
-          className="w-full h-auto block"
-        />
+      <div
+        className="invitation-card max-w-2xl mx-auto bg-white overflow-hidden print:shadow-none"
+        style={{
+          boxShadow: '0 24px 60px -24px rgba(16, 42, 67, 0.28)',
+          border: `1px solid ${GOLD}40`,
+          borderRadius: 18,
+        }}
+      >
+        <img src={BANNER_URL} alt={event.name} className="w-full h-auto block" />
 
-        <div className="p-7 md:p-10 space-y-7">
-          <div className="text-center space-y-1.5">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-teal-700">
+        {/* Viền vàng mảnh ngay dưới banner */}
+        <div className="h-[3px]" style={{ backgroundColor: GOLD }} />
+
+        <div className="px-7 sm:px-12 py-9 sm:py-12">
+          {/* Phần đầu */}
+          <div className="text-center">
+            <p
+              className="text-[9.5px] sm:text-[10.5px] font-bold uppercase"
+              style={{ color: INK_SOFT, letterSpacing: '0.22em' }}
+            >
               {event.organizer}
             </p>
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 uppercase tracking-wide">
-              Thư mời tham dự
+
+            <h1
+              className="mt-4 text-[28px] sm:text-[38px] leading-none"
+              style={{ fontFamily: SERIF, color: INK, letterSpacing: '0.04em', fontWeight: 700 }}
+            >
+              THƯ MỜI THAM DỰ
             </h1>
-            <p className="text-xs md:text-sm font-bold text-slate-500">{event.name}</p>
+
+            <p
+              className="mt-3 text-[12px] sm:text-[13.5px] italic"
+              style={{ fontFamily: SERIF, color: INK_SOFT }}
+            >
+              {event.name}
+            </p>
           </div>
+
+          <Divider className="my-8" />
 
           {/* Người được mời */}
-          <div className="flex flex-col items-center text-center gap-3 py-5 border-y border-slate-150">
-            {hasPortrait ? (
-              <img
-                src={attendee.avatarUrl}
-                alt={displayName}
-                className="w-28 h-28 rounded-full object-cover border-4 border-teal-600/20 shadow-sm"
-              />
-            ) : (
-              <div className="w-28 h-28 rounded-full bg-slate-100 border-4 border-slate-200 flex items-center justify-center text-2xl font-black text-slate-400">
-                {attendee.fullName.charAt(0)}
-              </div>
-            )}
-
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                Trân trọng kính mời
-              </p>
-              <p className="text-lg md:text-xl font-black text-slate-900 mt-1 uppercase">
-                {displayName}
-              </p>
-              {attendee.organization && (
-                <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                  {attendee.organization}
-                  {attendee.department ? ` — ${attendee.department}` : ''}
-                </p>
+          <div className="text-center">
+            {/* Ảnh chân dung để lớn, có vòng viền vàng, làm điểm nhấn chính của
+                tấm thiệp — đây là thư mời dành riêng cho một cá nhân. */}
+            <div className="flex justify-center">
+              {hasPortrait ? (
+                <div
+                  className="rounded-full p-[4px]"
+                  style={{
+                    background: `linear-gradient(145deg, ${GOLD}, #efdcad 48%, ${GOLD})`,
+                    boxShadow: '0 14px 34px -12px rgba(16, 42, 67, 0.4)',
+                  }}
+                >
+                  <img
+                    src={attendee.avatarUrl}
+                    alt={displayName}
+                    className="w-52 h-52 sm:w-64 sm:h-64 rounded-full object-cover object-center border-4 border-white block"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="w-52 h-52 sm:w-64 sm:h-64 rounded-full flex items-center justify-center"
+                  style={{
+                    border: `2px solid ${GOLD}80`,
+                    backgroundColor: '#f6f8fb',
+                    color: INK,
+                    fontFamily: SERIF,
+                    fontSize: 84,
+                    fontWeight: 600,
+                  }}
+                >
+                  {attendee.fullName.charAt(0)}
+                </div>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-              <span className="text-[10px] font-black uppercase tracking-wide bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded-full">
-                Đại biểu chính thức
-              </span>
-              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full">
-                {attendee.id}
-              </span>
-              {attendee.packageName && (
-                <span className="text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1 rounded-full">
-                  {attendee.packageName}
-                </span>
-              )}
+            <p
+              className="mt-7 text-[12px] sm:text-[13px] italic"
+              style={{ fontFamily: SERIF, color: INK_SOFT, letterSpacing: '0.08em' }}
+            >
+              Trân trọng kính mời
+            </p>
+
+            <p
+              className="mt-3 text-[26px] sm:text-[34px] leading-tight uppercase"
+              style={{ fontFamily: SERIF, color: INK, fontWeight: 700, letterSpacing: '0.02em' }}
+            >
+              {displayName}
+            </p>
+
+            {workplace && (
+              <p className="mt-2 text-[12px] sm:text-[12.5px]" style={{ color: INK_SOFT }}>
+                {workplace}
+              </p>
+            )}
+
+            {/* Danh hiệu và mã hồ sơ, viết thành một dòng gọn thay vì nhiều thẻ */}
+            <p
+              className="mt-5 text-[9.5px] sm:text-[10px] font-bold uppercase"
+              style={{ color: INK_SOFT, letterSpacing: '0.16em' }}
+            >
+              Đại biểu chính thức
+              {attendee.packageName ? ` · ${attendee.packageName}` : ''}
+            </p>
+            <p
+              className="mt-1.5 text-[10px] font-mono"
+              style={{ color: `${INK_SOFT}aa`, letterSpacing: '0.1em' }}
+            >
+              {attendee.id}
+            </p>
+          </div>
+
+          <Divider className="my-8" />
+
+          {/* Thời gian và địa điểm */}
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 text-center sm:text-left"
+            style={{ borderTop: `1px solid ${GOLD}33`, borderBottom: `1px solid ${GOLD}33` }}
+          >
+            <div className="py-5 sm:pr-6 sm:border-r" style={{ borderColor: `${GOLD}33` }}>
+              <p
+                className="text-[9px] font-bold uppercase"
+                style={{ color: GOLD, letterSpacing: '0.2em' }}
+              >
+                Thời gian
+              </p>
+              <p
+                className="mt-1.5 text-[14px] sm:text-[15px]"
+                style={{ fontFamily: SERIF, color: INK, fontWeight: 600 }}
+              >
+                {event.date}
+              </p>
+            </div>
+            <div className="py-5 sm:pl-6 border-t sm:border-t-0" style={{ borderColor: `${GOLD}33` }}>
+              <p
+                className="text-[9px] font-bold uppercase"
+                style={{ color: GOLD, letterSpacing: '0.2em' }}
+              >
+                Địa điểm
+              </p>
+              <p
+                className="mt-1.5 text-[14px] sm:text-[15px] leading-snug"
+                style={{ fontFamily: SERIF, color: INK, fontWeight: 600 }}
+              >
+                {event.location}
+              </p>
             </div>
           </div>
 
-          {/* Thời gian và địa điểm */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex items-start gap-2.5">
-              <Calendar className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">Thời gian</p>
-                <p className="text-xs font-bold text-slate-800 mt-0.5 leading-snug">{event.date}</p>
-              </div>
+          {/* Mã QR check-in, dùng như vé điện tử tại sảnh đón tiếp */}
+          <div className="mt-9 flex flex-col items-center">
+            <p
+              className="text-[9px] font-bold uppercase"
+              style={{ color: GOLD, letterSpacing: '0.2em' }}
+            >
+              Mã QR check-in
+            </p>
+            <div
+              className="mt-3 bg-white"
+              style={{ border: `1px solid ${GOLD}55`, borderRadius: 14, padding: 12 }}
+            >
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=420x420&margin=0&data=${encodeURIComponent(attendee.qrCodeValue || attendee.id)}`}
+                alt="Mã QR check-in"
+                className="w-36 h-36 sm:w-40 sm:h-40 block"
+              />
             </div>
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-4 flex items-start gap-2.5">
-              <MapPin className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[9.5px] font-black uppercase tracking-wider text-slate-400">Địa điểm</p>
-                <p className="text-xs font-bold text-slate-800 mt-0.5 leading-snug">{event.location}</p>
-              </div>
-            </div>
+            <p
+              className="mt-3 text-[10.5px] italic text-center leading-relaxed max-w-xs"
+              style={{ color: INK_SOFT }}
+            >
+              Quý Bác sĩ xuất trình mã này tại quầy đón tiếp để làm thủ tục nhanh.
+            </p>
           </div>
 
           {/* Chương trình: chỉ hiện khi Ban tổ chức đã nhập lịch trình */}
           {dates.length > 0 ? (
-            <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+            <div className="mt-9">
+              <p
+                className="text-[9.5px] font-bold uppercase text-center"
+                style={{ color: GOLD, letterSpacing: '0.2em' }}
+              >
                 Chương trình hội nghị
               </p>
-              {dates.map(date => (
-                <div key={date} className="border border-slate-150 rounded-2xl overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-150">
-                    <p className="text-[11px] font-black text-slate-700">{formatSessionDate(date)}</p>
-                  </div>
-                  <div className="divide-y divide-slate-100">
-                    {byDate[date].map(s => (
-                      <div key={s.id} className="px-4 py-2.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                        <span className="text-[11px] font-mono font-bold text-teal-700 whitespace-nowrap">
-                          {s.startTime}{s.endTime ? `–${s.endTime}` : ''}
-                        </span>
-                        <span className="text-[11.5px] font-semibold text-slate-800 flex-1 min-w-[180px] leading-snug">
-                          {s.title}
-                        </span>
-                        {s.roomName && (
-                          <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap">
-                            {s.roomName}
+              <div className="mt-5 space-y-6">
+                {dates.map(date => (
+                  <div key={date} className="break-inside-avoid">
+                    <p
+                      className="text-[12px] pb-2 mb-2"
+                      style={{
+                        fontFamily: SERIF,
+                        color: INK,
+                        fontWeight: 600,
+                        borderBottom: `1px solid ${GOLD}33`,
+                      }}
+                    >
+                      {formatSessionDate(date)}
+                    </p>
+                    <div className="space-y-2">
+                      {byDate[date].map(s => (
+                        <div key={s.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                          <span
+                            className="text-[11px] font-mono whitespace-nowrap shrink-0"
+                            style={{ color: GOLD, minWidth: 86 }}
+                          >
+                            {s.startTime}{s.endTime ? `–${s.endTime}` : ''}
                           </span>
-                        )}
-                      </div>
-                    ))}
+                          <span
+                            className="text-[12px] flex-1 min-w-[180px] leading-snug"
+                            style={{ color: INK }}
+                          >
+                            {s.title}
+                          </span>
+                          {s.roomName && (
+                            <span
+                              className="text-[10px] whitespace-nowrap"
+                              style={{ color: `${INK_SOFT}cc` }}
+                            >
+                              {s.roomName}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           ) : (
-            <p className="text-[11px] text-slate-400 italic text-center bg-slate-50 border border-slate-150 rounded-2xl p-3">
-              Chương trình khoa học chi tiết sẽ được Ban tổ chức cập nhật và thông báo tới
-              Quý Bác sĩ trong thời gian tới.
+            <p
+              className="mt-8 text-[11.5px] italic text-center leading-relaxed"
+              style={{ color: INK_SOFT }}
+            >
+              Chương trình khoa học chi tiết sẽ được Ban tổ chức cập nhật
+              <br className="hidden sm:block" />
+              và thông báo tới Quý Bác sĩ trong thời gian tới.
             </p>
           )}
 
-          <div className="text-center text-[11px] text-slate-500 leading-relaxed space-y-1 pt-2 border-t border-slate-150">
-            <p>Ban Tổ chức rất hân hạnh được đón tiếp Quý Bác sĩ tại Hội nghị.</p>
-            <p className="font-black text-slate-700 uppercase tracking-wide pt-1">
-              Ban Tổ chức {event.name}
+          <Divider className="my-9" />
+
+          {/* Phần ký */}
+          <div className="text-center">
+            <p
+              className="text-[12px] sm:text-[13px] italic leading-relaxed"
+              style={{ fontFamily: SERIF, color: INK_SOFT }}
+            >
+              Ban Tổ chức rất hân hạnh được đón tiếp Quý Bác sĩ tại Hội nghị.
             </p>
-            <p className="font-mono text-[10px] text-slate-400">
+            <p
+              className="mt-5 text-[11px] sm:text-[12px] font-bold uppercase"
+              style={{ color: INK, letterSpacing: '0.16em' }}
+            >
+              Ban Tổ chức
+            </p>
+            <p
+              className="mt-1 text-[11px] sm:text-[12px]"
+              style={{ fontFamily: SERIF, color: INK, fontWeight: 600 }}
+            >
+              {event.name}
+            </p>
+            <p className="mt-3 text-[10px] font-mono" style={{ color: `${INK_SOFT}aa` }}>
               vsaps.events@gmail.com · +84 964 551 151
             </p>
           </div>
         </div>
+
+        {/* Viền vàng mảnh khép tấm thiệp */}
+        <div className="h-[3px]" style={{ backgroundColor: GOLD }} />
       </div>
 
-      {/* Khi in: bỏ nền xám và tránh cắt đôi tấm thiệp giữa hai trang */}
       <style>{`
         @media print {
-          @page { margin: 10mm; }
+          @page { margin: 8mm; }
           body { background: #ffffff !important; }
+          .invitation-card {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            max-width: 100% !important;
+          }
+          /* Giữ nguyên nền và đường kẻ màu khi in */
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
     </div>
