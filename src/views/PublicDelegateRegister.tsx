@@ -169,7 +169,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [title, setTitle] = useState('BS');
   const [fullName, setFullName] = useState('');
   const [gender, setGender] = useState('Nam');
-  const [yearOfBirth, setYearOfBirth] = useState('');
+  // Ngay sinh day du, bat buoc de lam ho so cap CME (muc I file yeu cau).
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
+  // Giu yearOfBirth duoi dang suy dien de khong phai sua cac mau CME cu.
+  const yearOfBirth = dateOfBirth ? dateOfBirth.slice(0, 4) : '';
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [organization, setOrganization] = useState('');
@@ -196,6 +200,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
   // CME states
   const [cmeRequired, setCmeRequired] = useState(false);
+  const [cmeIdentityNo, setCmeIdentityNo] = useState('');
   const [galaRequired, setGalaRequired] = useState(false);
   const [masterclassRequired, setMasterclassRequired] = useState(false);
   const [tourRequired, setTourRequired] = useState(false);
@@ -308,18 +313,41 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     }
   };
 
+  /**
+   * Kiem tra ngay sinh: phai co, phai la ngay thuc va nam trong khoang hop ly.
+   * Tra ve chuoi loi, hoac null neu hop le.
+   */
+  const checkDateOfBirth = (): string | null => {
+    if (!dateOfBirth) {
+      return 'Vui lòng chọn ngày tháng năm sinh để hoàn tất hồ sơ cấp CME.';
+    }
+    const parts = dateOfBirth.split('-');
+    if (parts.length !== 3) return 'Ngày sinh không hợp lệ (định dạng Ngày/Tháng/Năm).';
+    const [y, m, d] = parts.map(v => parseInt(v, 10));
+    const dt = new Date(dateOfBirth + 'T00:00:00');
+    // getMonth() tra ve 0-11 nen phai cong 1 khi so sanh.
+    const isRealDate = !isNaN(dt.getTime()) &&
+      dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
+    if (!isRealDate) return 'Ngày sinh không hợp lệ (ví dụ: 31/02 không tồn tại).';
+    const thisYear = new Date().getFullYear();
+    if (y < 1920 || y > thisYear) {
+      return 'Năm sinh không hợp lệ (phải từ 1920 đến ' + thisYear + ').';
+    }
+    return null;
+  };
+
   const validateStep1 = () => {
     if (!fullName) {
       setErrorMsg('Vui lòng điền họ và tên đại biểu.');
       return false;
     }
-    if (!yearOfBirth) {
-      setErrorMsg('Vui lòng điền năm sinh để hoàn tất thông tin đăng ký CME.');
+    const dobError = checkDateOfBirth();
+    if (dobError) {
+      setErrorMsg(dobError);
       return false;
     }
-    const yobNum = parseInt(yearOfBirth, 10);
-    if (isNaN(yobNum) || yobNum < 1920 || yobNum > 2026) {
-      setErrorMsg('Năm sinh không hợp lệ (ví dụ: 1988).');
+    if (!placeOfBirth.trim()) {
+      setErrorMsg('Vui lòng điền nơi sinh để hoàn tất hồ sơ cấp CME.');
       return false;
     }
     if (!phone) {
@@ -420,13 +448,13 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       setErrorMsg('Vui lòng điền họ và tên đại biểu.');
       return;
     }
-    if (!yearOfBirth) {
-      setErrorMsg('Vui lòng điền năm sinh để hoàn tất thông tin đăng ký CME.');
+    const dobErrorSubmit = checkDateOfBirth();
+    if (dobErrorSubmit) {
+      setErrorMsg(dobErrorSubmit);
       return;
     }
-    const yobNum = parseInt(yearOfBirth, 10);
-    if (isNaN(yobNum) || yobNum < 1920 || yobNum > 2026) {
-      setErrorMsg('Năm sinh không hợp lệ (ví dụ: 1988).');
+    if (!placeOfBirth.trim()) {
+      setErrorMsg('Vui lòng điền nơi sinh để hoàn tất hồ sơ cấp CME.');
       return;
     }
     if (!phone) {
@@ -519,9 +547,12 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
         isCheckedIn: false,
         notes: finalNotes,
         yearOfBirth,
+        dateOfBirth,
+        placeOfBirth: placeOfBirth.trim(),
         gender,
         cmeRequired: isCmeSelected,
-        cmeIdentityNo: undefined,
+        // Chi luu so CCCD khi dai bieu that su dang ky cap CME.
+        cmeIdentityNo: isCmeSelected ? (cmeIdentityNo.trim() || undefined) : undefined,
         galaRequired: isGalaSelected,
         masterclassRequired: isMasterclassSelected,
         tourRequired: isTourSelected,
@@ -672,7 +703,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         <p className="text-[10.5px] text-slate-500 font-semibold leading-tight">{createdAttendee.organization}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 italic font-medium">Năm sinh: {createdAttendee.yearOfBirth} • Giới tính: {createdAttendee.gender}</p>
+                    <p className="text-[10px] text-slate-400 italic font-medium">Ngày sinh: {createdAttendee.dateOfBirth || createdAttendee.yearOfBirth} • Nơi sinh: {createdAttendee.placeOfBirth || '—'} • Giới tính: {createdAttendee.gender}</p>
                   </div>
                 </div>
 
@@ -1114,23 +1145,40 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                       </div>
                     </div>
 
-                    {/* Year of Birth & Contact details */}
+                    {/* Ngay sinh, Noi sinh va thong tin lien he */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                       <div className="md:col-span-4">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                          {L.f('yearOfBirth', 'Năm sinh *', 'Year of Birth *')}
+                          {L.f('dateOfBirth', 'Ngày tháng năm sinh *', 'Date of Birth *')}
                         </label>
                         <input
-                          type="text"
+                          type="date"
                           required
-                          maxLength={4}
-                          value={yearOfBirth}
-                          onChange={(e) => setYearOfBirth(e.target.value.replace(/\D/g, ''))}
-                          placeholder={L.p('ví dụ: 1988', 'e.g. 1988')}
+                          max={new Date().toISOString().split('T')[0]}
+                          min="1920-01-01"
+                          value={dateOfBirth}
+                          onChange={(e) => setDateOfBirth(e.target.value)}
                           className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:border-teal-600 focus:outline-none placeholder-slate-400"
                         />
                         <span className="text-[10px] text-slate-400 mt-1 block">
                           {L.t('Cần thiết cho chứng chỉ CME', 'Required for CME certification')}
+                        </span>
+                      </div>
+
+                      <div className="md:col-span-4">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          {L.f('placeOfBirth', 'Nơi sinh *', 'Place of Birth *')}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={placeOfBirth}
+                          onChange={(e) => setPlaceOfBirth(e.target.value)}
+                          placeholder={L.p('ví dụ: Hà Nội', 'e.g. Hanoi')}
+                          className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">
+                          {L.t('Ghi theo giấy tờ tùy thân', 'As shown on your ID document')}
                         </span>
                       </div>
 
@@ -1151,7 +1199,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         </span>
                       </div>
 
-                      <div className="md:col-span-4">
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-12">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
                           {L.f('email', 'Địa chỉ Email nhận vé & CME *', 'Email for Ticket & CME *')}
                         </label>
@@ -1486,6 +1537,37 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         );
                       })}
                     </div>
+
+                    {/* Dang ky CME: so CCCD va luu y trach nhiem thong tin */}
+                    {addOnSelections['addon-cme'] && (
+                      <div className="p-4 md:p-5 rounded-2xl border border-teal-300 bg-teal-50/50 space-y-3">
+                        <span className="text-[11px] font-black text-teal-900 uppercase tracking-wide block">
+                          {L.t('Thông tin bắt buộc để cấp chứng chỉ CME', 'Information required to issue the CME certificate')}
+                        </span>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            {L.f('cmeIdentityNo', 'Số CCCD / Định danh cá nhân *', 'National ID Number *')}
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={20}
+                            value={cmeIdentityNo}
+                            onChange={(e) => setCmeIdentityNo(e.target.value.replace(/[^0-9]/g, ''))}
+                            placeholder={L.p('ví dụ: 001188012345', 'e.g. 001188012345')}
+                            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold focus:border-teal-600 focus:outline-none placeholder-slate-400"
+                          />
+                        </div>
+
+                        <p className="text-[10.5px] text-teal-900 leading-relaxed bg-white/70 border border-teal-200 rounded-xl p-3">
+                          {L.t(
+                            'Lưu ý: Quý Bác sĩ vui lòng kiểm tra và chịu trách nhiệm về tính chính xác của thông tin cá nhân (email, số CCCD, ngày tháng năm sinh). Mọi sai sót cần được thông báo cho Ban Tổ chức trước ngày 12/12/2026. Sau thời gian này, thông tin sẽ không được điều chỉnh.',
+                            'Please note: you are responsible for checking the accuracy of your personal details (email, national ID number, date of birth). Any correction must be reported to the Organizing Committee before 12 December 2026. After that date, no change can be made.'
+                          )}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Note fields */}
                     <div>
