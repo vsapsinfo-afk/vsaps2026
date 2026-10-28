@@ -1,16 +1,13 @@
 /**
- * Các bước cập nhật cơ sở dữ liệu, chạy được từ màn hình Cài đặt trong admin.
+ * Các bước cập nhật cơ sở dữ liệu.
  *
- * Đây là NGUỒN CHÍNH. Đặt ngay cạnh hàm migrate.ts và đặt tên bắt đầu
- * bằng dấu gạch dưới: Vercel bỏ qua những tệp như vậy khi sinh endpoint, còn
- * import cùng thư mục thì chắc chắn phân giải được lúc chạy. Tệp `supabase/add_cme_and_track_fields.sql` là bản sao
- * để dán tay vào Supabase SQL Editor khi cần; script
- * `scripts/check-migrations-in-sync.mjs` kiểm tra hai bên không bị lệch nhau.
+ * Đây là NGUỒN CHÍNH. Màn hình Cài đặt > Cơ sở dữ liệu lấy từ đây để hiển thị
+ * và cho sao chép. Tệp `supabase/add_cme_and_track_fields.sql` là bản sao sinh tự
+ * động bằng `npm run db:sql`; `npm run db:sql:check` báo lỗi nếu hai bên lệch nhau.
  *
  * Nguyên tắc cho mọi bước ở đây:
  *   - Chạy lại nhiều lần vẫn cho cùng kết quả (ADD COLUMN IF NOT EXISTS, ON CONFLICT)
  *   - Không bao giờ xóa cột hay xóa dữ liệu
- *   - Không nhận SQL từ phía người dùng, chỉ chạy đúng danh sách dưới đây
  */
 
 export interface MigrationStep {
@@ -120,7 +117,7 @@ export function buildFullMigrationSql(extraNote?: string): string {
   const header = [
     '-- ============================================================',
     '-- VSAPS 2026 — Cập nhật cơ sở dữ liệu',
-    '-- Sinh tự động từ api/db/_migrations.ts',
+    '-- Sinh tự động từ src/lib/dbMigrations.ts',
     '-- Chạy lại nhiều lần vẫn an toàn, không làm mất dữ liệu.',
     '-- ============================================================',
     '',

@@ -9,44 +9,21 @@
 
 ### Bước 1 — Cập nhật cơ sở dữ liệu
 
-Những tính năng mới cần thêm một số cột vào cơ sở dữ liệu. Có **hai cách**, chọn một.
+Những tính năng mới cần thêm một số cột vào cơ sở dữ liệu. Làm trong **Cài đặt → Cơ sở dữ liệu**:
 
-#### Cách 1 — Bấm nút trong admin (khuyến nghị)
+1. Bấm **Kiểm tra lại** — màn hình liệt kê từng cột kèm trạng thái *đã có* / *chưa có*
+2. Nếu còn thiếu: bấm **Sao chép SQL**
+3. Bấm **Mở Supabase SQL Editor** (đã trỏ đúng dự án), dán vào, bấm **Run**
+4. Quay lại bấm **Kiểm tra lại** để xác nhận đủ 11 cột
 
-Vào **Cài đặt → Cơ sở dữ liệu**:
+Không cần cấu hình gì thêm, không cần biến môi trường.
 
-1. Bấm **Kiểm tra lại** để xem còn thiếu cột nào — màn hình liệt kê từng cột kèm
-   trạng thái *đã có* / *chưa có*
-2. Bấm **Chạy cập nhật tự động**
-3. Bấm **Kiểm tra lại** lần nữa để xác nhận đã đủ
-
-Chỉ tài khoản **Admin** dùng được nút này. Hệ thống chạy đúng danh sách bước đã cài
-trong mã nguồn, không nhận câu lệnh SQL từ ngoài vào.
-
-> **Cần cấu hình một lần:** nút này cần biến môi trường `DATABASE_URL` trên Vercel.
-> Lấy tại Supabase Dashboard → Project Settings → Database → Connection string, chọn
-> tab **Session pooler**, rồi thêm vào Vercel → Settings → Environment Variables với
-> tên `DATABASE_URL` và deploy lại.
->
-> Phải dùng chuỗi **Session pooler**. Chuỗi kết nối trực tiếp
-> (`db.<ref>.supabase.co`) chỉ hỗ trợ IPv6 nên hàm serverless của Vercel không gọi
-> tới được. Nếu chưa cấu hình, màn hình sẽ hiện hướng dẫn này ngay tại chỗ và nút
-> chạy tự động bị khóa.
-
-#### Cách 2 — Dán tay vào Supabase SQL Editor
-
-Không cần cấu hình gì thêm. Vẫn trong **Cài đặt → Cơ sở dữ liệu**, phần *Cách 2*:
-
-1. Bấm **Sao chép SQL**
-2. Bấm **Mở Supabase SQL Editor** (đã trỏ đúng dự án)
-3. Dán vào rồi bấm **Run**
-
-Hoặc dán nội dung tệp `supabase/add_cme_and_track_fields.sql`.
+Nếu muốn chạy từ dòng lệnh thay vì dán tay, nội dung SQL nằm ở
+`supabase/add_cme_and_track_fields.sql`.
 
 #### Các bước cập nhật làm gì
 
-Cả hai cách đều chạy đúng 6 bước sau, chạy lại nhiều lần cũng không sao và không làm
-mất dữ liệu:
+Gồm 6 bước, chạy lại nhiều lần cũng không sao và không làm mất dữ liệu:
 
 1. Thêm cột ngày sinh, nơi sinh và ảnh bằng cấp cho đại biểu
 2. Thêm cột ngày sinh, nơi sinh, số CCCD, ảnh bằng cấp và hai bản dịch tiếng Anh cho
@@ -301,7 +278,7 @@ dùng đúng đường thư của báo cáo viên.
 | Quản lý chuyên đề | `src/views/SpeakerManagement.tsx` — `handleToggleTrackAccepting` |
 | Mail tự động | `src/dataStore.ts` — `sendSpeakerApprovedEmail`, `sendDelegateInvitationEmail` |
 | Phòng hộ khi thiếu cột | `src/dataStore.ts` — `writeToSupabase` |
-| Cập nhật cơ sở dữ liệu từ admin | `src/views/SettingsPanel.tsx` (mục Cơ sở dữ liệu), `api/db/migrate.ts` |
+| Màn hình Cơ sở dữ liệu | `src/views/SettingsPanel.tsx` — mục Cơ sở dữ liệu |
 | Các bước cập nhật | `src/lib/dbMigrations.ts` — nguồn chính |
 | Sinh lại tệp .sql | `npm run db:sql`, kiểm lệch bằng `npm run db:sql:check` |
 

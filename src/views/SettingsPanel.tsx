@@ -60,8 +60,7 @@ import {
 } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import { supabase } from '../lib/supabase';
-import { getSession } from '../lib/auth';
-import { buildFullMigrationSql, EXPECTED_COLUMNS } from '../../api/db/_migrations';
+import { buildFullMigrationSql, EXPECTED_COLUMNS } from '../lib/dbMigrations';
 
 interface SettingsPanelProps {
   role: Role;
@@ -85,22 +84,14 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
 
   const [dbChecking, setDbChecking] = useState(false);
   const [dbColumnStatus, setDbColumnStatus] = useState<DbColumnState[] | null>(null);
-  const [dbMigrating, setDbMigrating] = useState(false);
-  const [dbMigrateMessage, setDbMigrateMessage] = useState('');
-  const [dbMigrateOk, setDbMigrateOk] = useState(false);
-  const [dbMigrateResults, setDbMigrateResults] = useState<
-    { id: string; label: string; ok: boolean; error?: string }[]
-  >([]);
-  const [dbCanAutoRun, setDbCanAutoRun] = useState<boolean | null>(null);
-  const [dbMissingEnv, setDbMissingEnv] = useState<string[]>([]);
   const [dbSqlCopied, setDbSqlCopied] = useState(false);
 
   const dbMissingCount = dbColumnStatus
     ? dbColumnStatus.filter(c => c.state === 'missing').length
     : 0;
 
-  // Nội dung SQL lấy ngay từ module dùng chung, nên luôn đúng với những bước
-  // mà nút "Chạy cập nhật tự động" sẽ thực hiện.
+  // Nội dung SQL lấy ngay từ module dùng chung với tệp
+  // supabase/add_cme_and_track_fields.sql, nên hai bên không thể lệch nhau.
   const dbMigrationSql = React.useMemo(() => buildFullMigrationSql(), []);
 
   // Đường dẫn SQL Editor của chính dự án này, suy ra từ URL Supabase
@@ -109,28 +100,6 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
     const m = url?.match(/^https?:\/\/([a-z0-9]+)\.supabase\.co/i);
     return m ? `https://supabase.com/dashboard/project/${m[1]}/sql/new` : null;
   }, []);
-
-  // Hỏi phía server xem đã cấu hình DATABASE_URL để chạy tự động được chưa
-  useEffect(() => {
-    if (activeSubTab !== 'database' || dbCanAutoRun !== null) return;
-    let cancelled = false;
-    fetch('/api/db/migrate')
-      .then(r => r.json())
-      .then(data => {
-        if (cancelled) return;
-        setDbCanAutoRun(!!data?.canRunAutomatically);
-        setDbMissingEnv([
-          data?.hasDatabaseUrl === false ? 'DATABASE_URL' : '',
-          data?.hasServiceRoleKey === false ? 'SUPABASE_SERVICE_ROLE_KEY' : '',
-        ].filter(Boolean));
-      })
-      .catch(() => {
-        // Không gọi được endpoint (chạy máy cá nhân, chưa deploy...) thì coi
-        // như chưa chạy tự động được, vẫn còn cách dán tay.
-        if (!cancelled) setDbCanAutoRun(false);
-      });
-    return () => { cancelled = true; };
-  }, [activeSubTab, dbCanAutoRun]);
 
   /**
    * Kiểm tra từng cột mới đã có trong cơ sở dữ liệu chưa.
@@ -166,54 +135,6 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
       setDbColumnStatus(results);
     } finally {
       setDbChecking(false);
-    }
-  };
-
-  /** Gọi endpoint chạy cập nhật, kèm phiên đăng nhập để server kiểm tra quyền admin. */
-  const runDbMigration = async () => {
-    if (!confirm(
-      'Chạy cập nhật cơ sở dữ liệu?\n\n'
-      + 'Các bước chỉ thêm cột và thêm danh mục chuyên đề, không xóa cột và '
-      + 'không làm mất dữ liệu. Chạy lại nhiều lần cũng không sao.'
-    )) return;
-
-    setDbMigrating(true);
-    setDbMigrateMessage('');
-    setDbMigrateResults([]);
-    try {
-      const session = await getSession();
-      const token = session?.access_token;
-      if (!token) {
-        setDbMigrateOk(false);
-        setDbMigrateMessage('Không đọc được phiên đăng nhập. Vui lòng đăng nhập lại rồi thử lại.');
-        return;
-      }
-
-      const res = await fetch('/api/db/migrate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
-
-      setDbMigrateOk(!!data?.success);
-      setDbMigrateMessage(data?.success ? (data.message || 'Đã cập nhật xong.') : (data?.error || data?.message || 'Cập nhật thất bại.'));
-      setDbMigrateResults(Array.isArray(data?.results) ? data.results : []);
-
-      if (data?.needsDatabaseUrl) setDbCanAutoRun(false);
-
-      if (data?.success) {
-        // Nạp lại danh mục chuyên đề và cấu hình để thấy ngay 10 chuyên đề mới
-        await store.initializeSupabase();
-        await checkDbColumns();
-      }
-    } catch (err: any) {
-      setDbMigrateOk(false);
-      setDbMigrateMessage(`Lỗi khi gọi cập nhật: ${err?.message || err}`);
-    } finally {
-      setDbMigrating(false);
     }
   };
 
@@ -1493,8 +1414,9 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                   Những tính năng mới cần thêm một số cột vào cơ sở dữ liệu. Bấm kiểm tra để
-                  xem đã cập nhật chưa, rồi bấm chạy cập nhật. Các bước đều chạy lại được
-                  nhiều lần, không xóa cột và không làm mất dữ liệu.
+                  xem đã cập nhật chưa; nếu còn thiếu thì sao chép đoạn SQL bên dưới và chạy
+                  trong Supabase. Các bước đều chạy lại được nhiều lần, không xóa cột và
+                  không làm mất dữ liệu.
                 </p>
               </div>
 
@@ -1529,7 +1451,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                     }`}>
                       {dbMissingCount === 0
                         ? 'Cơ sở dữ liệu đã có đủ các cột mới. Không cần làm gì thêm.'
-                        : `Còn ${dbMissingCount} cột chưa có. Chạy cập nhật ở phần dưới.`}
+                        : `Còn ${dbMissingCount} cột chưa có. Sao chép SQL ở phần dưới rồi chạy trong Supabase.`}
                     </div>
 
                     <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -1564,84 +1486,16 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                 )}
               </div>
 
-              {/* Chạy cập nhật tự động */}
-              <div className="p-4 rounded-2xl border border-sky-200 bg-sky-50/50 space-y-3">
-                <div>
-                  <span className="text-xs font-black text-sky-900 uppercase tracking-wide block">
-                    Cách 1 — Chạy cập nhật tự động
-                  </span>
-                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                    Hệ thống tự kết nối cơ sở dữ liệu và chạy các bước cập nhật. Chỉ tài khoản
-                    Admin dùng được. Cần biến môi trường <code className="font-mono bg-white border border-slate-200 px-1 rounded">DATABASE_URL</code> trên Vercel.
-                  </p>
-                </div>
-
-                {dbCanAutoRun === false && (
-                  <div className="p-3 rounded-xl bg-white border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
-                    <strong className="block mb-1">
-                      {dbMissingEnv.length > 0
-                        ? `Chưa cấu hình ${dbMissingEnv.join(' và ')} nên chưa chạy tự động được.`
-                        : 'Chưa chạy tự động được. Có thể ứng dụng chưa được deploy hoặc thiếu biến môi trường.'}
-                    </strong>
-                    Vào Supabase Dashboard → Project Settings → Database, phần
-                    <strong> Connection string</strong>, chọn tab <strong>Session pooler</strong>,
-                    sao chép chuỗi đó rồi thêm vào Vercel → Settings → Environment Variables với
-                    tên <code className="font-mono">DATABASE_URL</code>, sau đó deploy lại.
-                    <span className="block mt-1.5 text-amber-800">
-                      Phải dùng chuỗi Session pooler, vì chuỗi kết nối trực tiếp chỉ hỗ trợ IPv6
-                      nên Vercel không gọi tới được.
-                    </span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={runDbMigration}
-                  disabled={dbMigrating || dbCanAutoRun === false}
-                  className="px-4 py-2.5 bg-sky-700 hover:bg-sky-800 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border-none whitespace-nowrap"
-                >
-                  <Database className="w-4 h-4" />
-                  {dbMigrating ? 'Đang chạy cập nhật...' : 'Chạy cập nhật tự động'}
-                </button>
-
-                {dbMigrateMessage && (
-                  <p className={`text-[11px] font-bold rounded-xl px-3 py-2 border ${
-                    dbMigrateOk
-                      ? 'text-emerald-800 bg-emerald-50 border-emerald-200'
-                      : 'text-rose-800 bg-rose-50 border-rose-200'
-                  }`}>
-                    {dbMigrateMessage}
-                  </p>
-                )}
-
-                {dbMigrateResults.length > 0 && (
-                  <div className="space-y-1.5">
-                    {dbMigrateResults.map(r => (
-                      <div
-                        key={r.id}
-                        className={`text-[10.5px] px-3 py-2 rounded-lg border leading-snug ${
-                          r.ok
-                            ? 'bg-white border-slate-200 text-slate-700'
-                            : 'bg-rose-50 border-rose-200 text-rose-800'
-                        }`}
-                      >
-                        <span className="font-bold">{r.ok ? '✓' : '✕'} {r.label}</span>
-                        {r.error && <span className="block font-mono mt-0.5">{r.error}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* Dán tay vào SQL Editor */}
               <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
                 <div>
                   <span className="text-xs font-black text-slate-800 uppercase tracking-wide block">
-                    Cách 2 — Dán tay vào Supabase SQL Editor
+                    Cách cập nhật
                   </span>
                   <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                    Không cần cấu hình gì thêm. Sao chép đoạn SQL rồi dán vào SQL Editor của
-                    Supabase và bấm Run.
+                    Bấm <strong>Sao chép SQL</strong>, rồi bấm <strong>Mở Supabase SQL Editor</strong>,
+                    dán vào và bấm <strong>Run</strong>. Xong thì quay lại đây bấm
+                    <strong> Kiểm tra lại</strong> để xác nhận.
                   </p>
                 </div>
 
