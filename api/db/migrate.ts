@@ -82,14 +82,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const connectionString = process.env.DATABASE_URL;
-  const canRunAutomatically = !!connectionString
+  const hasDatabaseUrl = !!connectionString
     && !connectionString.includes('YOUR_DATABASE_PASSWORD');
+  // Không có service role key thì không kiểm tra được quyền admin, nên cũng
+  // không cho chạy cập nhật.
+  const hasServiceRoleKey = !!(process.env.SUPABASE_SERVICE_ROLE_KEY
+    || process.env.SUPABASE_SERVICE_KEY
+    || process.env.SUPABASE_SERVICE_ROLE);
+  const canRunAutomatically = hasDatabaseUrl && hasServiceRoleKey;
 
   // ----- GET: thông tin để giao diện hiển thị -----
   if (req.method === 'GET') {
     return res.json({
       success: true,
       canRunAutomatically,
+      hasDatabaseUrl,
+      hasServiceRoleKey,
       steps: MIGRATION_STEPS.map(s => ({ id: s.id, label: s.label })),
       sql: buildFullMigrationSql(),
       sqlEditorUrl: buildSqlEditorUrl(process.env.VITE_SUPABASE_URL),
@@ -102,12 +110,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // ----- POST: chạy cập nhật -----
   if (!canRunAutomatically) {
+    const missing = [
+      !hasDatabaseUrl ? 'DATABASE_URL' : null,
+      !hasServiceRoleKey ? 'SUPABASE_SERVICE_ROLE_KEY' : null,
+    ].filter(Boolean).join(' và ');
     return res.status(400).json({
       success: false,
-      needsDatabaseUrl: true,
-      error: 'Chưa cấu hình DATABASE_URL trên Vercel nên không chạy tự động được. '
+      needsDatabaseUrl: !hasDatabaseUrl,
+      needsServiceRoleKey: !hasServiceRoleKey,
+      error: `Chưa cấu hình ${missing} trên Vercel nên không chạy tự động được. `
         + 'Hãy dùng nút sao chép SQL rồi dán vào Supabase SQL Editor, '
-        + 'hoặc thêm biến môi trường DATABASE_URL rồi deploy lại.',
+        + 'hoặc thêm biến môi trường còn thiếu rồi deploy lại.',
     });
   }
 

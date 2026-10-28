@@ -92,6 +92,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
     { id: string; label: string; ok: boolean; error?: string }[]
   >([]);
   const [dbCanAutoRun, setDbCanAutoRun] = useState<boolean | null>(null);
+  const [dbMissingEnv, setDbMissingEnv] = useState<string[]>([]);
   const [dbSqlCopied, setDbSqlCopied] = useState(false);
 
   const dbMissingCount = dbColumnStatus
@@ -116,7 +117,12 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
     fetch('/api/db/migrate')
       .then(r => r.json())
       .then(data => {
-        if (!cancelled) setDbCanAutoRun(!!data?.canRunAutomatically);
+        if (cancelled) return;
+        setDbCanAutoRun(!!data?.canRunAutomatically);
+        setDbMissingEnv([
+          data?.hasDatabaseUrl === false ? 'DATABASE_URL' : '',
+          data?.hasServiceRoleKey === false ? 'SUPABASE_SERVICE_ROLE_KEY' : '',
+        ].filter(Boolean));
       })
       .catch(() => {
         // Không gọi được endpoint (chạy máy cá nhân, chưa deploy...) thì coi
@@ -1572,7 +1578,11 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
 
                 {dbCanAutoRun === false && (
                   <div className="p-3 rounded-xl bg-white border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
-                    <strong className="block mb-1">Chưa cấu hình DATABASE_URL nên chưa chạy tự động được.</strong>
+                    <strong className="block mb-1">
+                      {dbMissingEnv.length > 0
+                        ? `Chưa cấu hình ${dbMissingEnv.join(' và ')} nên chưa chạy tự động được.`
+                        : 'Chưa chạy tự động được. Có thể ứng dụng chưa được deploy hoặc thiếu biến môi trường.'}
+                    </strong>
                     Vào Supabase Dashboard → Project Settings → Database, phần
                     <strong> Connection string</strong>, chọn tab <strong>Session pooler</strong>,
                     sao chép chuỗi đó rồi thêm vào Vercel → Settings → Environment Variables với
