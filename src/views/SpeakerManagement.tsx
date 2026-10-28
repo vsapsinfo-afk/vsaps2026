@@ -75,6 +75,16 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [speakerPresentationTrack, setSpeakerPresentationTrack] = useState('');
   const [speakerAbstractText, setSpeakerAbstractText] = useState('');
   const [speakerBio, setSpeakerBio] = useState('');
+  // Ban tieng Anh do Ban to chuc tu dich (muc V file yeu cau).
+  const [speakerBioEn, setSpeakerBioEn] = useState('');
+  const [speakerAbstractEn, setSpeakerAbstractEn] = useState('');
+  // Thong tin bat buoc de cap chung chi CME (muc IV).
+  const [speakerDateOfBirth, setSpeakerDateOfBirth] = useState('');
+  const [speakerPlaceOfBirth, setSpeakerPlaceOfBirth] = useState('');
+  const [speakerIdentityNo, setSpeakerIdentityNo] = useState('');
+  const [speakerDegreeProof, setSpeakerDegreeProof] = useState<string | null>(null);
+  const [isDegreeProofUploading, setIsDegreeProofUploading] = useState(false);
+  const degreeProofInputRef = React.useRef<HTMLInputElement>(null);
   const [speakerDocumentName, setSpeakerDocumentName] = useState('');
   const [speakerStatus, setSpeakerStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
   const [speakerAvatar, setSpeakerAvatar] = useState<string | null>(null);
@@ -119,7 +129,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         ...editingTrack,
         name: newName,
         nameEn: newTrackNameEn.trim() || undefined,
-        description: newTrackDesc.trim() || undefined
+        description: newTrackDesc.trim() || undefined,
+        // Giu nguyen trang thai nhan dang ky khi chi sua ten hoac mo ta.
+        isAcceptingNew: editingTrack.isAcceptingNew !== false
       });
       alert('Đã cập nhật chuyên đề thành công!');
     } else {
@@ -128,7 +140,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         id: newId,
         name: newTrackName.trim(),
         nameEn: newTrackNameEn.trim() || undefined,
-        description: newTrackDesc.trim() || undefined
+        description: newTrackDesc.trim() || undefined,
+        isAcceptingNew: true
       });
       alert('Đã thêm chuyên đề mới thành công!');
     }
@@ -137,6 +150,25 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setNewTrackName('');
     setNewTrackNameEn('');
     setNewTrackDesc('');
+    loadAll();
+  };
+
+  /**
+   * Bat / tat viec nhan dang ky moi vao mot chuyen de.
+   * Khac voi xoa: ho so cu van giu nguyen chuyen de, chi form cong khai
+   * la khong con hien chuyen de nay trong o chon.
+   */
+  const handleToggleTrackAccepting = (track: SpecialtyTrack) => {
+    const isOpen = track.isAcceptingNew !== false;
+    const count = speakers.filter(s => s.presentationTrack === track.name).length;
+    const message = isOpen
+      ? `Ngừng nhận đăng ký mới vào chuyên đề "${track.name}"?\n\n`
+        + `${count} hồ sơ đang thuộc chuyên đề này vẫn được giữ nguyên. `
+        + 'Chuyên đề chỉ không còn xuất hiện trong ô chọn của form đăng ký công khai.'
+      : `Mở lại nhận đăng ký vào chuyên đề "${track.name}"?`;
+    if (!confirm(message)) return;
+
+    store.saveSpecialtyTrack({ ...track, isAcceptingNew: !isOpen });
     loadAll();
   };
 
@@ -321,6 +353,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPresentationTrack(specialtyTracks[0]?.name || '');
     setSpeakerAbstractText('');
     setSpeakerBio('');
+    setSpeakerBioEn('');
+    setSpeakerAbstractEn('');
+    setSpeakerDateOfBirth('');
+    setSpeakerPlaceOfBirth('');
+    setSpeakerIdentityNo('');
+    setSpeakerDegreeProof(null);
     setSpeakerDocumentName('');
     setSpeakerDocumentUrl(null);
     setSpeakerStatus('approved');
@@ -343,6 +381,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPresentationTrack(spk.presentationTrack);
     setSpeakerAbstractText(spk.abstractText);
     setSpeakerBio(spk.bio);
+    setSpeakerBioEn(spk.bioEn || '');
+    setSpeakerAbstractEn(spk.abstractEn || '');
+    setSpeakerDateOfBirth(spk.dateOfBirth || '');
+    setSpeakerPlaceOfBirth(spk.placeOfBirth || '');
+    setSpeakerIdentityNo(spk.identityNo || '');
+    setSpeakerDegreeProof(spk.degreeProofUrl || null);
     setSpeakerDocumentName(spk.documentName || '');
     setSpeakerDocumentUrl(spk.documentUrl || null);
     setSpeakerStatus(spk.status);
@@ -350,6 +394,19 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setAbstractEditorMode('visual');
     setBioEditorMode('visual');
     setShowSpeakerModal(true);
+  };
+
+  const handleDegreeProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsDegreeProofUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSpeakerDegreeProof(reader.result as string);
+      setIsDegreeProofUploading(false);
+      if (degreeProofInputRef.current) degreeProofInputRef.current.value = '';
+    };
+    reader.readAsDataURL(file);
   };
 
   // Delete handler
@@ -370,6 +427,10 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
 
     const speakerData: SpeakerRegistration = {
+      // Giu lai cac truong khong hien tren form nay, vi du nationality va
+      // scheduledSessionId. Truoc day dung lai tu dau nen chung bi mat moi
+      // lan Ban to chuc sua ho so.
+      ...(editingSpeaker || {}),
       id: editingSpeaker ? editingSpeaker.id : 'SPK-' + Math.floor(Math.random() * 9000 + 1000),
       title: speakerTitle,
       fullName: speakerFullName,
@@ -381,6 +442,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       presentationTrack: speakerPresentationTrack,
       abstractText: speakerAbstractText || 'Chưa cung cấp tóm tắt bài báo cáo',
       bio: speakerBio || 'Chưa cung cấp thông tin tiểu sử tóm lược',
+      bioEn: speakerBioEn.trim() || undefined,
+      abstractEn: speakerAbstractEn.trim() || undefined,
+      dateOfBirth: speakerDateOfBirth || undefined,
+      placeOfBirth: speakerPlaceOfBirth.trim() || undefined,
+      identityNo: speakerIdentityNo.trim() || undefined,
+      degreeProofUrl: speakerDegreeProof || undefined,
       documentName: speakerDocumentName || undefined,
       documentUrl: speakerDocumentUrl || undefined,
       status: speakerStatus,
@@ -445,56 +512,87 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
    * một lượt. File PDF/Word (CV, abstract) không nhét được vào Excel nên dùng
    * cột đường dẫn Google Drive.
    */
+  // Tên cột của tệp mẫu nhập, đặt trùng với tên cột của tệp xuất để Ban tổ
+  // chức xuất ra, sửa, rồi nạp lại được mà không phải đổi tiêu đề.
   const IMPORT_COLUMNS = {
     title: 'Học hàm học vị',
     fullName: 'Họ và tên',
+    dateOfBirth: 'Ngày sinh',
+    placeOfBirth: 'Nơi sinh',
+    identityNo: 'Số CCCD',
     email: 'Email',
     phone: 'Số điện thoại',
     organization: 'Đơn vị công tác',
     department: 'Khoa/Phòng',
     bio: 'Tóm lược quá trình công tác',
+    bioEn: 'Tóm lược quá trình công tác (tiếng Anh)',
     presentationTitle: 'Tên bài báo cáo',
     presentationTrack: 'Chuyên đề',
     abstractText: 'Abstract (Tóm tắt nội dung)',
+    abstractEn: 'Abstract (tiếng Anh)',
+    avatarUrl: 'Link ảnh chân dung',
+    degreeProofUrl: 'Link ảnh bằng cấp',
     documentUrl: 'Link CV/Abstract (Google Drive)',
   };
 
   const downloadSpeakerTemplate = () => {
     const C = IMPORT_COLUMNS;
-    const defaultTrack = specialtyTracks[0]?.name || 'Tạo hình Thẩm mỹ';
+    const defaultTrack = specialtyTracks.filter(t => t.isAcceptingNew !== false)[0]?.name
+      || specialtyTracks[0]?.name
+      || 'Khác';
+    // Thứ tự khóa ở đây quyết định thứ tự cột trong tệp mẫu, nên giữ trùng
+    // với thứ tự cột của tệp xuất để xuất ra sửa rồi nạp lại được.
     const sample = [
       {
         [C.title]: 'PGS.TS.BS',
         [C.fullName]: 'NGUYỄN VĂN AN',
+        [C.dateOfBirth]: '15/03/1975',
+        [C.placeOfBirth]: 'Hà Nội',
+        [C.identityNo]: '001175012345',
         [C.email]: 'nguyenvanan@gmail.com',
         [C.phone]: '0912345678',
         [C.organization]: 'Bệnh viện Chợ Rẫy',
         [C.department]: 'Khoa Phẫu thuật Tạo hình Thẩm mỹ',
         [C.bio]: 'Trưởng khoa Phẫu thuật Tạo hình Thẩm mỹ, 20 năm kinh nghiệm, chủ nhiệm 5 đề tài cấp Bộ.',
+        [C.bioEn]: 'Head of Aesthetic Plastic Surgery, 20 years of experience, principal investigator of 5 ministry-level studies.',
         [C.presentationTitle]: 'Ứng dụng vạt da cân trong tái tạo khuyết hổng vùng mặt',
         [C.presentationTrack]: defaultTrack,
         [C.abstractText]: 'Mục tiêu: ... Phương pháp: ... Kết quả: ... Kết luận: ...',
+        [C.abstractEn]: 'Objective: ... Methods: ... Results: ... Conclusion: ...',
+        [C.avatarUrl]: 'https://drive.google.com/file/d/anh-chan-dung/view',
+        [C.degreeProofUrl]: 'https://drive.google.com/file/d/anh-bang-cap/view',
         [C.documentUrl]: 'https://drive.google.com/file/d/xxxxxxxx/view',
       },
       {
         [C.title]: 'TS.BS',
         [C.fullName]: 'TRẦN THỊ MAI',
+        [C.dateOfBirth]: '1982-07-20',
+        [C.placeOfBirth]: 'Thừa Thiên Huế',
+        [C.identityNo]: '046182098765',
         [C.email]: 'tranthimai@gmail.com',
         [C.phone]: '0987654321',
         [C.organization]: 'Bệnh viện Đại học Y Dược TP.HCM',
         [C.department]: 'Khoa Thẩm mỹ',
         [C.bio]: 'Giảng viên bộ môn Tạo hình Thẩm mỹ, 12 năm kinh nghiệm lâm sàng.',
+        [C.bioEn]: '',
         [C.presentationTitle]: 'Kỹ thuật tiêm filler an toàn vùng quanh mắt',
         [C.presentationTrack]: defaultTrack,
         [C.abstractText]: 'Mục tiêu: ... Phương pháp: ... Kết quả: ... Kết luận: ...',
+        [C.abstractEn]: '',
+        [C.avatarUrl]: '',
+        [C.degreeProofUrl]: '',
         [C.documentUrl]: '',
       },
     ];
 
     const ws = XLSX.utils.json_to_sheet(sample);
     ws['!cols'] = [
-      { wch: 16 }, { wch: 26 }, { wch: 28 }, { wch: 16 }, { wch: 32 },
-      { wch: 28 }, { wch: 46 }, { wch: 42 }, { wch: 24 }, { wch: 60 }, { wch: 44 },
+      { wch: 14 }, { wch: 26 }, { wch: 13 }, { wch: 18 }, { wch: 16 },
+      { wch: 26 }, { wch: 15 }, { wch: 30 }, { wch: 28 },
+      { wch: 46 }, { wch: 46 },
+      { wch: 42 }, { wch: 22 },
+      { wch: 60 }, { wch: 60 },
+      { wch: 38 }, { wch: 38 }, { wch: 38 },
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Danh_Sach_BCV');
@@ -535,38 +633,89 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         rows.forEach((row) => {
           const keys = Object.keys(row);
           // Dò cột linh hoạt vì người dùng hay sửa tiêu đề hoặc thêm dấu *.
-          // Mỗi cột chỉ được gán cho đúng một trường: tiêu đề "Link CV/Abstract"
-          // cũng chứa chữ "abstract", nếu không loại trừ thì cột tóm tắt sẽ bắt
-          // nhầm sang cột link khi người dùng đổi thứ tự cột.
+          // Mỗi cột chỉ được gán cho đúng một trường, và thứ tự dò ở dưới là
+          // từ cột cụ thể tới cột chung. Hai cái bẫy phải tránh:
+          //   - tiêu đề bản tiếng Anh chứa trọn tiêu đề tiếng Việt
+          //     ("Abstract (tiếng Anh)" chứa "Abstract"),
+          //   - ba cột ảnh/tệp đều bắt đầu bằng chữ "Link".
           const usedKeys = new Set<string>();
-          const pick = (matchers: string[]): string => {
-            for (const m of matchers) {
-              const k = keys.find(key => !usedKeys.has(key) && key.toLowerCase().trim().includes(m));
+          const takeCell = (k: string): string =>
+            row[k] === undefined || row[k] === null ? '' : String(row[k]).trim();
+
+          /** Lấy ô của cột chưa dùng đầu tiên thỏa một trong các điều kiện. */
+          const pickBy = (tests: ((key: string) => boolean)[]): string => {
+            for (const test of tests) {
+              const k = keys.find(key => !usedKeys.has(key) && test(key.toLowerCase().trim()));
               if (k) {
                 usedKeys.add(k);
-                return row[k] === undefined || row[k] === null ? '' : String(row[k]).trim();
+                return takeCell(k);
               }
             }
             return '';
           };
+          /** Khớp nếu tiêu đề chứa bất kỳ từ khóa nào. */
+          const any = (...needles: string[]) => (k: string) => needles.some(n => k.includes(n));
+          /** Tiêu đề của cột bản dịch tiếng Anh. */
+          const isEn = (k: string) => k.includes('tiếng anh') || k.includes('(en') || k.includes('english');
 
-          const fullName = pick(['họ và tên', 'họ tên', 'fullname', 'tên báo cáo viên']);
+          // Hai cột bản tiếng Anh lấy trước cột tiếng Việt tương ứng.
+          // Danh sách từ khóa phải trùng với của cột tiếng Việt bên dưới, nếu không
+          // những tiêu đề như "Giới thiệu bản thân (English)" sẽ không khớp.
+          const bioKeys = ['tóm lược', 'quá trình công tác', 'giới thiệu', 'lý lịch', 'tiểu sử', 'bio'] as const;
+          const bioEn = pickBy([k => isEn(k) && any(...bioKeys)(k)]);
+          const abstractEn = pickBy([k => isEn(k) && any('abstract', 'tóm tắt')(k)]);
+
+          // Link ảnh lấy trước link tệp đính kèm, vì cả ba đều có chữ "link".
+          const avatarLink = pickBy([any('chân dung', 'avatar', 'ảnh đại diện')]);
+          const degreeLink = pickBy([any('bằng cấp', 'degree', 'văn bằng')]);
+
+          const fullName = pickBy([any('họ và tên', 'họ tên', 'fullname', 'tên báo cáo viên')]);
           if (!fullName) {
             skippedNoName++;
             return;
           }
 
-          // Lấy cột link trước cột abstract, vì tiêu đề link có chứa chữ "abstract"
-          const link = pick(['link', 'đường dẫn', 'drive', 'url', 'tệp đính kèm']);
-          const title = pick(['học hàm', 'học vị', 'chức danh', 'title']);
-          const organization = pick(['đơn vị', 'cơ quan', 'bệnh viện', 'nơi công tác', 'organization']);
-          const department = pick(['khoa/phòng', 'khoa', 'phòng', 'bộ môn', 'department']);
-          const phone = pick(['số điện thoại', 'sđt', 'điện thoại', 'phone', 'sdt']);
-          const email = pick(['email', 'thư điện tử', 'mail']);
-          const bio = pick(['tóm lược', 'quá trình công tác', 'giới thiệu', 'lý lịch', 'bio']);
-          const presentationTitle = pick(['tên bài', 'đề tài', 'tiêu đề báo cáo', 'presentation']);
-          const presentationTrack = pick(['chuyên đề', 'phân ban', 'track']);
-          const abstractText = pick(['abstract', 'tóm tắt']);
+          // Link tệp đính kèm lấy trước cột Abstract, vì tiêu đề mẫu
+          // "Link CV/Abstract" cũng chứa chữ "abstract".
+          const link = pickBy([any('tệp đính kèm', 'link', 'đường dẫn', 'drive', 'url')]);
+          const title = pickBy([any('học hàm', 'học vị', 'chức danh'), any('title')]);
+          const dateOfBirth = pickBy([any('ngày sinh', 'ngày tháng năm sinh', 'date of birth', 'dob')]);
+          const placeOfBirth = pickBy([any('nơi sinh', 'place of birth')]);
+          const identityNo = pickBy([any('cccd', 'căn cước', 'định danh', 'identity')]);
+          const organization = pickBy([any('đơn vị', 'cơ quan', 'bệnh viện', 'nơi công tác', 'organization')]);
+          const department = pickBy([any('khoa/phòng', 'khoa', 'phòng', 'bộ môn', 'department')]);
+          const phone = pickBy([any('số điện thoại', 'sđt', 'điện thoại', 'phone', 'sdt')]);
+          const email = pickBy([any('email', 'thư điện tử', 'mail')]);
+          const bio = pickBy([any(...bioKeys)]);
+          const presentationTitle = pickBy([any('tên bài', 'đề tài', 'tiêu đề báo cáo', 'presentation')]);
+          const presentationTrack = pickBy([any('chuyên đề', 'phân ban', 'track')]);
+          const abstractText = pickBy([any('abstract', 'tóm tắt')]);
+
+          // Ngày sinh trong Excel có thể là 15/03/1975, 1975-03-15, hoặc số
+          // sê-ri ngày của Excel. Chuẩn hóa về YYYY-MM-DD, không nhận dạng
+          // được thì bỏ trống để Ban tổ chức điền tay.
+          const normalizeDob = (raw: string): string | undefined => {
+            if (!raw) return undefined;
+            const text = raw.trim();
+            let m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (m) {
+              return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+            }
+            m = text.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+            if (m) {
+              return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+            }
+            // Số sê-ri ngày của Excel, mốc 0 là 30/12/1899.
+            if (/^\d{4,6}$/.test(text)) {
+              const serial = parseInt(text, 10);
+              const base = Date.UTC(1899, 11, 30);
+              const d = new Date(base + serial * 86400000);
+              if (!isNaN(d.getTime()) && d.getUTCFullYear() >= 1920) {
+                return d.toISOString().split('T')[0];
+              }
+            }
+            return undefined;
+          };
 
           parsed.push({
             id: genId(),
@@ -577,9 +726,17 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             phone: phone.replace(/\s+/g, ''),
             email,
             bio,
+            bioEn: bioEn || undefined,
+            dateOfBirth: normalizeDob(dateOfBirth),
+            placeOfBirth: placeOfBirth || undefined,
+            identityNo: identityNo.replace(/\s+/g, '') || undefined,
             presentationTitle,
             presentationTrack: presentationTrack || (specialtyTracks[0]?.name || ''),
             abstractText,
+            abstractEn: abstractEn || undefined,
+            // Chỉ nhận link thật; ô đánh dấu "chưa có link" của tệp xuất bị bỏ qua.
+            avatarUrl: /^https?:\/\//i.test(avatarLink) ? avatarLink : undefined,
+            degreeProofUrl: /^https?:\/\//i.test(degreeLink) ? degreeLink : undefined,
             documentUrl: link || undefined,
             documentName: link ? 'Hồ sơ đính kèm (Google Drive)' : undefined,
             calendarSynced: false,
@@ -662,34 +819,102 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     }
   };
 
+  /**
+   * Chuyển nội dung HTML của ô soạn thảo về chữ thuần, để Excel đọc được.
+   * Giữ lại ngắt dòng ở các thẻ khối thay vì dán liền các đoạn với nhau.
+   */
+  const htmlToPlainText = (html?: string): string => {
+    if (!html) return '';
+    const withBreaks = html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li|h[1-6]|tr)>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ');
+    const el = document.createElement('div');
+    el.innerHTML = withBreaks;
+    return (el.textContent || '')
+      .replace(/ /g, ' ')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  /**
+   * Ảnh và tệp được lưu trên Supabase Storage dưới dạng link công khai, nên
+   * xuất thẳng vào Excel là bấm được. Riêng hồ sơ cũ còn giữ ảnh dạng base64
+   * (data:) thì không thể đưa vào ô Excel: một ô chỉ chứa 32.767 ký tự, còn
+   * ảnh base64 thường dài hơn thế nhiều. Những hồ sơ đó được đánh dấu rõ để
+   * Ban tổ chức biết là phải mở trong hệ thống để xem.
+   */
+  const toExportLink = (url?: string): string => {
+    if (!url) return '';
+    if (url.startsWith('data:')) return 'Ảnh lưu trong hệ thống, chưa có link — mở hồ sơ để xem';
+    return url;
+  };
+
   const handleExportXLSX = () => {
-    const headers = ["Mã Hồ Sơ", "Học hàm học vị", "Báo cáo viên chính", "Cơ quan công tác", "Chuyên đề khoa học", "Đề tài báo cáo", "Phiên báo cáo được xếp", "Đồng bộ Lịch", "Trạng thái"];
-    const rows = sortedSpeakers.map(s => {
-      const session = sessions.find(ss => ss.id === s.scheduledSessionId);
-      const sessionTime = session ? `${session.startTime} (${session.roomName})` : "Chưa xếp lịch";
+    const headers = [
+      'Mã hồ sơ', 'Học hàm học vị', 'Họ và tên', 'Ngày sinh', 'Nơi sinh', 'Số CCCD',
+      'Đơn vị công tác', 'Khoa / Phòng', 'Số điện thoại', 'Email', 'Quốc tịch',
+      'Tóm lược quá trình công tác', 'Tóm lược quá trình công tác (tiếng Anh)',
+      'Tên bài báo cáo', 'Chuyên đề',
+      'Abstract (Tóm tắt nội dung)', 'Abstract (tiếng Anh)',
+      'Link ảnh chân dung', 'Link ảnh bằng cấp',
+      'Link tệp đính kèm (CV/Abstract)', 'Tên tệp đính kèm',
+      'Phiên báo cáo được xếp', 'Đồng bộ Google Calendar', 'Trạng thái', 'Ngày đăng ký',
+    ];
+
+    const rows = sortedSpeakers.map(sp => {
+      const session = sessions.find(ss => ss.id === sp.scheduledSessionId);
+      const sessionTime = session
+        ? `${session.date} ${session.startTime}-${session.endTime} (${session.roomName})`
+        : 'Chưa xếp lịch';
       return [
-        s.id,
-        s.title,
-        s.fullName,
-        s.organization,
-        s.presentationTrack,
-        s.presentationTitle,
+        sp.id,
+        sp.title,
+        sp.fullName,
+        sp.dateOfBirth ? sp.dateOfBirth.split('-').reverse().join('/') : '',
+        sp.placeOfBirth || '',
+        sp.identityNo || '',
+        sp.organization,
+        sp.department,
+        sp.phone,
+        sp.email,
+        sp.nationality === 'foreign' ? 'Nước ngoài' : 'Việt Nam',
+        htmlToPlainText(sp.bio),
+        sp.bioEn || '',
+        sp.presentationTitle,
+        sp.presentationTrack,
+        htmlToPlainText(sp.abstractText),
+        sp.abstractEn || '',
+        toExportLink(sp.avatarUrl),
+        toExportLink(sp.degreeProofUrl),
+        // Một hồ sơ có thể đính kèm nhiều tệp, trong dữ liệu nối bằng dấu |
+        (sp.documentUrl || '').split('|').filter(Boolean).map(toExportLink).join('\n'),
+        (sp.documentName || '').split('|').filter(Boolean).join('\n'),
         sessionTime,
-        s.calendarSynced ? "Đã đồng bộ Google Calendar" : "Muted",
-        s.status === 'approved' ? "ĐÃ PHÊ DUYỆT" : s.status === 'rejected' ? "TỪ CHỐI" : "ĐANG CHỜ"
+        sp.calendarSynced ? 'Đã đồng bộ' : 'Chưa đồng bộ',
+        sp.status === 'approved' ? 'ĐÃ PHÊ DUYỆT' : sp.status === 'rejected' ? 'TỪ CHỐI' : 'ĐANG CHỜ',
+        sp.registrationDate ? String(sp.registrationDate).substring(0, 10) : '',
       ];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + [headers.join(","), ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
-      
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Bao-Cao-Bao-Vien-VSAPS-2026.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    // Bề ngang cột: các ô chữ dài để rộng hơn cho dễ đọc.
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 14 }, { wch: 26 }, { wch: 12 }, { wch: 16 }, { wch: 16 },
+      { wch: 30 }, { wch: 20 }, { wch: 14 }, { wch: 26 }, { wch: 12 },
+      { wch: 45 }, { wch: 45 },
+      { wch: 45 }, { wch: 22 },
+      { wch: 60 }, { wch: 60 },
+      { wch: 40 }, { wch: 40 },
+      { wch: 40 }, { wch: 28 },
+      { wch: 28 }, { wch: 16 }, { wch: 16 }, { wch: 14 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bao_Cao_Vien');
+    const today = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `DS_Bao_Cao_Vien_VSAPS2026_${today}.xlsx`);
   };
 
   return (
@@ -843,7 +1068,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
             type="button"
             onClick={handleExportXLSX}
             className="p-2 px-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm w-full sm:w-auto justify-center"
-            title="Tải báo cáo tóm tắt danh sách báo cáo viên vào file .xlsx/csv"
+            title="Tải file Excel đầy đủ thông tin báo cáo viên, ảnh và tệp đính kèm xuất dưới dạng link"
           >
             <FileSpreadsheet className="w-4 h-4" />
             <span className="hidden sm:inline">Xuất File Báo Cáo</span>
@@ -1361,6 +1586,44 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     <p className="text-[10px] text-slate-400 font-mono mt-0.5">{selectedSpeaker.phone} | {selectedSpeaker.email}</p>
                   </div>
                 </div>
+
+                {/* Thong tin cap CME */}
+                <div className="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider font-mono block">Ngày sinh</span>
+                    <p className="text-xs font-bold text-slate-800 mt-0.5">
+                      {selectedSpeaker.dateOfBirth
+                        ? selectedSpeaker.dateOfBirth.split('-').reverse().join('/')
+                        : <span className="text-amber-600">Chưa có</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider font-mono block">Nơi sinh</span>
+                    <p className="text-xs font-bold text-slate-800 mt-0.5">
+                      {selectedSpeaker.placeOfBirth || <span className="text-amber-600">Chưa có</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider font-mono block">Số CCCD</span>
+                    <p className="text-xs font-bold text-slate-800 mt-0.5 font-mono">
+                      {selectedSpeaker.identityNo || <span className="text-amber-600 font-sans">Chưa có</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider font-mono block">Bằng cấp</span>
+                    {selectedSpeaker.degreeProofUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => window.open(selectedSpeaker.degreeProofUrl, '_blank')}
+                        className="text-xs font-bold text-indigo-600 hover:underline mt-0.5 bg-transparent border-none p-0 cursor-pointer"
+                      >
+                        Xem ảnh
+                      </button>
+                    ) : (
+                      <p className="text-xs font-bold text-amber-600 mt-0.5">Chưa có</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Biography cv details */}
@@ -1374,6 +1637,15 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                 </div>
               )}
 
+              {selectedSpeaker.bioEn && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider font-mono block mb-1.5">Tiểu sử khoa học (bản tiếng Anh):</span>
+                  <div className="text-xs text-slate-650 bg-indigo-50/40 p-3 rounded-xl border border-indigo-100 leading-relaxed italic whitespace-pre-wrap">
+                    {selectedSpeaker.bioEn}
+                  </div>
+                </div>
+              )}
+
               {/* Abstract Full Text and paper structure */}
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider font-mono block mb-1.5">Nội dung tóm tắt nghiên cứu (Abstract text):</span>
@@ -1382,6 +1654,15 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                   dangerouslySetInnerHTML={{ __html: selectedSpeaker.abstractText }}
                 />
               </div>
+
+              {selectedSpeaker.abstractEn && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider font-mono block mb-1.5">Abstract (bản tiếng Anh):</span>
+                  <div className="text-xs text-slate-700 bg-indigo-50/40 p-5 rounded-2xl border border-indigo-100 leading-relaxed whitespace-pre-wrap">
+                    {selectedSpeaker.abstractEn}
+                  </div>
+                </div>
+              )}
 
               {/* Attached file attachments */}
               <div className="flex flex-wrap items-center justify-between gap-4 p-4 border border-slate-150 bg-slate-50 rounded-2xl">
@@ -1576,23 +1857,39 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                 <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                   {specialtyTracks.map((track) => {
                     const count = speakers.filter(s => s.presentationTrack === track.name).length;
+                    const isOpen = track.isAcceptingNew !== false;
                     return (
-                      <div key={track.id} className="flex items-center justify-between p-3 bg-white border border-slate-150 rounded-2xl shadow-xs hover:border-slate-300 transition-all">
+                      <div key={track.id} className={`flex items-center justify-between p-3 border rounded-2xl shadow-xs transition-all ${isOpen ? 'bg-white border-slate-150 hover:border-slate-300' : 'bg-slate-50 border-slate-200 hover:border-slate-300'}`}>
                         <div className="min-w-0 pr-2">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-black text-slate-800">🇻🇳 {track.name}</span>
+                            <span className={`text-xs font-black ${isOpen ? 'text-slate-800' : 'text-slate-500'}`}>🇻🇳 {track.name}</span>
                             {track.nameEn && (
                               <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full">🇬🇧 {track.nameEn}</span>
                             )}
-                            <span className="text-[9px] font-extrabold bg-teal-50 border border-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full uppercase shrink-0">
+                            <span className="text-[9px] font-extrabold bg-teal-50 border border-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full uppercase shrink-0 whitespace-nowrap">
                               {count} báo cáo
                             </span>
+                            {!isOpen && (
+                              <span className="text-[9px] font-extrabold bg-amber-50 border border-amber-200 text-amber-700 px-1.5 py-0.5 rounded-full uppercase shrink-0 whitespace-nowrap">
+                                Ngừng nhận mới
+                              </span>
+                            )}
                           </div>
                           {track.description && (
                             <p className="text-[10px] text-slate-400 mt-0.5 font-medium truncate">{track.description}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTrackAccepting(track)}
+                            className={`p-1 px-1.5 border-none rounded-lg text-[10px] font-bold cursor-pointer transition-colors flex items-center justify-center whitespace-nowrap ${isOpen ? 'bg-slate-50 hover:bg-amber-50 text-amber-700' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'}`}
+                            title={isOpen
+                              ? 'Ngừng nhận đăng ký mới vào chuyên đề này, hồ sơ cũ vẫn giữ nguyên'
+                              : 'Mở lại nhận đăng ký vào chuyên đề này'}
+                          >
+                            {isOpen ? 'Ngừng nhận' : 'Mở lại'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleEditTrack(track)}
@@ -1743,6 +2040,101 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       placeholder="bacsi@gmail.com"
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none"
                     />
+                  </div>
+                </div>
+
+                {/* Thong tin bat buoc de cap chung chi CME */}
+                <div className="pt-3 border-t border-slate-200 space-y-3">
+                  <span className="text-[9.5px] font-extrabold text-teal-700 uppercase tracking-wider block font-mono">
+                    Thông tin để cấp chứng chỉ CME
+                  </span>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Ngày tháng năm sinh</label>
+                      <input
+                        type="date"
+                        min="1920-01-01"
+                        max={new Date().toISOString().split('T')[0]}
+                        value={speakerDateOfBirth}
+                        onChange={(e) => setSpeakerDateOfBirth(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Nơi sinh</label>
+                      <input
+                        type="text"
+                        value={speakerPlaceOfBirth}
+                        onChange={(e) => setSpeakerPlaceOfBirth(e.target.value)}
+                        placeholder="ví dụ: Hà Nội"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none placeholder-slate-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Số CCCD / Định danh</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={20}
+                        value={speakerIdentityNo}
+                        onChange={(e) => setSpeakerIdentityNo(e.target.value.replace(/[^0-9]/g, ''))}
+                        placeholder="001188012345"
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none placeholder-slate-400"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="relative shrink-0 w-24 h-16 rounded-xl bg-white border-2 border-dashed border-teal-600/30 flex items-center justify-center overflow-hidden">
+                      {speakerDegreeProof ? (
+                        <img src={speakerDegreeProof} className="w-full h-full object-cover" alt="Ảnh bằng cấp" />
+                      ) : (
+                        <span className="text-slate-400 text-[9px] font-bold text-center p-1 leading-none select-none">Chưa có ảnh</span>
+                      )}
+                      {isDegreeProofUploading && (
+                        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center text-[9px] text-white font-mono">
+                          Đang tải...
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[9.5px] font-extrabold text-slate-500 block">Hình ảnh bằng cấp</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => degreeProofInputRef.current?.click()}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold rounded-lg cursor-pointer transition-colors whitespace-nowrap"
+                        >
+                          Tải ảnh bằng cấp
+                        </button>
+                        <input
+                          ref={degreeProofInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDegreeProofUpload}
+                          className="hidden"
+                        />
+                        {speakerDegreeProof && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => window.open(speakerDegreeProof, '_blank')}
+                              className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap"
+                            >
+                              Xem ảnh
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSpeakerDegreeProof(null)}
+                              className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap"
+                            >
+                              Xóa ảnh
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2193,6 +2585,40 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       className="w-full px-4 py-2.5 border border-slate-250 rounded-xl text-xs focus:ring-1 focus:ring-teal-500 focus:outline-none leading-relaxed font-mono"
                     />
                   )}
+                </div>
+
+                {/* Ban tieng Anh de in ky yeu, Ban to chuc tu dich */}
+                <div className="bg-indigo-50/40 border border-indigo-150 rounded-2xl p-4 space-y-3">
+                  <div>
+                    <span className="text-[9.5px] font-extrabold text-indigo-700 uppercase tracking-wider block font-mono">
+                      Bản tiếng Anh để in kỷ yếu
+                    </span>
+                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                      Hai ô này do Ban tổ chức tự dịch, báo cáo viên không nhập. Để trống nếu chưa dịch.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Tiểu sử khoa học (tiếng Anh)</label>
+                    <textarea
+                      value={speakerBioEn}
+                      onChange={(e) => setSpeakerBioEn(e.target.value)}
+                      rows={4}
+                      placeholder="Short scientific bio in English..."
+                      className="w-full px-3 py-2 border border-slate-250 rounded-xl text-xs bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none leading-relaxed placeholder-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9.5px] font-extrabold text-slate-500 block mb-1">Abstract (tiếng Anh)</label>
+                    <textarea
+                      value={speakerAbstractEn}
+                      onChange={(e) => setSpeakerAbstractEn(e.target.value)}
+                      rows={6}
+                      placeholder="Objective... Methods... Results... Conclusion..."
+                      className="w-full px-3 py-2 border border-slate-250 rounded-xl text-xs bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none leading-relaxed placeholder-slate-400"
+                    />
+                  </div>
                 </div>
 
                 <div>
