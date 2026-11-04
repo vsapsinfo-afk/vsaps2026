@@ -341,6 +341,17 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       setErrorMsg('Vui lòng điền họ và tên đại biểu.');
       return false;
     }
+    // Hai ô ảnh này vốn đã ghi dấu * nhưng trước đây không kiểm tra. Thiếu ảnh
+    // chân dung thì thư mời và thẻ đại biểu không in được; thiếu minh chứng bác sĩ
+    // thì Ban tổ chức không đối chiếu được tư cách tham dự.
+    if (!avatarImage) {
+      setErrorMsg('Vui lòng tải ảnh chân dung. Ảnh này dùng để in thẻ đại biểu và thư mời.');
+      return false;
+    }
+    if (!doctorProofImage) {
+      setErrorMsg('Vui lòng tải ảnh minh chứng bác sĩ (bằng cấp hoặc chứng chỉ hành nghề).');
+      return false;
+    }
     const dobError = checkDateOfBirth();
     if (dobError) {
       setErrorMsg(dobError);
@@ -446,6 +457,17 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
     if (!fullName) {
       setErrorMsg('Vui lòng điền họ và tên đại biểu.');
+      return;
+    }
+    // Hai ô ảnh này vốn đã ghi dấu * nhưng trước đây không kiểm tra. Thiếu ảnh
+    // chân dung thì thư mời và thẻ đại biểu không in được; thiếu minh chứng bác sĩ
+    // thì Ban tổ chức không đối chiếu được tư cách tham dự.
+    if (!avatarImage) {
+      setErrorMsg('Vui lòng tải ảnh chân dung. Ảnh này dùng để in thẻ đại biểu và thư mời.');
+      return;
+    }
+    if (!doctorProofImage) {
+      setErrorMsg('Vui lòng tải ảnh minh chứng bác sĩ (bằng cấp hoặc chứng chỉ hành nghề).');
       return;
     }
     const dobErrorSubmit = checkDateOfBirth();

@@ -189,6 +189,15 @@ export default function PublicSpeakerRegister({ onNavigate }: PublicSpeakerRegis
       setErrorMsg(nationality === 'vietname' ? 'Vui lòng điền đầy đủ các thông tin bắt buộc (*).' : 'Please fill in all required fields (*).');
       return;
     }
+    // Ô ảnh chân dung vốn đã ghi dấu * nhưng trước đây không kiểm tra, nên
+    // nhiều hồ sơ không có ảnh — thiếu ảnh thì kỷ yếu và thiệp mời báo cáo
+    // đều không in được.
+    if (!avatarImage) {
+      setErrorMsg(nationality === 'vietname'
+        ? 'Vui lòng tải ảnh chân dung. Ảnh này dùng để in kỷ yếu và thiệp mời báo cáo.'
+        : 'Please upload your portrait photo. It is used for the conference proceedings and your speaker invitation.');
+      return;
+    }
     // Bon thong tin duoi day bat buoc vi khong co chung thi khong lam duoc
     // ho so cap chung chi CME cho bao cao vien.
     if (!dateOfBirth) {

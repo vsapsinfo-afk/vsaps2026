@@ -89,6 +89,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [speakerDegreeProof, setSpeakerDegreeProof] = useState<string | null>(null);
   const [isDegreeProofUploading, setIsDegreeProofUploading] = useState(false);
   const degreeProofInputRef = React.useRef<HTMLInputElement>(null);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
   const [speakerDocumentName, setSpeakerDocumentName] = useState('');
   const [speakerStatus, setSpeakerStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
   const [speakerAvatar, setSpeakerAvatar] = useState<string | null>(null);
@@ -406,6 +408,19 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setAbstractEditorMode('visual');
     setBioEditorMode('visual');
     setShowSpeakerModal(true);
+  };
+
+  const handleSpeakerAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsAvatarUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSpeakerAvatar(reader.result as string);
+      setIsAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDegreeProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1970,6 +1985,65 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               {/* Personal Information Section */}
               <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 space-y-3">
                 <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wider block font-mono">1. Thông tin cá nhân & Đơn vị</span>
+
+                {/* Ảnh chân dung. Trước đây hệ thống có lưu ảnh nhưng form sửa lại
+                    không có ô nào để xem hay thay ảnh, nên Ban thư ký không bổ sung
+                    được cho những hồ sơ gửi qua email. Ảnh này dùng cho kỷ yếu, thẻ đại
+                    biểu và thiệp mời báo cáo. */}
+                <div className="flex items-center gap-3 flex-wrap pb-3 border-b border-slate-200">
+                  <div className="relative shrink-0 w-20 h-20 rounded-full bg-white border-2 border-dashed border-teal-600/30 flex items-center justify-center overflow-hidden">
+                    {speakerAvatar ? (
+                      <img src={speakerAvatar} className="w-full h-full object-cover" alt="Ảnh chân dung" />
+                    ) : (
+                      <span className="text-slate-400 text-[9px] font-bold text-center p-1 leading-none select-none">Chưa có ảnh</span>
+                    )}
+                    {isAvatarUploading && (
+                      <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center text-[9px] text-white font-mono">
+                        Đang tải...
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[9.5px] font-extrabold text-slate-500 block">Ảnh chân dung báo cáo viên</span>
+                    <p className="text-[10px] text-slate-400 leading-snug max-w-sm">
+                      Dùng in kỷ yếu, thẻ đại biểu và thiệp mời báo cáo. Nên dùng ảnh chân dung rõ mặt, nền đơn giản.
+                    </p>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold rounded-lg cursor-pointer transition-colors whitespace-nowrap"
+                      >
+                        {speakerAvatar ? 'Đổi ảnh' : 'Tải ảnh chân dung'}
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleSpeakerAvatarUpload}
+                        className="hidden"
+                      />
+                      {speakerAvatar && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => window.open(speakerAvatar, '_blank')}
+                            className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap"
+                          >
+                            Xem ảnh
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSpeakerAvatar(null)}
+                            className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap"
+                          >
+                            Xóa ảnh
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
