@@ -3853,50 +3853,63 @@ Ban Thư ký Hội nghị VSAPS 2026`
         
         let badgeWidth = '8cm';
         let badgeHeight = '5cm';
-        let titleFontSize = '16px';
-        let nameFontSize = '22px';
-        let idFontSize = '14px';
-        let hashtagFontSize = '12px';
-        let qrSize = '55px';
+        let titleFontSize = '17px';
+        let nameFontSize = '26px';
+        let idFontSize = '15px';
+        let hashtagFontSize = '13.5px';
+        let qrSize = '58px';
+        let dashThickness = '2.5';
 
         if (printerPaperSize === '100x150') {
           badgeWidth = '10cm';
           badgeHeight = '15cm';
-          titleFontSize = '24px';
-          nameFontSize = '36px';
-          idFontSize = '20px';
+          titleFontSize = '26px';
+          nameFontSize = '42px';
+          idFontSize = '22px';
           hashtagFontSize = '18px';
-          qrSize = '100px';
+          qrSize = '110px';
+          dashThickness = '4';
         } else if (printerPaperSize === '80x50') {
           badgeWidth = '8cm';
           badgeHeight = '5cm';
-          titleFontSize = '16px';
-          nameFontSize = '22px';
-          idFontSize = '14px';
-          hashtagFontSize = '12px';
-          qrSize = '55px';
+          titleFontSize = '17px';
+          nameFontSize = '26px';
+          idFontSize = '15px';
+          hashtagFontSize = '13.5px';
+          qrSize = '58px';
+          dashThickness = '2.5';
         } else if (printerPaperSize === '70x50') {
           badgeWidth = '7cm';
           badgeHeight = '5cm';
-          titleFontSize = '14px';
-          nameFontSize = '19px';
-          idFontSize = '12px';
-          hashtagFontSize = '10.5px';
-          qrSize = '48px';
+          titleFontSize = '15px';
+          nameFontSize = '23px';
+          idFontSize = '13.5px';
+          hashtagFontSize = '12px';
+          qrSize = '50px';
+          dashThickness = '2';
         } else if (printerPaperSize === 'K80') {
           badgeWidth = '8cm';
           badgeHeight = '8cm';
-          titleFontSize = '18px';
-          nameFontSize = '25px';
-          idFontSize = '15px';
-          hashtagFontSize = '13px';
-          qrSize = '65px';
+          titleFontSize = '20px';
+          nameFontSize = '32px';
+          idFontSize = '18px';
+          hashtagFontSize = '15px';
+          qrSize = '75px';
+          dashThickness = '3';
+        }
+
+        // Adaptive font size if attendee full name is particularly long
+        let effectiveNameFontSize = nameFontSize;
+        if (selectedBadgeAttendee.fullName.length > 25) {
+          effectiveNameFontSize = printerPaperSize === '80x50' ? '20px' : printerPaperSize === '100x150' ? '32px' : '18px';
+        } else if (selectedBadgeAttendee.fullName.length > 20) {
+          effectiveNameFontSize = printerPaperSize === '80x50' ? '22px' : printerPaperSize === '100x150' ? '36px' : '20px';
         }
 
         const marginCss = printerMargin === 'none' ? '0' : printerMargin === 'minimum' ? '2mm' : 'auto';
 
         const hashtags: string[] = ['#lunch'];
-        if (selectedBadgeAttendee.galaRequired || selectedBadgeAttendee.packageId === 'pkg-vip') {
+        if (selectedBadgeAttendee.galaRequired || selectedBadgeAttendee.packageId === 'pkg-vip' || selectedBadgeAttendee.packageId === 'pkg-bch') {
           hashtags.push('#gala dinner');
         }
         if (selectedBadgeAttendee.cmeRequired || selectedBadgeAttendee.cmeIdentityNo) {
@@ -3932,8 +3945,8 @@ Ban Thư ký Hội nghị VSAPS 2026`
                 <div 
                   id="vsaps-physical-badge"
                   ref={badgePrintRef}
-                  className="bg-white p-4 flex flex-col justify-between select-none relative shadow-md rounded-md overflow-hidden print:border-none print:shadow-none print:m-0 font-sans text-black"
-                  style={{ width: badgeWidth, height: badgeHeight }}
+                  className="bg-white select-none relative shadow-md rounded-none border border-slate-300 overflow-hidden print:border-none print:shadow-none print:m-0 font-sans text-black flex flex-col justify-between"
+                  style={{ width: badgeWidth, height: badgeHeight, boxSizing: 'border-box' }}
                 >
                   <style dangerouslySetInnerHTML={{ __html: `
                     @page {
@@ -3941,8 +3954,12 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       margin: ${marginCss};
                     }
                     @media print {
-                      body {
-                        -webkit-print-color-adjust: exact;
+                      html, body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
                       }
                       #vsaps-physical-badge {
                         width: ${badgeWidth} !important;
@@ -3950,46 +3967,69 @@ Ban Thư ký Hội nghị VSAPS 2026`
                         border: none !important;
                         box-shadow: none !important;
                         margin: 0 !important;
-                        padding: ${printerMargin === 'none' ? '8px' : '16px'} !important;
+                        padding: 0 !important;
                         background: white !important;
                         color: black !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                        page-break-inside: avoid;
+                        break-inside: avoid;
                       }
                     }
                   `}} />
 
                   {/* Top Centered Section: Academic Title, Full Name, Delegate ID */}
-                  <div className="flex-1 flex flex-col items-center justify-center text-center space-y-1.5 my-auto py-2">
-                    {/* Line 1: Title / Academic Degree */}
+                  <div className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-4 pb-1">
+                    {/* Line 1: Academic Title / Degree */}
                     <div 
                       className="font-black uppercase text-black tracking-wide leading-none"
                       style={{ fontSize: titleFontSize }}
                     >
-                      {selectedBadgeAttendee.title || 'BS.'}
+                      {(selectedBadgeAttendee.title || 'BS.').toUpperCase()}
                     </div>
 
                     {/* Line 2: Full Name */}
                     <div 
-                      className="font-black uppercase text-black tracking-tight leading-tight my-1"
-                      style={{ fontSize: nameFontSize }}
+                      className="font-black uppercase text-black tracking-tight leading-tight my-2"
+                      style={{ fontSize: effectiveNameFontSize }}
                     >
                       {selectedBadgeAttendee.fullName}
                     </div>
 
                     {/* Line 3: Delegate ID */}
                     <div 
-                      className="font-bold font-mono text-black uppercase tracking-wider"
+                      className="font-extrabold font-sans text-black uppercase tracking-wider leading-none"
                       style={{ fontSize: idFontSize }}
                     >
                       {selectedBadgeAttendee.id}
                     </div>
                   </div>
 
-                  {/* Bottom Section: Dashed Separator + Hashtags on Left, QR Code on Right */}
-                  <div className="pt-2 border-t-2 border-dashed border-black flex justify-between items-end gap-2">
-                    {/* Bottom Left: Hashtags */}
-                    <div className="pb-1">
+                  {/* Bottom Section: Left (Dashed Line + Hashtags), Right (QR Code) */}
+                  <div className="w-full flex items-end justify-between pr-4 pb-3 pl-0 select-none">
+                    {/* Bottom Left: Dashed Line and Hashtags */}
+                    <div className="flex-1 flex flex-col justify-end pr-4 min-w-0">
+                      {/* Dashed Line: Starts from left edge to before QR code */}
+                      <svg 
+                        className="w-full mb-2.5 overflow-visible" 
+                        height={dashThickness} 
+                        preserveAspectRatio="none"
+                        style={{ height: `${dashThickness}px` }}
+                      >
+                        <line 
+                          x1="0" 
+                          y1={Number(dashThickness) / 2} 
+                          x2="100%" 
+                          y2={Number(dashThickness) / 2} 
+                          stroke="black" 
+                          strokeWidth={dashThickness} 
+                          strokeDasharray="9,3" 
+                        />
+                      </svg>
+
+                      {/* Hashtags */}
                       <div 
-                        className="font-extrabold text-black flex flex-wrap items-center gap-x-3 gap-y-1 leading-tight font-sans"
+                        className="pl-4 font-extrabold text-black flex flex-wrap items-center gap-x-4 gap-y-1 leading-none font-sans"
                         style={{ fontSize: hashtagFontSize }}
                       >
                         {hashtags.map((tag, i) => (
@@ -3998,18 +4038,17 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       </div>
                     </div>
 
-                    {/* Bottom Right: QR Code */}
-                    <div className="shrink-0 flex items-center justify-center">
+                    {/* Bottom Right: Clean Borderless QR Code */}
+                    <div className="shrink-0 flex items-end justify-center">
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(selectedBadgeAttendee.qrCodeValue)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(selectedBadgeAttendee.qrCodeValue || selectedBadgeAttendee.id)}`}
                         alt="QR Code"
-                        className="object-contain border border-black p-0.5 bg-white"
+                        className="object-contain bg-white block"
                         style={{ width: qrSize, height: qrSize }}
                       />
                     </div>
                   </div>
                 </div>
-
                 {/* Technical help notes */}
                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg text-[10.5px] text-amber-900 w-full space-y-1">
                   <p className="font-bold">💡 Gợi ý cấu hình máy in nhiệt ({printerPaperSize}):</p>
