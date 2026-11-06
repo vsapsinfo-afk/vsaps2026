@@ -1250,7 +1250,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {packages.map((pkg) => {
+                {packages.filter(pkg => pkg.id !== 'pkg-bch').map((pkg) => {
                   const today = new Date();
                   const targetDate = new Date('2026-11-10');
                   const isPost = today >= targetDate;

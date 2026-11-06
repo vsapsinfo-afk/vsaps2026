@@ -9,7 +9,7 @@ import { store } from '../dataStore';
 import { sendRealtimeNotification } from '../lib/realtime';
 import { Attendee, RegistrationPackage, AddOnService } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
-import { getProvinceList, getDistrictsOf, getWardsOf } from '../data/vnProvinces';
+import { getProvinceList } from '../data/vnProvinces';
 import SepayPaymentChecker from '../components/SepayPaymentChecker';
 import { useFormLabel } from '../hooks/useFormLabel';
 
@@ -120,6 +120,22 @@ const getInitialLang = (): 'vietname' | 'foreign' => {
   return 'vietname'; // mặc định tiếng Việt
 };
 
+// Gói miễn phí dành riêng cho Ủy viên BCH Hội, chỉ hiện khi vào bằng link riêng
+const BCH_PACKAGE_ID = 'pkg-bch';
+
+const getInitialBchMode = (): boolean => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const view = (params.get('view') || '').toLowerCase();
+    if (view.endsWith('/bch')) return true;
+    const bch = (params.get('bch') || '').toLowerCase();
+    return ['1', 'true', 'yes'].includes(bch);
+  } catch {
+    /* ignore */
+  }
+  return false;
+};
+
 export default function PublicDelegateRegister({ onNavigate }: PublicDelegateRegisterProps) {
   const packages = store.getPackages().filter(p => p.isActive);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -153,14 +169,17 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [title, setTitle] = useState('BS');
   const [fullName, setFullName] = useState('');
   const [gender, setGender] = useState('Nam');
-  const [yearOfBirth, setYearOfBirth] = useState('');
+  // Ngay sinh day du, bat buoc de lam ho so cap CME (muc I file yeu cau).
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
+  // Giu yearOfBirth duoi dang suy dien de khong phai sua cac mau CME cu.
+  const yearOfBirth = dateOfBirth ? dateOfBirth.slice(0, 4) : '';
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [organization, setOrganization] = useState('');
   const [department, setDepartment] = useState('');
-  const [province, setProvince] = useState('Hồ Chí Minh');
-  const [district, setDistrict] = useState('Thành phố Thủ Đức');
-  const [ward, setWard] = useState('Phường Thảo Điền');
+  // Không đặt mặc định theo địa phương nào: đại biểu tự chọn Tỉnh/Thành phố của mình
+  const [province, setProvince] = useState('');
   const [address, setAddress] = useState('');
   // const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>(getInitialLang);
@@ -181,11 +200,13 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
   // CME states
   const [cmeRequired, setCmeRequired] = useState(false);
+  const [cmeIdentityNo, setCmeIdentityNo] = useState('');
   const [galaRequired, setGalaRequired] = useState(false);
   const [masterclassRequired, setMasterclassRequired] = useState(false);
   const [tourRequired, setTourRequired] = useState(false);
 
-  const [packageId, setPackageId] = useState(packages[0]?.id || 'pkg-standard');
+  const [isBchMode] = useState(getInitialBchMode);
+  const [packageId, setPackageId] = useState(packages.find(p => p.id !== BCH_PACKAGE_ID)?.id || 'pkg-standard');
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [avatarImage, setAvatarImage] = useState<string | null>(null);
@@ -198,6 +219,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [isDoctorProofUploading, setIsDoctorProofUploading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [createdAttendee, setCreatedAttendee] = useState<Attendee | null>(null);
+  // Ghi nhận kết quả gửi email xác nhận để cảnh báo ngay cho đại biểu nếu thất bại
+  const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -290,18 +313,52 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     }
   };
 
+  /**
+   * Kiem tra ngay sinh: phai co, phai la ngay thuc va nam trong khoang hop ly.
+   * Tra ve chuoi loi, hoac null neu hop le.
+   */
+  const checkDateOfBirth = (): string | null => {
+    if (!dateOfBirth) {
+      return 'Vui lòng chọn ngày tháng năm sinh để hoàn tất hồ sơ cấp CME.';
+    }
+    const parts = dateOfBirth.split('-');
+    if (parts.length !== 3) return 'Ngày sinh không hợp lệ (định dạng Ngày/Tháng/Năm).';
+    const [y, m, d] = parts.map(v => parseInt(v, 10));
+    const dt = new Date(dateOfBirth + 'T00:00:00');
+    // getMonth() tra ve 0-11 nen phai cong 1 khi so sanh.
+    const isRealDate = !isNaN(dt.getTime()) &&
+      dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
+    if (!isRealDate) return 'Ngày sinh không hợp lệ (ví dụ: 31/02 không tồn tại).';
+    const thisYear = new Date().getFullYear();
+    if (y < 1920 || y > thisYear) {
+      return 'Năm sinh không hợp lệ (phải từ 1920 đến ' + thisYear + ').';
+    }
+    return null;
+  };
+
   const validateStep1 = () => {
     if (!fullName) {
       setErrorMsg('Vui lòng điền họ và tên đại biểu.');
       return false;
     }
-    if (!yearOfBirth) {
-      setErrorMsg('Vui lòng điền năm sinh để hoàn tất thông tin đăng ký CME.');
+    // Hai ô ảnh này vốn đã ghi dấu * nhưng trước đây không kiểm tra. Thiếu ảnh
+    // chân dung thì thư mời và thẻ đại biểu không in được; thiếu minh chứng bác sĩ
+    // thì Ban tổ chức không đối chiếu được tư cách tham dự.
+    if (!avatarImage) {
+      setErrorMsg('Vui lòng tải ảnh chân dung. Ảnh này dùng để in thẻ đại biểu và thư mời.');
       return false;
     }
-    const yobNum = parseInt(yearOfBirth, 10);
-    if (isNaN(yobNum) || yobNum < 1920 || yobNum > 2026) {
-      setErrorMsg('Năm sinh không hợp lệ (ví dụ: 1988).');
+    if (!doctorProofImage) {
+      setErrorMsg('Vui lòng tải ảnh minh chứng bác sĩ (bằng cấp hoặc chứng chỉ hành nghề).');
+      return false;
+    }
+    const dobError = checkDateOfBirth();
+    if (dobError) {
+      setErrorMsg(dobError);
+      return false;
+    }
+    if (!placeOfBirth.trim()) {
+      setErrorMsg('Vui lòng điền nơi sinh để hoàn tất hồ sơ cấp CME.');
       return false;
     }
     if (!phone) {
@@ -320,6 +377,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       setErrorMsg('Vui lòng điền địa chỉ liên hệ.');
       return false;
     }
+    if (nationality === 'vietname' && !province) {
+      setErrorMsg('Vui lòng chọn Tỉnh / Thành phố của đại biểu.');
+      return false;
+    }
     setErrorMsg('');
     return true;
   };
@@ -332,8 +393,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
   const selectedPackage = packages.find(p => p.id === packageId) || packages[0];
   const provincesList = getProvinceList();
-  const districts = getDistrictsOf(province);
-  const wards = getWardsOf(province, district);
   const cleanPhoneInput = phone.trim().replace(/\s+/g, '');
   const cleanFullNameAscii = fullName.trim().toUpperCase()
     .normalize('NFD')
@@ -350,6 +409,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       'pkg-student': 1000000,
       'pkg-foreign': 3750000, // $150
       'pkg-free': 0,
+      'pkg-bch': 0,
     },
     post_10_11: {
       'pkg-member': 3000000,
@@ -357,53 +417,28 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       'pkg-student': 1500000,
       'pkg-foreign': 5000000, // $200
       'pkg-free': 0,
+      'pkg-bch': 0,
     }
   };
 
   const currentPrices = PRICING[period];
-  const baseFee = currentPrices[packageId as keyof typeof currentPrices] ?? 0;
+  // Ủy viên BCH Hội được miễn phí toàn bộ: gói cơ bản lẫn dịch vụ phụ trợ
+  const isFeeExempt = isBchMode && packageId === BCH_PACKAGE_ID;
+  const bchPackage = packages.find(p => p.id === BCH_PACKAGE_ID);
+  const getAddOnFee = (svc: AddOnService) =>
+    isFeeExempt ? 0 : (period === 'post_10_11' && svc.feePost ? svc.feePost : svc.fee);
+  const baseFee = isFeeExempt ? 0 : (currentPrices[packageId as keyof typeof currentPrices] ?? 0);
 
   // Calculate add-on fees dynamically from config
   const addOnFeeDetails = addOnServices
     .filter(s => addOnSelections[s.id])
-    .map(s => {
-      const fee = period === 'post_10_11' && s.feePost ? s.feePost : s.fee;
-      return { id: s.id, nameVi: s.nameVi, nameEn: s.nameEn, fee };
-    });
+    .map(s => ({ id: s.id, nameVi: s.nameVi, nameEn: s.nameEn, fee: getAddOnFee(s) }));
   const totalAddOnFee = addOnFeeDetails.reduce((sum, d) => sum + d.fee, 0);
 
   const calculatedTotalFee = baseFee + totalAddOnFee;
 
   // Dynamic preview for bank transfer using VietQR
   const currentVietQRUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${calculatedTotalFee}&addInfo=${encodeURIComponent(transferMessage)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
-
-  // Vietnam address selectors handlers
-  const handleProvinceChange = (selectedProv: string) => {
-    setProvince(selectedProv);
-    const districts = getDistrictsOf(selectedProv);
-    if (districts.length > 0) {
-      setDistrict(districts[0]);
-      const wards = getWardsOf(selectedProv, districts[0]);
-      if (wards.length > 0) {
-        setWard(wards[0]);
-      } else {
-        setWard('');
-      }
-    } else {
-      setDistrict('');
-      setWard('');
-    }
-  };
-
-  const handleDistrictChange = (selectedDist: string) => {
-    setDistrict(selectedDist);
-    const wards = getWardsOf(province, selectedDist);
-    if (wards.length > 0) {
-      setWard(wards[0]);
-    } else {
-      setWard('');
-    }
-  };
 
   const handleToggleCme = (val: boolean) => {
     setAddOnSelections(prev => ({ ...prev, 'addon-cme': val }));
@@ -424,13 +459,24 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       setErrorMsg('Vui lòng điền họ và tên đại biểu.');
       return;
     }
-    if (!yearOfBirth) {
-      setErrorMsg('Vui lòng điền năm sinh để hoàn tất thông tin đăng ký CME.');
+    // Hai ô ảnh này vốn đã ghi dấu * nhưng trước đây không kiểm tra. Thiếu ảnh
+    // chân dung thì thư mời và thẻ đại biểu không in được; thiếu minh chứng bác sĩ
+    // thì Ban tổ chức không đối chiếu được tư cách tham dự.
+    if (!avatarImage) {
+      setErrorMsg('Vui lòng tải ảnh chân dung. Ảnh này dùng để in thẻ đại biểu và thư mời.');
       return;
     }
-    const yobNum = parseInt(yearOfBirth, 10);
-    if (isNaN(yobNum) || yobNum < 1920 || yobNum > 2026) {
-      setErrorMsg('Năm sinh không hợp lệ (ví dụ: 1988).');
+    if (!doctorProofImage) {
+      setErrorMsg('Vui lòng tải ảnh minh chứng bác sĩ (bằng cấp hoặc chứng chỉ hành nghề).');
+      return;
+    }
+    const dobErrorSubmit = checkDateOfBirth();
+    if (dobErrorSubmit) {
+      setErrorMsg(dobErrorSubmit);
+      return;
+    }
+    if (!placeOfBirth.trim()) {
+      setErrorMsg('Vui lòng điền nơi sinh để hoàn tất hồ sơ cấp CME.');
       return;
     }
     if (!phone) {
@@ -447,6 +493,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
     }
     if (!address) {
       setErrorMsg('Vui lòng điền địa chỉ liên hệ.');
+      return;
+    }
+    if (nationality === 'vietname' && !province) {
+      setErrorMsg('Vui lòng quay lại Bước 1 và chọn Tỉnh / Thành phố của đại biểu.');
       return;
     }
 
@@ -468,7 +518,13 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       const newId = `VSAPS2026-${randomSeq}`;
       const qrCodeValue = `${newId}-${fullName.replace(/\s+/g, '').toUpperCase()}`;
 
-      const fullAddress = `${address.trim()}${ward ? ', ' + ward : ''}${district ? ', ' + district : ''}`;
+      // Giữ nguyên văn địa chỉ đại biểu tự nhập, chỉ bổ sung Tỉnh/Thành phố đã chọn nếu chưa có trong chuỗi
+      const addressInput = address.trim().replace(/[,\s]+$/, '');
+      const provinceSelected = province.trim();
+      const alreadyHasProvince = provinceSelected
+        ? addressInput.toLowerCase().includes(provinceSelected.toLowerCase())
+        : true;
+      const fullAddress = alreadyHasProvince ? addressInput : `${addressInput}, ${provinceSelected}`;
 
       const isCmeSelected = addOnServices.some(s => s.id.toLowerCase().includes('cme') && addOnSelections[s.id]);
       const isGalaSelected = addOnServices.some(s => s.id.toLowerCase().includes('gala') && addOnSelections[s.id]);
@@ -486,6 +542,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       if (customAddOns.length > 0) {
         const customNames = customAddOns.map(s => s.nameVi).join(', ');
         finalNotes = notes ? `${notes}\n[Đăng ký thêm: ${customNames}]` : `[Đăng ký thêm: ${customNames}]`;
+      }
+      // Đánh dấu hồ sơ miễn phí để Ban thư ký đối chiếu danh sách Ủy viên BCH Hội
+      if (isFeeExempt) {
+        finalNotes = `[ỦY VIÊN BCH HỘI – MIỄN PHÍ]${finalNotes ? '\n' + finalNotes : ''}`;
       }
 
       const attendeeData: Attendee = {
@@ -509,9 +569,12 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
         isCheckedIn: false,
         notes: finalNotes,
         yearOfBirth,
+        dateOfBirth,
+        placeOfBirth: placeOfBirth.trim(),
         gender,
         cmeRequired: isCmeSelected,
-        cmeIdentityNo: undefined,
+        // Chi luu so CCCD khi dai bieu that su dang ky cap CME.
+        cmeIdentityNo: isCmeSelected ? (cmeIdentityNo.trim() || undefined) : undefined,
         galaRequired: isGalaSelected,
         masterclassRequired: isMasterclassSelected,
         tourRequired: isTourSelected,
@@ -530,14 +593,27 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
         'success'
       );
 
-      // Gửi thông báo tự động (chạy background)
+      // Zalo & WhatsApp gửi nền (không chặn luồng hoàn tất đăng ký)
       try {
         store.sendZaloZNS(saved);
-        store.sendEmail(saved);
         store.sendWhatsapp(saved);
       } catch (err) {
-        console.error('Lỗi khi gửi thông báo tự động:', err);
+        console.error('Lỗi khi gửi thông báo Zalo/WhatsApp:', err);
       }
+
+      // Email xác nhận: chờ kết quả thật để biết thư có đi được hay không.
+      // Trước đây lệnh này chạy nền và nuốt lỗi nên BTC không biết mail bị rớt.
+      let emailOk = false;
+      try {
+        const emailLog = await store.sendEmail(saved);
+        emailOk = emailLog?.status === 'success';
+        if (!emailOk) {
+          console.error('Gửi email xác nhận thất bại:', emailLog?.response);
+        }
+      } catch (err) {
+        console.error('Lỗi khi gửi email xác nhận:', err);
+      }
+      setEmailDeliveryFailed(!emailOk);
 
       setCreatedAttendee(saved);
       setIsSubmitted(true);
@@ -559,6 +635,8 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
       .replace(/[đĐ]/g, 'D')
       .replace(/[^A-Z0-9\s]/g, '');
     const transferMessageSub = `VSAPS26-${cleanFullNameAsciiSub} ${createdAttendee.phone}`;
+    // Hồ sơ miễn phí (Ủy viên BCH Hội, Chủ tọa/Báo cáo viên...) không hiện thông tin chuyển khoản
+    const isFreeTicket = (createdAttendee.packageFee || 0) <= 0;
     const vietQrSuccessUrl = `https://img.vietqr.io/image/VCB-0331000516283-compact.png?amount=${createdAttendee.packageFee}&addInfo=${encodeURIComponent(transferMessageSub)}&accountName=HOI%20PHAU%20THUAT%2520TAO%2520HINH%2520THAM%2520MY%2520VIET%2520NAM`;
 
     return (
@@ -582,19 +660,37 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
             <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-5 text-emerald-900 text-xs space-y-3">
               <div className="flex items-center gap-1.5 font-bold text-emerald-950 font-sans text-sm">
                 <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 animate-pulse" />
-                <span>Thông tin đăng ký đã được gửi thành công qua Email và Zalo của đại biểu.</span>
+                <span>Hồ sơ đăng ký của đại biểu đã được ghi nhận thành công trên hệ thống.</span>
               </div>
               <p className="text-slate-600 leading-relaxed font-sans">
                 Mẫu đăng ký tham gia của đại biểu <strong>{createdAttendee.title} {createdAttendee.fullName}</strong> đã được lưu trữ thành công trên hệ thống hội nghị VSAPS 2026.
               </p>
               <div className="space-y-1 text-slate-650 font-sans pl-1 border-l-2 border-emerald-350">
                 <p>• <strong>Zalo OA:</strong> Phiếu check-in kèm mã QR đã được gửi tự động tới SĐT Zalo: <strong className="text-slate-900">{createdAttendee.phone}</strong></p>
-                <p>• <strong>Email liên hệ:</strong> Thẻ điện tử và hướng dẫn chi tiết hội nghị đã được gửi đến hòm thư: <strong className="text-slate-900">{createdAttendee.email}</strong></p>
+                {!emailDeliveryFailed && (
+                  <p>• <strong>Email liên hệ:</strong> Thẻ điện tử và hướng dẫn chi tiết hội nghị đã được gửi đến hòm thư: <strong className="text-slate-900">{createdAttendee.email}</strong></p>
+                )}
               </div>
             </div>
 
+            {/* Cảnh báo khi hệ thống KHÔNG gửi được email xác nhận */}
+            {emailDeliveryFailed && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-900 text-xs space-y-2">
+                <div className="flex items-center gap-1.5 font-bold text-amber-950 font-sans text-sm">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Hệ thống chưa gửi được thư xác nhận tới email của đại biểu</span>
+                </div>
+                <p className="text-amber-800 leading-relaxed font-sans">
+                  Hồ sơ đăng ký <strong>đã được lưu thành công</strong>, tuy nhiên máy chủ thư điện tử tạm thời chưa gửi được thư tới địa chỉ <strong className="font-mono">{createdAttendee.email}</strong>.
+                </p>
+                <p className="text-amber-800 leading-relaxed font-sans">
+                  Đại biểu vui lòng <strong>chụp lại màn hình này</strong> (đã có đầy đủ mã đại biểu, mã QR check-in và thông tin chuyển khoản) và liên hệ Ban Thư ký để được gửi lại thư xác nhận. Ban Tổ Chức cũng sẽ chủ động gửi lại trong thời gian sớm nhất.
+                </p>
+              </div>
+            )}
+
             {/* Electronic Ticket & Payment Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-6">
+            <div className={`grid grid-cols-1 gap-6 border-t border-slate-100 pt-6 ${isFreeTicket ? '' : 'md:grid-cols-2'}`}>
 
               {/* Left Column: CHECK-IN PASS GỒM ẢNH QR VÉ */}
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm flex flex-col justify-between">
@@ -629,7 +725,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         <p className="text-[10.5px] text-slate-500 font-semibold leading-tight">{createdAttendee.organization}</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400 italic font-medium">Năm sinh: {createdAttendee.yearOfBirth} • Giới tính: {createdAttendee.gender}</p>
+                    <p className="text-[10px] text-slate-400 italic font-medium">Ngày sinh: {createdAttendee.dateOfBirth || createdAttendee.yearOfBirth} • Nơi sinh: {createdAttendee.placeOfBirth || '—'} • Giới tính: {createdAttendee.gender}</p>
                   </div>
                 </div>
 
@@ -639,6 +735,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
               </div>
 
               {/* Right Column: THANH TOÁN CHUYỂN KHOẢN VIETQR */}
+              {!isFreeTicket && (
               <div className="border border-amber-200 rounded-2xl overflow-hidden bg-amber-50/20 shadow-sm flex flex-col justify-between">
                 <div className="bg-amber-500 text-amber-950 p-3.5 text-center border-b border-amber-300">
                   <span className="text-[10px] uppercase font-black tracking-wider block">QUYỂN THANH TOÁN VIETQR</span>
@@ -670,9 +767,27 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                   ⚠️ Quét QR bằng ứng dụng ngân hàng để tự điền nội dung & số tiền chính xác.
                 </div>
               </div>
+              )}
             </div>
 
+            {/* Xác nhận miễn lệ phí cho Ủy viên BCH Hội */}
+            {isFreeTicket && (
+              <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-5 text-emerald-900 text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 font-black text-emerald-950 font-sans text-sm uppercase tracking-wide">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Miễn lệ phí tham dự</span>
+                </div>
+                <p className="leading-relaxed font-sans">
+                  Hồ sơ đăng ký theo diện <strong>{createdAttendee.packageName}</strong> được <strong>miễn toàn bộ lệ phí</strong>. Quý đại biểu <strong>không cần chuyển khoản</strong> và không cần đính kèm biên lai.
+                </p>
+                <p className="leading-relaxed font-sans">
+                  Ban thư ký sẽ đối chiếu danh sách và kích hoạt vé QR check-in chính thức, sau đó gửi lại qua Email và Zalo của quý đại biểu.
+                </p>
+              </div>
+            )}
+
             {/* Proof of Payment file uploader on Step 4 */}
+            {!isFreeTicket && (
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
                 <Upload className="w-4 h-4 text-teal-600 animate-bounce" />
@@ -719,6 +834,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                 </div>
               )}
             </div>
+            )}
 
             {/* CME specific confirmation data display if requested */}
             {createdAttendee.cmeRequired && (
@@ -731,11 +847,20 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
 
             {/* Instruction Footer action buttons */}
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-[10px] text-slate-500 leading-relaxed">
-              <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Sau khi hoàn thành chuyển tiền qua QR ngân hàng và tải lên biên lai, trạng thái đóng phí của đại biểu sẽ được duyệt sang màu xanh <strong>PAID (Đã đóng phí)</strong> trên ứng dụng.
+              {isFreeTicket ? (
+                <>
+                  <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Đại biểu thuộc diện miễn lệ phí không cần thực hiện bất kỳ giao dịch chuyển khoản nào. Ban thư ký sẽ đối chiếu danh sách và kích hoạt vé QR check-in cho quý đại biểu.
+                </>
+              ) : (
+                <>
+                  <strong>* Ban Tổ Chức Hướng Dẫn:</strong> Sau khi hoàn thành chuyển tiền qua QR ngân hàng và tải lên biên lai, trạng thái đóng phí của đại biểu sẽ được duyệt sang màu xanh <strong>PAID (Đã đóng phí)</strong> trên ứng dụng.
+                </>
+              )}
             </div>
 
             {/* SePay auto payment check */}
             {(() => {
+              if (isFreeTicket) return null;
               const sepay = store.getSepayConfig();
               if (!sepay.isEnabled || !sepay.apiToken) return null;
               return (
@@ -1042,23 +1167,40 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                       </div>
                     </div>
 
-                    {/* Year of Birth & Contact details */}
+                    {/* Ngay sinh, Noi sinh va thong tin lien he */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                       <div className="md:col-span-4">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
-                          {L.f('yearOfBirth', 'Năm sinh *', 'Year of Birth *')}
+                          {L.f('dateOfBirth', 'Ngày tháng năm sinh *', 'Date of Birth *')}
                         </label>
                         <input
-                          type="text"
+                          type="date"
                           required
-                          maxLength={4}
-                          value={yearOfBirth}
-                          onChange={(e) => setYearOfBirth(e.target.value.replace(/\D/g, ''))}
-                          placeholder={L.p('ví dụ: 1988', 'e.g. 1988')}
+                          max={new Date().toISOString().split('T')[0]}
+                          min="1920-01-01"
+                          value={dateOfBirth}
+                          onChange={(e) => setDateOfBirth(e.target.value)}
                           className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:border-teal-600 focus:outline-none placeholder-slate-400"
                         />
                         <span className="text-[10px] text-slate-400 mt-1 block">
                           {L.t('Cần thiết cho chứng chỉ CME', 'Required for CME certification')}
+                        </span>
+                      </div>
+
+                      <div className="md:col-span-4">
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          {L.f('placeOfBirth', 'Nơi sinh *', 'Place of Birth *')}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={placeOfBirth}
+                          onChange={(e) => setPlaceOfBirth(e.target.value)}
+                          placeholder={L.p('ví dụ: Hà Nội', 'e.g. Hanoi')}
+                          className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">
+                          {L.t('Ghi theo giấy tờ tùy thân', 'As shown on your ID document')}
                         </span>
                       </div>
 
@@ -1079,7 +1221,10 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         </span>
                       </div>
 
-                      <div className="md:col-span-4">
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                      <div className="md:col-span-12">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
                           {L.f('email', 'Địa chỉ Email nhận vé & CME *', 'Email for Ticket & CME *')}
                         </label>
@@ -1112,7 +1257,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     </div>
 
                     {/* Address */}
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="col-span-1">
                         <label className="block text-xs font-bold text-slate-700 mb-1">
                           {L.f('address', 'Địa chỉ liên hệ *', 'Contact Address *')}
@@ -1122,10 +1267,29 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                           required
                           value={address}
                           onChange={(e) => setAddress(e.target.value)}
-                          placeholder={L.p('ví dụ: Phường Thảo Điền, Thành phố Thủ Đức, Hồ Chí Minh', 'e.g. Thao Dien, Thu Duc City, Ho Chi Minh City')}
+                          placeholder={L.p('ví dụ: 229 Khuất Duy Tiến, Thanh Xuân', 'e.g. 229 Khuat Duy Tien, Thanh Xuan')}
                           className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none placeholder-slate-400"
                         />
                       </div>
+
+                      {nationality === 'vietname' && (
+                        <div className="col-span-1">
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            {L.f('province', 'Tỉnh / Thành phố *', 'Province / City *')}
+                          </label>
+                          <select
+                            required
+                            value={province}
+                            onChange={(e) => setProvince(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-slate-55 border border-slate-200 rounded-xl text-xs font-semibold focus:border-teal-600 focus:outline-none cursor-pointer"
+                          >
+                            <option value="">{L.t('— Chọn Tỉnh / Thành phố —', '— Select Province / City —')}</option>
+                            {provincesList.map((prov) => (
+                              <option key={prov} value={prov}>{prov}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Navigation Button Step 1 */}
@@ -1269,6 +1433,47 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         })}
                     </div>
 
+                    {/* DÒNG ĐĂNG KÝ RIÊNG: ỦY VIÊN BCH HỘI (miễn phí, chỉ hiện qua link riêng) */}
+                    {isBchMode && nationality === 'vietname' && bchPackage && (
+                      <div className="space-y-2">
+                        <label
+                          onClick={() => handleSelectPackage(BCH_PACKAGE_ID)}
+                          className={`w-full p-5 rounded-2xl border cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all ${isFeeExempt
+                            ? 'bg-teal-50/40 border-teal-600 ring-2 ring-teal-600/20 shadow-lg'
+                            : 'bg-white border-slate-200 hover:border-slate-350 shadow-sm'
+                            }`}
+                        >
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-200">
+                                {L.t('★ Ủy viên BCH Hội', '★ Executive Committee')}
+                              </span>
+                              <span className="px-1.5 py-0.5 bg-teal-50 text-teal-800 border border-teal-100 rounded text-[7.5px] font-black">
+                                {L.t('✓ MIỄN PHÍ – KHÔNG CẦN CHUYỂN KHOẢN', '✓ FREE – NO BANK TRANSFER REQUIRED')}
+                              </span>
+                              {isFeeExempt && <span className="w-5 h-5 rounded-full bg-teal-600 flex items-center justify-center text-white text-xs">✓</span>}
+                            </div>
+
+                            <span className="font-black text-xs md:text-sm text-slate-950 block leading-tight">{bchPackage.name}</span>
+
+                            <span className="text-[9.5px] text-slate-400 block uppercase font-bold tracking-wider font-mono">{L.t('QUYỀN LỢI ĐI KÈM:', 'BENEFITS INCLUDED:')}</span>
+                            <ul className="text-[10px] text-slate-500 space-y-1.5 list-disc pl-3">
+                              {bchPackage.benefits.map((b, i) => (
+                                <li key={i} className="leading-tight">{b}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="font-mono font-black text-slate-950 text-base md:text-lg border-t md:border-t-0 md:border-l border-slate-100 pt-3 md:pt-0 md:pl-5 text-right shrink-0">
+                            0 <span className="text-[10px] font-normal text-slate-400 font-sans">VNĐ</span>
+                          </div>
+                        </label>
+                        <p className="text-[9.5px] text-slate-500 leading-snug pl-1">
+                          {L.t('* Dành riêng cho Ủy viên Ban Chấp hành Hội. Ban Tổ Chức sẽ đối chiếu danh sách BCH trước khi cấp vé QR check-in.', '* Reserved for Executive Committee members. The secretariat will verify the committee list before issuing the QR check-in ticket.')}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Navigation Buttons Step 2 */}
                     <div className="pt-6 border-t border-slate-100 flex justify-between gap-4">
                       <button
@@ -1309,7 +1514,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {addOnServices.filter(svc => svc.isEnabled).map((svc) => {
                         const isSelected = addOnSelections[svc.id] || false;
-                        const svcFee = period === 'post_10_11' && svc.feePost ? svc.feePost : svc.fee;
+                        const svcFee = getAddOnFee(svc);
                         const colorMap: Record<string, { bg: string; border: string; ring: string; text: string; checkbox: string }> = {
                           teal: { bg: 'bg-teal-50/40', border: 'border-teal-600', ring: 'ring-teal-600/10', text: 'text-teal-900', checkbox: 'text-teal-800' },
                           amber: { bg: 'bg-amber-50/40', border: 'border-amber-500', ring: 'ring-amber-500/10', text: 'text-amber-850', checkbox: 'text-amber-600' },
@@ -1341,7 +1546,9 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                               />
                               <div>
                                 <span className={`text-xs font-black ${c.text} block uppercase`}>
-                                  {L.t(`${svc.nameVi} (+ ${svcFee.toLocaleString()}đ)`, `${svc.nameEn} (+ ${svcFee.toLocaleString()} VND)`)}
+                                  {isFeeExempt
+                                    ? L.t(`${svc.nameVi} (Miễn phí)`, `${svc.nameEn} (Free)`)
+                                    : L.t(`${svc.nameVi} (+ ${svcFee.toLocaleString()}đ)`, `${svc.nameEn} (+ ${svcFee.toLocaleString()} VND)`)}
                                 </span>
                                 <span className="text-[10px] text-slate-500 block leading-relaxed mt-0.5">
                                   {L.t(svc.descriptionVi, svc.descriptionEn)}
@@ -1352,6 +1559,37 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         );
                       })}
                     </div>
+
+                    {/* Dang ky CME: so CCCD va luu y trach nhiem thong tin */}
+                    {addOnSelections['addon-cme'] && (
+                      <div className="p-4 md:p-5 rounded-2xl border border-teal-300 bg-teal-50/50 space-y-3">
+                        <span className="text-[11px] font-black text-teal-900 uppercase tracking-wide block">
+                          {L.t('Thông tin bắt buộc để cấp chứng chỉ CME', 'Information required to issue the CME certificate')}
+                        </span>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-1">
+                            {L.f('cmeIdentityNo', 'Số CCCD / Định danh cá nhân *', 'National ID Number *')}
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={20}
+                            value={cmeIdentityNo}
+                            onChange={(e) => setCmeIdentityNo(e.target.value.replace(/[^0-9]/g, ''))}
+                            placeholder={L.p('ví dụ: 001188012345', 'e.g. 001188012345')}
+                            className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold focus:border-teal-600 focus:outline-none placeholder-slate-400"
+                          />
+                        </div>
+
+                        <p className="text-[10.5px] text-teal-900 leading-relaxed bg-white/70 border border-teal-200 rounded-xl p-3">
+                          {L.t(
+                            'Lưu ý: Quý Bác sĩ vui lòng kiểm tra và chịu trách nhiệm về tính chính xác của thông tin cá nhân (email, số CCCD, ngày tháng năm sinh). Mọi sai sót cần được thông báo cho Ban Tổ chức trước ngày 12/12/2026. Sau thời gian này, thông tin sẽ không được điều chỉnh.',
+                            'Please note: you are responsible for checking the accuracy of your personal details (email, national ID number, date of birth). Any correction must be reported to the Organizing Committee before 12 December 2026. After that date, no change can be made.'
+                          )}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Note fields */}
                     <div>
@@ -1383,13 +1621,27 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         {addOnFeeDetails.map(d => (
                           <div key={d.id} className="flex justify-between">
                             <span>• {L.t(d.nameVi, d.nameEn)}:</span>
-                            <span className="font-mono text-slate-905">+{d.fee.toLocaleString()} VNĐ</span>
+                            <span className="font-mono text-slate-905">
+                              {isFeeExempt ? L.t('Miễn phí', 'Free') : `+${d.fee.toLocaleString()} VNĐ`}
+                            </span>
                           </div>
                         ))}
-                        <div className="flex justify-between text-teal-900 bg-teal-50 border border-teal-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
-                          <span>{L.t('TỔNG LỆ PHÍ ĐĂNG KÝ CẦN ĐÓNG:', 'TOTAL REGISTRATION FEE:')}</span>
-                          <span className="font-mono">{calculatedTotalFee.toLocaleString()} VNĐ</span>
-                        </div>
+                        {isFeeExempt ? (
+                          <div className="flex justify-between items-center text-emerald-900 bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
+                            <span>{L.t('MIỄN PHÍ – ỦY VIÊN BCH HỘI:', 'FREE – EXECUTIVE COMMITTEE:')}</span>
+                            <span className="font-mono">0 VNĐ</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-teal-900 bg-teal-50 border border-teal-200 p-3 rounded-xl text-xs md:text-sm font-black mt-3">
+                            <span>{L.t('TỔNG LỆ PHÍ ĐĂNG KÝ CẦN ĐÓNG:', 'TOTAL REGISTRATION FEE:')}</span>
+                            <span className="font-mono">{calculatedTotalFee.toLocaleString()} VNĐ</span>
+                          </div>
+                        )}
+                        {isFeeExempt && (
+                          <p className="text-[10px] text-emerald-800 leading-snug font-medium pt-1">
+                            {L.t('Quý đại biểu không cần chuyển khoản và không cần đính kèm biên lai. Bấm nút bên dưới để hoàn tất đăng ký.', 'No bank transfer or payment receipt is required. Please click the button below to complete your registration.')}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -1509,7 +1761,11 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                         className="px-8 py-3 rounded-xl bg-teal-900 hover:bg-teal-950 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider cursor-pointer shadow-lg hover:shadow-xl transition-all border border-amber-400/40 relative group overflow-hidden"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-amber-400/10 via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out" />
-                        {isSubmitting ? L.t('Đang gửi thông tin đăng ký...', 'Submitting registration details...') : L.t('Xác Nhận Đăng Ký & Đi Đến Thanh Toán ⚡', 'Confirm Registration & Go to Payment ⚡')}
+                        {isSubmitting
+                          ? L.t('Đang gửi thông tin đăng ký...', 'Submitting registration details...')
+                          : isFeeExempt
+                            ? L.t('Xác Nhận Đăng Ký (Miễn Phí) ⚡', 'Confirm Registration (Free) ⚡')
+                            : L.t('Xác Nhận Đăng Ký & Đi Đến Thanh Toán ⚡', 'Confirm Registration & Go to Payment ⚡')}
                       </button>
                     </div>
                   </div>

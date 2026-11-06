@@ -54,6 +54,8 @@ CREATE TABLE public.specialty_tracks (
     name TEXT NOT NULL,
     name_en TEXT,
     description TEXT,
+    -- FALSE = ngung nhan dang ky moi, nhung van giu cho ho so cu
+    is_accepting_new BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -69,6 +71,7 @@ CREATE TABLE public.business_config (
     require_payment_proof BOOLEAN DEFAULT TRUE,
     allow_self_cancellation BOOLEAN DEFAULT FALSE,
     auto_send_zns BOOLEAN DEFAULT TRUE,
+    auto_send_invitation_letter BOOLEAN DEFAULT FALSE,
     require_practice_code BOOLEAN DEFAULT TRUE,
     pwa_name TEXT DEFAULT 'VSAPS 2026 - Hội Nghị Khoa Học Thẩm Mỹ',
     pwa_short_name TEXT DEFAULT 'VSAPS 2026',
@@ -135,6 +138,8 @@ CREATE TABLE public.attendees (
     check_in_time TEXT, -- Format: YYYY-MM-DD HH:MM
     notes TEXT,
     year_of_birth INTEGER,
+    date_of_birth TEXT,
+    place_of_birth TEXT,
     gender TEXT,
     cme_required BOOLEAN DEFAULT FALSE,
     cme_identity_no TEXT,
@@ -144,6 +149,7 @@ CREATE TABLE public.attendees (
     registration_period TEXT,
     province TEXT,
     avatar_url TEXT,
+    doctor_proof_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -157,9 +163,15 @@ CREATE TABLE public.speakers (
     phone TEXT,
     email TEXT,
     bio TEXT,
+    bio_en TEXT,
     presentation_title TEXT NOT NULL,
     presentation_track TEXT,
     abstract_text TEXT,
+    abstract_en TEXT,
+    date_of_birth TEXT,
+    place_of_birth TEXT,
+    identity_no TEXT,
+    degree_proof_url TEXT,
     document_url TEXT,
     document_name TEXT,
     calendar_synced BOOLEAN DEFAULT FALSE,
@@ -456,6 +468,12 @@ INSERT INTO public.packages (id, name, fee, benefits, is_active, includes_cme, i
   'Teabreak & Trà bánh cao cấp',
   'Tham dự Gala Dinner đặc quyền',
   'Chứng nhận tham luận có CME'
+], true, true, true),
+('pkg-bch', 'Ủy viên BCH Hội', 0, ARRAY[
+  'Miễn phí tham dự dành riêng cho Ủy viên Ban Chấp hành Hội',
+  'Tham dự đầy đủ các phiên báo cáo khoa học và khu vực triển lãm',
+  'Bộ túi tài liệu, kỷ yếu và quà lưu niệm chính thức',
+  'Miễn phí toàn bộ dịch vụ phụ trợ (CME, Gala Dinner, Master class, Tour)'
 ], true, true, true)
 ON CONFLICT (id) DO NOTHING;
 

@@ -37,6 +37,10 @@ export interface Attendee {
   checkInTime?: string;
   notes?: string;
   yearOfBirth?: string;
+  /** Ngày sinh đầy đủ (YYYY-MM-DD). Bắt buộc để cấp chứng chỉ CME. */
+  dateOfBirth?: string;
+  /** Nơi sinh (tỉnh/thành phố ghi trên giấy tờ). Bắt buộc để cấp chứng chỉ CME. */
+  placeOfBirth?: string;
   gender?: string;
   cmeRequired?: boolean;
   cmeIdentityNo?: string;
@@ -58,9 +62,21 @@ export interface SpeakerRegistration {
   phone: string;
   email: string;
   bio: string;
+  /** Tiểu sử khoa học bản tiếng Anh, do Ban tổ chức tự dịch để in kỷ yếu. */
+  bioEn?: string;
   presentationTitle: string;
   presentationTrack: string; // ví dụ: Ngoại khoa, Nội khoa, Gây mê hồi sức
   abstractText: string;
+  /** Abstract bản tiếng Anh, do Ban tổ chức tự dịch để in kỷ yếu. */
+  abstractEn?: string;
+  /** Ngày sinh đầy đủ (YYYY-MM-DD). Bắt buộc để cấp chứng chỉ CME. */
+  dateOfBirth?: string;
+  /** Nơi sinh (tỉnh/thành phố ghi trên giấy tờ). Bắt buộc để cấp chứng chỉ CME. */
+  placeOfBirth?: string;
+  /** Số CCCD / định danh cá nhân. Bắt buộc để cấp chứng chỉ CME. */
+  identityNo?: string;
+  /** Ảnh bằng cấp / minh chứng học hàm học vị. Bắt buộc để cấp chứng chỉ CME. */
+  degreeProofUrl?: string;
   documentUrl?: string;
   documentName?: string;
   calendarSynced: boolean;
@@ -76,6 +92,12 @@ export interface SpecialtyTrack {
   name: string;       // Tên tiếng Việt (luôn có)
   nameEn?: string;    // Tên tiếng Anh (tùy chọn, dùng cho form đăng ký ngoại quốc)
   description?: string;
+  /**
+   * false = ngừng nhận đăng ký mới: chuyên đề không còn hiện trên form công khai
+   * nhưng vẫn giữ trong hệ thống để các hồ sơ cũ không bị mất chuyên đề.
+   * Bỏ trống đồng nghĩa với true.
+   */
+  isAcceptingNew?: boolean;
 }
 
 export interface ConferenceShift {
@@ -231,7 +253,7 @@ export interface WhatsappConfig {
 export interface NotificationTemplate {
   id: string;
   name: string;
-  type: 'registration_success' | 'payment_confirmed' | 'abstract_approved' | 'reminder_event' | 'sponsor_registered' | 'sponsor_paid' | 'sponsor_contract' | 'thank_you_survey' | 'speaker_registered';
+  type: 'registration_success' | 'payment_confirmed' | 'abstract_approved' | 'reminder_event' | 'sponsor_registered' | 'sponsor_paid' | 'sponsor_contract' | 'thank_you_survey' | 'speaker_registered' | 'invitation_letter';
   channel: 'email' | 'zalo' | 'whatsapp';
   subject?: string;
   content: string; // Chứa placeholder {{fullname}}, {{package}}, {{code}}...
@@ -416,6 +438,12 @@ export interface BusinessConfig {
   allowSelfCancellation: boolean;
   autoSendZns: boolean;
   requirePracticeCode: boolean;
+  /**
+   * Tự động gửi thư mời cho đại biểu ngay khi hồ sơ được xác nhận hợp lệ.
+   * Mặc định tắt: nội dung và thiết kế phôi thư mời cần Ban tổ chức chốt
+   * trước, bật lên rồi thư mới gửi đi hàng loạt.
+   */
+  autoSendInvitationLetter?: boolean;
   pwaName?: string;
   pwaShortName?: string;
   pwaDescription?: string;

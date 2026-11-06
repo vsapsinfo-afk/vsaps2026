@@ -254,6 +254,9 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
       fullName: { vi: "Họ và Tên (In hoa có dấu) *", en: "Full Name (Capitalized) *" },
       gender: { vi: "Giới tính *", en: "Gender *" },
       yearOfBirth: { vi: "Năm sinh *", en: "Year of Birth *" },
+      dateOfBirth: { vi: "Ngày tháng năm sinh *", en: "Date of Birth *" },
+      placeOfBirth: { vi: "Nơi sinh *", en: "Place of Birth *" },
+      cmeIdentityNo: { vi: "Số CCCD / Định danh cá nhân *", en: "National ID Number *" },
       phone: { vi: "Số điện thoại di động *", en: "Contact Phone Number *" },
       email: { vi: "Địa chỉ Email nhận vé & CME *", en: "Email for Ticket & CME *" },
       workplace: { vi: "Đơn vị công tác (Bệnh viện/Khoa Y/Viện thẩm mỹ) *", en: "Workplace (Hospital/Medical School/Clinic) *" },
@@ -285,6 +288,10 @@ const DEFAULT_BUSINESS_CONFIG: BusinessConfig = {
       department: { vi: "Khoa / Phòng ban / Bộ môn *", en: "Department / Specialty *" },
       phone: { vi: "Số điện thoại *", en: "Phone Number *" },
       email: { vi: "Email liên hệ trao đổi học thuật *", en: "Academic Contact Email *" },
+      dateOfBirth: { vi: "Ngày tháng năm sinh *", en: "Date of Birth *" },
+      placeOfBirth: { vi: "Nơi sinh *", en: "Place of Birth *" },
+      identityNo: { vi: "Số CCCD / Định danh cá nhân *", en: "National ID Number *" },
+      degreeProof: { vi: "Hình ảnh bằng cấp *", en: "Degree Certificate Photo *" },
       bio: { vi: "Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ", en: "Short Scientific Bio - Around 100 words" },
       presentationTitle: { vi: "Tên đề tài bài báo cáo khoa học *", en: "Presentation Title *" },
       category: { vi: "Chuyên đề *", en: "Scientific Topic / Track *" },
@@ -1113,6 +1120,92 @@ export class DataStore {
   // GETTERS & ACTION SETTERS (Offline-First)
   // ==========================================
 
+  /**
+   * Đọc tên cột bị thiếu từ thông báo lỗi của Supabase / PostgREST.
+   * Trả về null nếu lỗi không phải lỗi thiếu cột.
+   */
+  private static extractMissingColumn(error: any): string | null {
+    const text = `${error?.message ?? ''} ${error?.details ?? ''} ${error?.hint ?? ''}`;
+    // PostgREST: Could not find the 'date_of_birth' column of 'attendees' in the schema cache
+    const m1 = text.match(/could not find the '([^']+)' column/i);
+    if (m1) return m1[1];
+    // Postgres: column "date_of_birth" of relation "attendees" does not exist
+    const m2 = text.match(/column "([^"]+)" of relation "[^"]+" does not exist/i);
+    if (m2) return m2[1];
+    // Postgres: column attendees.date_of_birth does not exist
+    const m3 = text.match(/column [\w.]*?([\w]+) does not exist/i);
+    if (m3) return m3[1];
+    return null;
+  }
+
+  /**
+   * Ghi dữ liệu lên Supabase, tự bỏ những cột mà cơ sở dữ liệu chưa có rồi
+   * thử lại.
+   *
+   * Cần thiết vì mã nguồn có thể lên hosting trước khi Ban tổ chức chạy
+   * script SQL bổ sung cột. Nếu không xử lý, PostgREST trả lỗi
+   * "Could not find the 'date_of_birth' column" và từ chối cả bản ghi, nghĩa
+   * là MỌI hồ sơ đăng ký mới đều không lưu được lên cơ sở dữ liệu. Lỗi này
+   * cũng xảy ra trong khoảng thời gian ngắn sau khi chạy ALTER TABLE, lúc
+   * PostgREST còn giữ lược đồ cũ trong bộ đệm.
+   *
+   * Dữ liệu vẫn được lưu, chỉ thiếu các cột mới; chạy script SQL rồi lưu lại
+   * là đủ.
+   */
+  private async writeToSupabase(
+    table: string,
+    record: Record<string, any> | Record<string, any>[],
+    mode: 'insert' | 'upsert' = 'upsert',
+  ): Promise<{ error: any }> {
+    const isBatch = Array.isArray(record);
+    let rows: Record<string, any>[] = isBatch
+      ? (record as Record<string, any>[]).map(r => ({ ...r }))
+      : [{ ...(record as Record<string, any>) }];
+
+    if (rows.length === 0) return { error: null };
+
+    const dropped: string[] = [];
+
+    // Mỗi vòng bỏ đúng một cột còn thiếu rồi thử lại.
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const payload: any = isBatch ? rows : rows[0];
+      const { error } = mode === 'insert'
+        ? await supabase.from(table).insert(payload)
+        : await supabase.from(table).upsert(payload);
+
+      if (!error) {
+        if (dropped.length > 0) {
+          console.warn(
+            `[${table}] Cơ sở dữ liệu chưa có cột: ${dropped.join(', ')}. `
+            + 'Dữ liệu đã lưu nhưng thiếu các cột này. Hãy chạy script '
+            + 'supabase/add_cme_and_track_fields.sql rồi lưu lại hồ sơ.'
+          );
+        }
+        return { error: null };
+      }
+
+      const missing = DataStore.extractMissingColumn(error);
+      // Không phải lỗi thiếu cột, hoặc cột đó vốn không nằm trong dữ liệu gửi
+      // đi: trả lỗi về cho nơi gọi xử lý như trước.
+      if (!missing || !Object.prototype.hasOwnProperty.call(rows[0], missing)) {
+        return { error };
+      }
+
+      rows = rows.map(r => {
+        const copy = { ...r };
+        delete copy[missing];
+        return copy;
+      });
+      dropped.push(missing);
+    }
+
+    return {
+      error: new Error(
+        `Không ghi được vào bảng ${table}: còn quá nhiều cột chưa có trong cơ sở dữ liệu.`
+      )
+    };
+  }
+
   getAttendees() { return this.attendees; }
   saveAttendee(attendee: Attendee) {
     const idx = this.attendees.findIndex(a => a.id === attendee.id);
@@ -1154,6 +1247,18 @@ export class DataStore {
             }
           }
 
+          // 3. Upload anh bang cap (minh chung bac si) neu con la base64.
+          //    Thieu buoc nay thi anh khong bao gio ra khoi may dai bieu.
+          if (attendee.doctorProofUrl && attendee.doctorProofUrl.startsWith('data:')) {
+            const ext = attendee.doctorProofUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `doctor-proofs/${attendee.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, attendee.doctorProofUrl);
+            if (publicUrl) {
+              updatedAttendee.doctorProofUrl = publicUrl;
+              changed = true;
+            }
+          }
+
           // Update local memory and storage to reflect clean storage URLs
           if (changed) {
             const idxMemory = this.attendees.findIndex(a => a.id === attendee.id);
@@ -1169,11 +1274,9 @@ export class DataStore {
           if (!packageExists) {
             dbRecord.package_id = null;
           }
-          const query = isNew 
-            ? supabase.from('attendees').insert(dbRecord)
-            : supabase.from('attendees').upsert(dbRecord);
-            
-          const { error } = await query;
+          const { error } = await this.writeToSupabase(
+            'attendees', dbRecord, isNew ? 'insert' : 'upsert'
+          );
           if (error) {
             console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
           } else {
@@ -1242,6 +1345,17 @@ export class DataStore {
           }
         }
 
+        // 3. Upload anh bang cap (minh chung bac si) neu con la base64.
+        if (attendee.doctorProofUrl && attendee.doctorProofUrl.startsWith('data:')) {
+          const ext = attendee.doctorProofUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `doctor-proofs/${attendee.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, attendee.doctorProofUrl);
+          if (publicUrl) {
+            updatedAttendee.doctorProofUrl = publicUrl;
+            changed = true;
+          }
+        }
+
         if (changed) {
           const idxMemory = this.attendees.findIndex(a => a.id === attendee.id);
           if (idxMemory >= 0) {
@@ -1256,11 +1370,9 @@ export class DataStore {
         if (!packageExists) {
           dbRecord.package_id = null;
         }
-        const query = isNew 
-          ? supabase.from('attendees').insert(dbRecord)
-          : supabase.from('attendees').upsert(dbRecord);
-          
-        const { error } = await query;
+        const { error } = await this.writeToSupabase(
+          'attendees', dbRecord, isNew ? 'insert' : 'upsert'
+        );
         if (error) {
           console.error(`Error ${isNew ? 'inserting' : 'upserting'} attendee to Supabase:`, error);
           throw error;
@@ -1272,7 +1384,7 @@ export class DataStore {
     }
     
     // Auto-create an income transaction if paid
-    if (updatedAttendee.paymentStatus === 'paid' && !this.finance.find(f => f.referenceId === updatedAttendee.id)) {
+    if (updatedAttendee.paymentStatus === 'paid' && updatedAttendee.packageFee > 0 && !this.finance.find(f => f.referenceId === updatedAttendee.id)) {
       this.addFinancialRecord({
         id: 'TXN-' + Math.floor(Math.random() * 90000 + 10000),
         date: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -1322,7 +1434,7 @@ export class DataStore {
     if (isSupabaseConfigured()) {
       try {
         const dbRecords = newAttendees.map(att => mapAttendeeToDb(att));
-        const { error } = await supabase.from('attendees').upsert(dbRecords);
+        const { error } = await this.writeToSupabase('attendees', dbRecords);
         if (error) {
           console.error('Error bulk upserting attendees to Supabase:', error);
         }
@@ -1372,6 +1484,46 @@ export class DataStore {
 
   // Speakers
   getSpeakers() { return this.speakers; }
+
+  /**
+   * Nạp hàng loạt báo cáo viên (dùng cho chức năng nhập từ Excel).
+   * Cùng cách làm với saveAttendeesBulk: ghi localStorage trước để giao diện
+   * phản hồi ngay, rồi upsert một lượt lên Supabase.
+   *
+   * Lưu ý: hàm này KHÔNG xử lý file base64 như saveSpeakerAsync, vì dữ liệu
+   * nhập từ Excel chỉ mang đường dẫn (Google Drive) chứ không mang file.
+   */
+  async saveSpeakersBulk(newSpeakers: SpeakerRegistration[]): Promise<SpeakerRegistration[]> {
+    if (!newSpeakers || newSpeakers.length === 0) return [];
+
+    newSpeakers.forEach(sp => {
+      const idx = this.speakers.findIndex(x => x.id === sp.id);
+      if (idx >= 0) {
+        this.speakers[idx] = sp;
+      } else {
+        this.speakers.push(sp);
+      }
+    });
+
+    this.saveToLocalStorage(DataStore.KEY_SPEAKERS, this.speakers);
+
+    if (isSupabaseConfigured()) {
+      try {
+        const dbRecords = newSpeakers.map(sp => mapSpeakerToDb(sp));
+        const { error } = await this.writeToSupabase('speakers', dbRecords);
+        if (error) {
+          console.error('Error bulk upserting speakers to Supabase:', error);
+          throw error;
+        }
+      } catch (err) {
+        console.error('Error in saveSpeakersBulk Supabase sync:', err);
+        throw err;
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'speakers' } }));
+    return newSpeakers;
+  }
   saveSpeaker(speaker: SpeakerRegistration) {
     const idx = this.speakers.findIndex(s => s.id === speaker.id);
     const isNew = idx < 0;
@@ -1394,6 +1546,17 @@ export class DataStore {
             const publicUrl = await uploadToSupabaseStorage(path, speaker.avatarUrl);
             if (publicUrl) {
               updatedSpeaker.avatarUrl = publicUrl;
+              changed = true;
+            }
+          }
+
+          // Anh bang cap bao cao vien, bat buoc de cap CME.
+          if (speaker.degreeProofUrl && speaker.degreeProofUrl.startsWith('data:')) {
+            const ext = speaker.degreeProofUrl.split(';')[0].split('/')[1] || 'png';
+            const path = `degree-proofs/${speaker.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, speaker.degreeProofUrl);
+            if (publicUrl) {
+              updatedSpeaker.degreeProofUrl = publicUrl;
               changed = true;
             }
           }
@@ -1445,11 +1608,9 @@ export class DataStore {
           if (!sessionExists) {
             dbRecord.scheduled_session_id = null;
           }
-          const query = isNew
-            ? supabase.from('speakers').insert(dbRecord)
-            : supabase.from('speakers').upsert(dbRecord);
-
-          const { error } = await query;
+          const { error } = await this.writeToSupabase(
+            'speakers', dbRecord, isNew ? 'insert' : 'upsert'
+          );
           if (error) console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
         } catch (err) {
           console.error('Error during background upload/sync of speaker:', err);
@@ -1481,6 +1642,17 @@ export class DataStore {
           const publicUrl = await uploadToSupabaseStorage(path, speaker.avatarUrl);
           if (publicUrl) {
             updatedSpeaker.avatarUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        // Anh bang cap bao cao vien, bat buoc de cap CME.
+        if (speaker.degreeProofUrl && speaker.degreeProofUrl.startsWith('data:')) {
+          const ext = speaker.degreeProofUrl.split(';')[0].split('/')[1] || 'png';
+          const path = `degree-proofs/${speaker.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, speaker.degreeProofUrl);
+          if (publicUrl) {
+            updatedSpeaker.degreeProofUrl = publicUrl;
             changed = true;
           }
         }
@@ -1532,11 +1704,9 @@ export class DataStore {
         if (!sessionExists) {
           dbRecord.scheduled_session_id = null;
         }
-        const query = isNew
-          ? supabase.from('speakers').insert(dbRecord)
-          : supabase.from('speakers').upsert(dbRecord);
-
-        const { error } = await query;
+        const { error } = await this.writeToSupabase(
+          'speakers', dbRecord, isNew ? 'insert' : 'upsert'
+        );
         if (error) {
           console.error(`Error ${isNew ? 'inserting' : 'upserting'} speaker to Supabase:`, error);
           throw error;
@@ -1572,7 +1742,7 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_SPECIALTY_TRACKS, this.specialtyTracks);
 
     if (isSupabaseConfigured()) {
-      supabase.from('specialty_tracks').upsert(mapTrackToDb(track)).then(({ error }) => {
+      this.writeToSupabase('specialty_tracks', mapTrackToDb(track)).then(({ error }) => {
         if (error) console.error('Error syncing track to Supabase:', error);
       });
     }
@@ -2245,16 +2415,47 @@ export class DataStore {
     return this.getLocalStorage(DataStore.KEY_CAMPAIGN_ACTIVITIES, []);
   }
 
+  /**
+   * Supabase chặn mỗi truy vấn ở 1000 dòng. Trước đây hai hàm dưới đây select
+   * thẳng không phân trang, nên khi bảng vượt 1000 dòng thì lần gửi mới nhất
+   * không hiện trong thống kê, và tính năng "bỏ qua người đã nhận" cũng đọc
+   * thiếu lịch sử dẫn tới gửi trùng. Phải lấy theo từng trang cho tới hết.
+   *
+   * Sắp xếp kèm `id` để phân trang ổn định: nếu nhiều dòng trùng `sent_at`,
+   * chỉ dựa vào `sent_at` có thể lặp hoặc bỏ sót dòng giữa các trang.
+   */
+  private async fetchCampaignActivityPaged(campaignId?: string): Promise<CampaignActivity[]> {
+    const PAGE_SIZE = 1000;
+    const MAX_ROWS = 100000; // chặn an toàn, tránh vòng lặp vô hạn
+    const rows: CampaignActivity[] = [];
+
+    for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+      let query = supabase
+        .from('campaign_activity')
+        .select('*')
+        .order('sent_at', { ascending: false })
+        .order('id', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+
+      rows.push(...data);
+      if (data.length < PAGE_SIZE) break;
+    }
+
+    return rows;
+  }
+
   async getCampaignActivities(campaignId: string): Promise<CampaignActivity[]> {
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await supabase
-          .from('campaign_activity')
-          .select('*')
-          .eq('campaign_id', campaignId);
-        if (!error && data) {
-          return data;
-        }
+        return await this.fetchCampaignActivityPaged(campaignId);
       } catch (err) {
         console.error('Error fetching activities from Supabase:', err);
       }
@@ -2266,12 +2467,7 @@ export class DataStore {
   async getAllCampaignActivities(): Promise<CampaignActivity[]> {
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await supabase
-          .from('campaign_activity')
-          .select('*');
-        if (!error && data) {
-          return data;
-        }
+        return await this.fetchCampaignActivityPaged();
       } catch (err) {
         console.error('Error fetching all activities from Supabase:', err);
       }
@@ -2465,7 +2661,7 @@ export class DataStore {
     this.saveToLocalStorage(DataStore.KEY_BUSINESS_CONFIG, config);
 
     if (isSupabaseConfigured()) {
-      const { error } = await supabase.from('business_config').upsert(mapBusinessConfigToDb(config));
+      const { error } = await this.writeToSupabase('business_config', mapBusinessConfigToDb(config));
       if (error) console.error('Error saving Business Config to Supabase:', error);
     }
     return config;
@@ -3053,7 +3249,7 @@ export class DataStore {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
+              <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" width="550" style="width: 100%; max-width: 550px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" />
             </div>
             
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
@@ -3076,7 +3272,7 @@ export class DataStore {
             </div>
             ` : ''}
 
-            ${!isPaid && isRegistrationEmail ? `
+            ${!isPaid && isRegistrationEmail && attendee.packageFee > 0 ? `
             <div style="background-color: #fffbeb; padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b; margin: 20px 0; border: 1px solid #fde68a;">
               <h4 style="margin: 0 0 12px 0; color: #b45309; font-size: 14px; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #fde68a; padding-bottom: 6px;">
                 Hướng Dẫn Thanh Toán Lệ Phí / Payment Instructions
@@ -3280,6 +3476,419 @@ export class DataStore {
     return log;
   }
 
+  // ============================================================
+  // MỤC VIII — MAIL TỰ ĐỘNG CHO HỒ SƠ ĐÃ ĐĂNG KÝ HỢP LỆ
+  // ============================================================
+
+  /** Khung HTML dùng chung cho các thư tự động: banner hội nghị + phần thân. */
+  private buildAutoMailHtml(bodyHtml: string, extraBlocks: string = ''): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" width="550" style="width: 100%; max-width: 550px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" />
+        </div>
+        <div style="font-size: 14px; color: #334155; line-height: 1.6;">
+          ${bodyHtml}
+        </div>
+        ${extraBlocks}
+      </div>
+    `;
+  }
+
+  /**
+   * Khối ảnh chân dung in trong thư.
+   *
+   * Chỉ in được ảnh đã nằm trên Supabase Storage (link http). Ảnh còn ở dạng
+   * base64 (data:) thì bỏ qua: nhúng base64 vào thư làm thư phình rất to và
+   * Gmail, Outlook đều chặn không hiện.
+   */
+  private buildPortraitBlock(avatarUrl: string | undefined, caption: string): string {
+    if (!avatarUrl || !avatarUrl.startsWith('http')) return '';
+    return `
+      <div style="text-align: center; margin: 20px 0;">
+        <img src="${avatarUrl}" alt="${caption}" width="150" style="width: 150px; height: 150px; object-fit: cover; border-radius: 75px; border: 3px solid #e2e8f0; display: block; margin: 0 auto;" />
+        <p style="font-size: 12px; color: #64748b; margin: 8px 0 0 0; font-style: italic;">${caption}</p>
+      </div>
+    `;
+  }
+
+  /** Thay placeholder bằng dữ liệu thật, dùng chung cho các thư tự động. */
+  private fillPlaceholders(text: string, values: Record<string, string>): string {
+    if (!text) return '';
+    let res = text;
+    Object.keys(values).forEach(key => {
+      res = res.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), values[key] ?? '');
+    });
+    return res;
+  }
+
+  /** Gửi một thư tự động qua /api/email/send và ghi nhật ký. */
+  private async dispatchAutoMail(
+    to: string,
+    subject: string,
+    html: string,
+    template: { id: string; name: string },
+  ): Promise<SentNotificationLog> {
+    let status: 'success' | 'failed' = 'success';
+    let responseObj: any = { message: 'Email đã gửi thành công giả lập' };
+
+    const isRealSmtp = this.emailConfig.smtpHost &&
+      this.emailConfig.smtpPass &&
+      this.emailConfig.smtpPass !== '*************' &&
+      this.emailConfig.smtpPass !== '';
+    const canSend = isRealSmtp || isSupabaseConfigured();
+
+    if (!to) {
+      status = 'failed';
+      responseObj = { error: -1, message: 'Hồ sơ không có địa chỉ email nên không gửi được thư.' };
+    } else if (!canSend) {
+      status = 'failed';
+      responseObj = {
+        error: -1,
+        message: "Cổng SMTP chưa được cấu hình. Vào 'Cài Đặt Hệ Thống' để thiết lập máy chủ gửi mail."
+      };
+    } else {
+      try {
+        const response = await fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            config: this.emailConfig,
+            payload: { to, subject, body: html }
+          })
+        });
+        const resData = await response.json();
+        if (resData.success) {
+          responseObj = { status: '250 OK (Real SMTP)', messageId: resData.messageId };
+        } else {
+          status = 'failed';
+          responseObj = { error: -1, message: resData.error || 'Máy chủ Mail báo lỗi' };
+        }
+      } catch (err: any) {
+        status = 'failed';
+        responseObj = { error: -1, message: err?.message || 'Lỗi SMTP Relay' };
+      }
+    }
+
+    const log: SentNotificationLog = {
+      id: 'NTF-' + Math.floor(Math.random() * 90000 + 10000),
+      recipient: to,
+      type: 'email',
+      templateId: template.id,
+      templateName: template.name,
+      sender: this.emailConfig.senderEmail || 'contact@vsapsevent.org',
+      sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      status,
+      payload: { to, subject, body: html },
+      response: responseObj
+    };
+    this.addNotificationLog(log);
+    return log;
+  }
+
+  /**
+   * Lấy mẫu thư, ưu tiên mẫu Ban tổ chức đã sửa trong module Thông báo.
+   *
+   * Dò theo mã mẫu trước rồi mới theo loại, vì trong cơ sở dữ liệu đang có
+   * nhiều mẫu dùng chung một loại: cả thư "nộp bài thành công" và thư "phê
+   * duyệt đề tài" đều mang loại abstract_approved. Nếu chỉ dò theo loại thì
+   * dễ lấy nhầm mẫu.
+   */
+  private findEmailTemplate(
+    type: NotificationTemplate['type'],
+    preferIds: string[],
+    fallback: { id: string; name: string; subject: string; content: string },
+  ): NotificationTemplate {
+    for (const id of preferIds) {
+      const byId = this.templates.find(t => t.channel === 'email' && t.id === id && t.content);
+      if (byId) return byId;
+    }
+    const byType = this.templates.find(t => t.channel === 'email' && t.type === type && t.content);
+    if (byType) return byType;
+    return { ...fallback, type, channel: 'email' };
+  }
+
+  /**
+   * Mục VIII.2 — Thư xác nhận bài báo cáo đã được phê duyệt, kèm ảnh chân
+   * dung, tên bài, phiên, ngày giờ và hội trường.
+   *
+   * Gọi tự động khi Ban tổ chức đổi trạng thái báo cáo viên sang "Đã duyệt".
+   * Trước đây chỗ này gửi bằng đường thư của ĐẠI BIỂU với một đối tượng đại
+   * biểu giả, nên thư không có được lịch trình lẫn ảnh chân dung.
+   */
+  async sendSpeakerApprovedEmail(speaker: SpeakerRegistration): Promise<SentNotificationLog> {
+    // Đường dẫn thiệp mời riêng của báo cáo viên. Không sinh được thì vẫn gửi
+    // thư, chỉ thiếu nút mở thiệp — không chặn cả việc báo tin đã duyệt bài.
+    let invitationUrl = '';
+    try {
+      const links = await this.getInvitationLinks([speaker.id], 'bcv');
+      invitationUrl = links[speaker.id] || '';
+    } catch (err) {
+      console.error('Không sinh được đường dẫn thiệp mời báo cáo viên:', err);
+    }
+
+    const template = this.findEmailTemplate('abstract_approved', [
+      // Mã mẫu Ban tổ chức hay dùng cho thư phê duyệt đề tài
+      'tmpl-speaker-approved-email', 'tmpl-speaker-approved',
+    ], {
+      id: 'tmpl-speaker-approved-email',
+      name: 'Xác nhận bài báo cáo được phê duyệt & lịch trình chính thức (Email)',
+      subject: 'VSAPS 2026 – Xác nhận thông tin bài báo cáo và lịch trình chính thức',
+      content: [
+        'Kính gửi Bác sĩ {{title}} {{fullname}},',
+        '',
+        'Ban Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng cảm ơn Quý Bác sĩ đã đăng ký tham gia với vai trò Báo cáo viên tại Hội nghị. Ban Tổ chức xin thông báo đề tài báo cáo của Quý Bác sĩ đã được phê duyệt và đưa vào chương trình khoa học chính thức.',
+        '',
+        'Kính gửi Quý Bác sĩ thông tin chi tiết về bài báo cáo như sau:',
+      ].join('\n'),
+    });
+
+    const session = this.sessions.find(s => s.id === speaker.scheduledSessionId);
+    const sessionDate = session?.date ? session.date.split('-').reverse().join('/') : 'Sẽ thông báo sau';
+    const sessionTime = session ? `${session.startTime} – ${session.endTime}` : 'Sẽ thông báo sau';
+    const sessionRoom = session?.roomName || 'Sẽ thông báo sau';
+    const sessionName = session?.title || speaker.presentationTrack || 'Sẽ thông báo sau';
+
+    // Thời lượng tính từ giờ bắt đầu và giờ kết thúc của phiên
+    let durationText = 'Sẽ thông báo sau';
+    if (session?.startTime && session?.endTime) {
+      const toMinutes = (hhmm: string) => {
+        const [h, m] = hhmm.split(':').map(v => parseInt(v, 10));
+        return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+      };
+      const minutes = toMinutes(session.endTime) - toMinutes(session.startTime);
+      if (minutes > 0) durationText = `${minutes} phút`;
+    }
+
+    const values: Record<string, string> = {
+      title: speaker.title || '',
+      fullname: speaker.fullName || '',
+      code: speaker.id || '',
+      organization: speaker.organization || '',
+      department: speaker.department || '',
+      presentation_title: speaker.presentationTitle || '',
+      track: speaker.presentationTrack || '',
+      session_name: sessionName,
+      session_date: sessionDate,
+      session_time: sessionTime,
+      session_room: sessionRoom,
+      duration: durationText,
+      invitation_url: invitationUrl,
+    };
+
+    const subject = this.fillPlaceholders(template.subject || '', values);
+    const bodyRaw = this.fillPlaceholders(template.content || '', values);
+    const bodyHtml = /<[a-z][\s\S]*>/i.test(bodyRaw) ? bodyRaw : bodyRaw.replace(/\n/g, '<br/>');
+
+    const infoBlock = `
+      ${this.buildPortraitBlock(speaker.avatarUrl, `${speaker.title || ''} ${speaker.fullName}`.trim())}
+      <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #4f46e5; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #1e293b; font-size: 13px; text-transform: uppercase; font-weight: bold;">
+          Thông tin báo cáo viên và bài báo cáo
+        </h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
+          <tr><td style="padding: 6px 0; font-weight: bold; width: 150px;">Họ và tên:</td><td style="padding: 6px 0;">${speaker.title || ''} ${speaker.fullName}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Đơn vị công tác:</td><td style="padding: 6px 0;">${speaker.organization || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Tên bài báo cáo:</td><td style="padding: 6px 0; font-weight: bold; color: #4f46e5;">${speaker.presentationTitle || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Chuyên đề:</td><td style="padding: 6px 0;">${speaker.presentationTrack || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Phiên báo cáo:</td><td style="padding: 6px 0;">${sessionName}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Ngày báo cáo:</td><td style="padding: 6px 0;">${sessionDate}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Thời gian báo cáo:</td><td style="padding: 6px 0;">${sessionTime}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Thời lượng:</td><td style="padding: 6px 0;">${durationText}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Hội trường:</td><td style="padding: 6px 0;">${sessionRoom}</td></tr>
+        </table>
+      </div>
+
+      ${invitationUrl ? `
+      <div style="text-align: center; margin: 25px 0; background-color: #eef2fb; border: 1px solid #c3d0ec; padding: 22px; border-radius: 12px;">
+        <p style="font-size: 13px; color: #1d3a75; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase;">Thiệp mời báo cáo của Quý Bác sĩ</p>
+        <p style="font-size: 12.5px; color: #2b509e; margin: 0 0 14px 0; line-height: 1.6;">
+          Kèm ảnh chân dung, tên bài báo cáo và lịch trình. Mở ra có thể lưu PDF hoặc chụp màn hình để chia sẻ.
+        </p>
+        <a href="${invitationUrl}" target="_blank"
+           style="display: inline-block; background-color: #2b509e; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13.5px; padding: 12px 26px; border-radius: 8px;">
+          Mở thiệp mời
+        </a>
+        <p style="font-size: 11px; color: #2b509e; margin: 12px 0 0 0; word-break: break-all;">
+          Hoặc sao chép đường dẫn: ${invitationUrl}
+        </p>
+      </div>
+      ` : ''}
+
+      <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 13px; text-transform: uppercase; font-weight: bold;">Thông tin Hội nghị</h4>
+        <p style="margin: 0; font-size: 13.5px; color: #334155; line-height: 1.7;">
+          Thời gian: <strong>11 – 13/12/2026</strong><br/>
+          Địa điểm: <strong>Bệnh viện Quân y 175, TP. Hồ Chí Minh, Việt Nam.</strong>
+        </p>
+      </div>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
+        Ban Tổ chức kính đề nghị Quý Bác sĩ kiểm tra và xác nhận lại toàn bộ thông tin trên,
+        bao gồm họ tên, hình ảnh, tên bài báo cáo, phiên báo cáo và thời gian trình bày.
+      </p>
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
+        Trong trường hợp có bất kỳ sai sót nào, kính mong Quý Bác sĩ phản hồi email này trong
+        thời gian sớm nhất để Ban Tổ chức kịp thời điều chỉnh. Ban Tổ chức trân trọng cảm ơn sự
+        đồng hành và đóng góp chuyên môn quý báu của Quý Bác sĩ. Rất hân hạnh được đón tiếp
+        Quý Bác sĩ tại VSAPS 2026!
+      </p>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-top: 20px;">
+        Trân trọng,<br/>
+        <strong>BAN TỔ CHỨC VSAPS 2026</strong><br/>
+        Email: vsaps.events@gmail.com<br/>
+        Hotline: +84 964 551 151 (Zalo/WhatsApp)
+      </p>
+    `;
+
+    const html = this.buildAutoMailHtml(bodyHtml, infoBlock);
+    return this.dispatchAutoMail(speaker.email, subject, html, { id: template.id, name: template.name });
+  }
+
+  /**
+   * Mục VIII.1 — Thư mời tự động cho đại biểu, kèm ảnh chân dung để đại biểu
+   * tự dùng khi truyền thông cá nhân.
+   *
+   * Nội dung dưới đây là bản TẠM. Phôi thư mời chính thức (nội dung và thiết
+   * kế) còn chờ Ban tổ chức chốt; sửa lại trong Cài đặt > Mẫu thông báo, mẫu
+   * "Thư mời tham dự (Email)". Vì vậy việc tự động gửi mặc định TẮT, xem cờ
+   * businessConfig.autoSendInvitationLetter.
+   */
+  /**
+   * Xin máy chủ sinh đường dẫn thư mời cho một hoặc nhiều đại biểu.
+   *
+   * Đường dẫn kèm mã kiểm tra ký bằng khóa chỉ máy chủ biết, nên trình duyệt
+   * không tự dựng được. Nhờ vậy không ai dò ngược ra danh sách đại biểu bằng
+   * cách đoán mã tuần tự.
+   */
+  async getInvitationLinks(ids: string[], type: 'dl' | 'bcv' = 'dl'): Promise<Record<string, string>> {
+    if (!ids || ids.length === 0) return {};
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error('Không đọc được phiên đăng nhập. Vui lòng đăng nhập lại.');
+
+    const res = await fetch('/api/invitation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ids, type }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json?.success) {
+      throw new Error(json?.error || 'Máy chủ không sinh được đường dẫn thư mời.');
+    }
+    return json.links || {};
+  }
+
+  async sendDelegateInvitationEmail(attendee: Attendee): Promise<SentNotificationLog> {
+    const links = await this.getInvitationLinks([attendee.id]);
+    const invitationUrl = links[attendee.id] || '';
+
+    const template = this.findEmailTemplate('invitation_letter', [
+      'tmpl-invitation-letter-email',
+    ], {
+      id: 'tmpl-invitation-letter-email',
+      name: 'Thư mời tham dự VSAPS 2026 (Email)',
+      subject: 'VSAPS 2026 – Thư mời tham dự Hội nghị Khoa học Thường niên lần thứ 10',
+      content: [
+        'Kính gửi {{title}} {{fullname}},',
+        '',
+        'Ban Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng cảm ơn Quý Bác sĩ đã hoàn tất đăng ký tham dự Hội nghị.',
+        '',
+        'Ban Tổ chức xin trân trọng kính mời Quý Bác sĩ tới tham dự Hội nghị với tư cách đại biểu chính thức.',
+        '',
+        'Thư mời riêng của Quý Bác sĩ, kèm ảnh chân dung và chương trình hội nghị, đã sẵn sàng ở đường dẫn bên dưới. Quý Bác sĩ có thể mở, lưu thành PDF hoặc chụp màn hình để chia sẻ trên các kênh truyền thông cá nhân.',
+      ].join('\n'),
+    });
+
+    const values: Record<string, string> = {
+      title: attendee.title || '',
+      fullname: attendee.fullName || '',
+      code: attendee.id || '',
+      organization: attendee.organization || '',
+      department: attendee.department || '',
+      package: attendee.packageName || '',
+      email: attendee.email || '',
+      phone: attendee.phone || '',
+      invitation_url: invitationUrl,
+    };
+
+    const subject = this.fillPlaceholders(template.subject || '', values);
+    const bodyRaw = this.fillPlaceholders(template.content || '', values);
+    const bodyHtml = /<[a-z][\s\S]*>/i.test(bodyRaw) ? bodyRaw : bodyRaw.replace(/\n/g, '<br/>');
+
+    // Các dịch vụ đại biểu đã đăng ký thêm, in vào thư mời cho đủ thông tin
+    const addOns: string[] = [];
+    if (attendee.cmeRequired) addOns.push('Chứng chỉ CME');
+    if (attendee.galaRequired) addOns.push('Gala Dinner');
+    if (attendee.masterclassRequired) addOns.push('Master Class');
+    if (attendee.tourRequired) addOns.push('Tour tham quan');
+
+    const infoBlock = `
+      ${this.buildPortraitBlock(attendee.avatarUrl, `${attendee.title || ''} ${attendee.fullName}`.trim())}
+      <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #0d9488; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0; color: #0f172a; font-size: 13px; text-transform: uppercase; font-weight: bold;">
+          Thông tin đại biểu
+        </h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13.5px; color: #334155;">
+          <tr><td style="padding: 6px 0; font-weight: bold; width: 150px;">Họ và tên:</td><td style="padding: 6px 0;">${attendee.title || ''} ${attendee.fullName}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Mã đại biểu:</td><td style="padding: 6px 0; font-family: monospace; font-weight: bold; color: #0d9488;">${attendee.id}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Đơn vị công tác:</td><td style="padding: 6px 0;">${attendee.organization || ''}</td></tr>
+          <tr><td style="padding: 6px 0; font-weight: bold;">Gói tham dự:</td><td style="padding: 6px 0;">${attendee.packageName || ''}</td></tr>
+          ${addOns.length > 0
+            ? `<tr><td style="padding: 6px 0; font-weight: bold;">Dịch vụ đã đăng ký:</td><td style="padding: 6px 0;">${addOns.join(', ')}</td></tr>`
+            : ''}
+        </table>
+      </div>
+
+      ${invitationUrl ? `
+      <div style="text-align: center; margin: 25px 0; background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 22px; border-radius: 12px;">
+        <p style="font-size: 13px; color: #065f46; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase;">Thư mời riêng của Quý Bác sĩ</p>
+        <p style="font-size: 12.5px; color: #047857; margin: 0 0 14px 0; line-height: 1.6;">
+          Kèm ảnh chân dung và chương trình hội nghị. Mở ra có thể lưu PDF hoặc chụp màn hình để chia sẻ.
+        </p>
+        <a href="${invitationUrl}" target="_blank"
+           style="display: inline-block; background-color: #0d9488; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13.5px; padding: 12px 26px; border-radius: 8px;">
+          Mở thư mời
+        </a>
+        <p style="font-size: 11px; color: #047857; margin: 12px 0 0 0; word-break: break-all;">
+          Hoặc sao chép đường dẫn: ${invitationUrl}
+        </p>
+      </div>
+      ` : ''}
+
+      <div style="background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 8px 0; color: #0f172a; font-size: 13px; text-transform: uppercase; font-weight: bold;">Thông tin Hội nghị</h4>
+        <p style="margin: 0; font-size: 13.5px; color: #334155; line-height: 1.7;">
+          Thời gian: <strong>11 – 13/12/2026</strong><br/>
+          Địa điểm: <strong>Bệnh viện Quân y 175, TP. Hồ Chí Minh, Việt Nam.</strong>
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 25px 0; background-color: #f1f5f9; padding: 20px; border-radius: 8px;">
+        <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0; font-weight: bold;">MÃ QR CHECK-IN</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(attendee.qrCodeValue || attendee.id)}" alt="QR check-in" width="180" style="width: 180px; height: 180px;" />
+      </div>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6;">
+        Ban Tổ chức rất hân hạnh được đón tiếp Quý Bác sĩ tại Hội nghị VSAPS 2026!
+      </p>
+
+      <p style="font-size: 13.5px; color: #334155; line-height: 1.6; margin-top: 20px;">
+        Trân trọng,<br/>
+        <strong>BAN TỔ CHỨC VSAPS 2026</strong><br/>
+        Email: vsaps.events@gmail.com<br/>
+        Hotline: +84 964 551 151 (Zalo/WhatsApp)
+      </p>
+    `;
+
+    const html = this.buildAutoMailHtml(bodyHtml, infoBlock);
+    return this.dispatchAutoMail(attendee.email, subject, html, { id: template.id, name: template.name });
+  }
+
   async sendWhatsappToSpeaker(speaker: SpeakerRegistration, templateId?: string): Promise<SentNotificationLog> {
     const template: NotificationTemplate = (templateId ? this.templates.find(t => t.id === templateId) : null)
       || this.templates.find(t => t.channel === 'whatsapp' && t.type === 'abstract_approved')
@@ -3430,8 +4039,9 @@ export class DataStore {
         name: '📚 Thư xác nhận đăng ký báo cáo chuyên đề hội nghị VSAPS 2026',
         type: 'speaker_registered',
         channel: 'email',
-        subject: '🎯 Xác nhận đệ trình đề tài báo cáo khoa học VSAPS 2026',
-        content: 'Kính gửi Báo cáo viên {{title}} {{fullname}},\n\nBan Tổ Chức Hội nghị Khoa học Thường niên VSAPS 2026 xin trân trọng thông báo: Đề tài báo cáo khoa học của Quý vị đã được ghi nhận thành công trên hệ thống.\n\nTHÔNG TIN ĐỀ TRÌNH CHI TIẾT:\n• Mã hồ sơ: {{code}}\n• Báo cáo viên: {{title}} {{fullname}}\n• Đơn vị công tác: {{organization}} ({{department}})\n• Tên đề tài báo cáo: "{{presentation_title}}"\n• Chuyên đề đệ trình: {{track}}\n• Trạng thái kiểm duyệt: ĐANG CHỜ BAN KHOA HỌC XÉT DUYỆT (PENDING)\n\nHội đồng Khoa học VSAPS 2026 sẽ tiến hành bình duyệt tóm tắt đề tài (Review Abstract) trong vòng 5 ngày làm việc. Quý bác sĩ có thể tra cứu trạng thái bài viết hoặc nhận phản hồi sửa đổi thông qua tài khoản cá nhân hoặc email liên hệ.\n\nTrân trọng cảm ơn sự tham gia và đóng góp khoa học của Quý vị cho thành công của Hội nghị VSAPS 2026!\n\nTrân trọng,\nBan Tổ Chức Hội nghị Khoa học VSAPS 2026.'
+        subject: 'VSAPS 2026 – Xác nhận đăng ký báo cáo thành công',
+        // Nguyên văn mẫu thư Ban tổ chức soạn trong file yêu cầu, mục VIII.2
+        content: 'Kính gửi Bác sĩ {{title}} {{fullname}},\n\nBan Tổ chức Hội nghị Khoa học Thường niên lần thứ 10 của Hội Phẫu thuật Tạo hình Thẩm mỹ Việt Nam (VSAPS 2026) trân trọng chúc mừng Quý Bác sĩ đã đăng ký tham gia báo cáo thành công tại Hội nghị. Ban Tổ chức xin thông báo đề tài báo cáo của Quý Bác sĩ đã được phê duyệt. Thông tin chi tiết về lịch trình và thời gian báo cáo sẽ được Ban Tổ chức cập nhật và thông báo đến Quý Bác sĩ trong thời gian tới.\n\nTHÔNG TIN ĐỀ TÀI ĐÃ ĐỆ TRÌNH:\n• Mã hồ sơ: {{code}}\n• Đơn vị công tác: {{organization}}\n• Tên bài báo cáo: "{{presentation_title}}"\n• Chuyên đề: {{track}}\n\nThông tin Hội nghị:\n- Thời gian: 11 – 13/12/2026\n- Địa điểm: Bệnh viện Quân y 175, TP. Hồ Chí Minh, Việt Nam.\n\nBan Tổ chức trân trọng cảm ơn sự quan tâm và đóng góp của Quý Bác sĩ. Rất mong được đón tiếp Quý Bác sĩ tại Hội nghị VSAPS 2026!\n\nTrân trọng,\nBAN TỔ CHỨC VSAPS 2026\nEmail: vsaps.events@gmail.com\nHotline: +84 964 551 151 (Zalo/WhatsApp)'
       };
     }
 
@@ -3519,7 +4129,7 @@ export class DataStore {
         const emailHtml = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
             <div style="text-align: center; margin-bottom: 20px;">
-              <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" style="width: 100%; max-width: 100%; height: auto; border-radius: 8px;" />
+              <img src="https://vzfacodpaveftuowsnze.supabase.co/storage/v1/object/public/assets/logos/email.jpg" alt="Hội Nghị Khoa Học Thường Niên VSAPS 2026" width="550" style="width: 100%; max-width: 550px; height: auto; display: block; margin: 0 auto; border: 0; border-radius: 8px;" />
             </div>
             
             <p style="font-size: 14px; color: #334155; line-height: 1.6;">
@@ -3739,7 +4349,7 @@ export class DataStore {
           dbRecord.package_id = null;
         }
         
-        const { error } = await supabase.from('attendees').upsert(dbRecord);
+        const { error } = await this.writeToSupabase('attendees', dbRecord);
         if (!error) {
           this.removePendingSyncAttendeeId(id);
         } else {

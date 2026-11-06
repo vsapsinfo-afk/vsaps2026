@@ -59,6 +59,8 @@ import {
   HighlightSpeaker
 } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
+import { supabase } from '../lib/supabase';
+import { buildFullMigrationSql, EXPECTED_COLUMNS } from '../lib/dbMigrations';
 
 interface SettingsPanelProps {
   role: Role;
@@ -66,8 +68,85 @@ interface SettingsPanelProps {
 
 export default function SettingsPanel({ role }: SettingsPanelProps) {
   // Navigation tab state
-  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout' | 'event-details'>('business');
+  const [activeSubTab, setActiveSubTab] = useState<'business' | 'packages' | 'sponsor-packages' | 'integrations' | 'operators' | 'embeds' | 'printers' | 'sepay' | 'forms' | 'onesignal' | 'cme-layout' | 'event-details' | 'database'>('business');
   const [formActiveSection, setFormActiveSection] = useState<'delegate' | 'speaker' | 'sponsor'>('delegate');
+
+  // ============================================================
+  // CẬP NHẬT CƠ SỞ DỮ LIỆU (thay cho việc dán tay script SQL)
+  // ============================================================
+  type DbColumnState = {
+    table: string;
+    column: string;
+    label: string;
+    state: 'ok' | 'missing' | 'unknown';
+    error?: string;
+  };
+
+  const [dbChecking, setDbChecking] = useState(false);
+  const [dbColumnStatus, setDbColumnStatus] = useState<DbColumnState[] | null>(null);
+  const [dbSqlCopied, setDbSqlCopied] = useState(false);
+
+  const dbMissingCount = dbColumnStatus
+    ? dbColumnStatus.filter(c => c.state === 'missing').length
+    : 0;
+
+  // Nội dung SQL lấy ngay từ module dùng chung với tệp
+  // supabase/add_cme_and_track_fields.sql, nên hai bên không thể lệch nhau.
+  const dbMigrationSql = React.useMemo(() => buildFullMigrationSql(), []);
+
+  // Đường dẫn SQL Editor của chính dự án này, suy ra từ URL Supabase
+  const dbSqlEditorUrl = React.useMemo(() => {
+    const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    const m = url?.match(/^https?:\/\/([a-z0-9]+)\.supabase\.co/i);
+    return m ? `https://supabase.com/dashboard/project/${m[1]}/sql/new` : null;
+  }, []);
+
+  /**
+   * Kiểm tra từng cột mới đã có trong cơ sở dữ liệu chưa.
+   *
+   * Làm được từ trình duyệt: chọn đúng cột đó với giới hạn 0 dòng. Cột chưa có
+   * thì PostgREST trả lỗi, cột đã có thì không. Dùng limit(0) để không kéo dữ
+   * liệu thật về, tránh vướng quyền đọc trên các bảng có RLS chặt.
+   */
+  const checkDbColumns = async () => {
+    setDbChecking(true);
+    try {
+      const results = await Promise.all(
+        EXPECTED_COLUMNS.map(async (c): Promise<DbColumnState> => {
+          try {
+            const { error } = await supabase.from(c.table).select(c.column).limit(0);
+            if (!error) return { ...c, state: 'ok' };
+
+            const text = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+            const looksMissing = (error as any).code === '42703'
+              || (error as any).code === 'PGRST204'
+              || text.includes('does not exist')
+              || text.includes('could not find');
+            return {
+              ...c,
+              state: looksMissing ? 'missing' : 'unknown',
+              error: error.message,
+            };
+          } catch (err: any) {
+            return { ...c, state: 'unknown', error: err?.message || String(err) };
+          }
+        })
+      );
+      setDbColumnStatus(results);
+    } finally {
+      setDbChecking(false);
+    }
+  };
+
+  const copyMigrationSql = async () => {
+    try {
+      await navigator.clipboard.writeText(dbMigrationSql);
+      setDbSqlCopied(true);
+      setTimeout(() => setDbSqlCopied(false), 2500);
+    } catch {
+      alert('Trình duyệt không cho sao chép tự động. Quý vị bôi đen đoạn SQL bên dưới rồi sao chép thủ công.');
+    }
+  };
 
   // Printer config states (saved to localStorage for device-specific setup)
   const [printerAutoPrint, setPrinterAutoPrint] = useState(() => {
@@ -1303,6 +1382,18 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
             <span>Cài đặt Trang Tin Sự Kiện</span>
           </button>
 
+          <button
+            onClick={() => setActiveSubTab('database')}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2.5 cursor-pointer border-none ${
+              activeSubTab === 'database'
+                ? 'bg-sky-850 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-sky-50 hover:text-sky-850 bg-transparent'
+            }`}
+          >
+            <span className="shrink-0 text-base">🗄️</span>
+            <span>Cơ sở dữ liệu</span>
+          </button>
+
           {/* Quick diagnostic tips */}
           <div className="pt-4 mt-4 border-t border-slate-200 px-2 space-y-2 text-[10.5px] text-slate-500 leading-normal">
             <span className="font-extrabold text-slate-800 block text-[10px]">🖥️ DATABASE SYNC:</span>
@@ -1313,6 +1404,139 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
         {/* Right content panel layout */}
         <div className="md:col-span-9 bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
           
+          {/* ================= CƠ SỞ DỮ LIỆU ================= */}
+          {activeSubTab === 'database' && (
+            <div className="space-y-6">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <Database className="w-4 h-4 text-sky-700" />
+                  Cập nhật cơ sở dữ liệu
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Những tính năng mới cần thêm một số cột vào cơ sở dữ liệu. Bấm kiểm tra để
+                  xem đã cập nhật chưa; nếu còn thiếu thì sao chép đoạn SQL bên dưới và chạy
+                  trong Supabase. Các bước đều chạy lại được nhiều lần, không xóa cột và
+                  không làm mất dữ liệu.
+                </p>
+              </div>
+
+              {/* Trạng thái từng cột */}
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-[11px] font-black text-slate-700 uppercase tracking-wide">
+                    Tình trạng các cột cần có
+                  </span>
+                  <button
+                    type="button"
+                    onClick={checkDbColumns}
+                    disabled={dbChecking}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 border border-slate-200 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${dbChecking ? 'animate-spin' : ''}`} />
+                    {dbChecking ? 'Đang kiểm tra...' : 'Kiểm tra lại'}
+                  </button>
+                </div>
+
+                {dbColumnStatus === null ? (
+                  <p className="text-[11px] text-slate-400 italic bg-slate-50 border border-slate-150 rounded-xl p-3">
+                    Chưa kiểm tra. Bấm <strong>Kiểm tra lại</strong> để xem cơ sở dữ liệu đã có
+                    đủ các cột mới chưa.
+                  </p>
+                ) : (
+                  <>
+                    <div className={`p-3 rounded-xl border text-[11px] font-bold ${
+                      dbMissingCount === 0
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-amber-50 border-amber-200 text-amber-900'
+                    }`}>
+                      {dbMissingCount === 0
+                        ? 'Cơ sở dữ liệu đã có đủ các cột mới. Không cần làm gì thêm.'
+                        : `Còn ${dbMissingCount} cột chưa có. Sao chép SQL ở phần dưới rồi chạy trong Supabase.`}
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden">
+                      <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-slate-50 text-[9.5px] uppercase font-black text-slate-400 tracking-wider">
+                          <tr>
+                            <th className="px-3 py-2">Cột</th>
+                            <th className="px-3 py-2 font-mono normal-case">bảng.cột</th>
+                            <th className="px-3 py-2 text-right whitespace-nowrap">Tình trạng</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {dbColumnStatus.map(c => (
+                            <tr key={`${c.table}.${c.column}`} className="hover:bg-slate-50">
+                              <td className="px-3 py-2 font-bold text-slate-800">{c.label}</td>
+                              <td className="px-3 py-2 font-mono text-slate-400">{c.table}.{c.column}</td>
+                              <td className="px-3 py-2 text-right whitespace-nowrap">
+                                {c.state === 'ok' && <span className="text-emerald-700 font-black">đã có</span>}
+                                {c.state === 'missing' && <span className="text-amber-600 font-black">chưa có</span>}
+                                {c.state === 'unknown' && (
+                                  <span className="text-slate-500 font-black" title={c.error || ''}>
+                                    không kiểm tra được
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Dán tay vào SQL Editor */}
+              <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div>
+                  <span className="text-xs font-black text-slate-800 uppercase tracking-wide block">
+                    Cách cập nhật
+                  </span>
+                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                    Bấm <strong>Sao chép SQL</strong>, rồi bấm <strong>Mở Supabase SQL Editor</strong>,
+                    dán vào và bấm <strong>Run</strong>. Xong thì quay lại đây bấm
+                    <strong> Kiểm tra lại</strong> để xác nhận.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copyMigrationSql}
+                    className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {dbSqlCopied ? 'Đã sao chép' : 'Sao chép SQL'}
+                  </button>
+
+                  {dbSqlEditorUrl && (
+                    <a
+                      href={dbSqlEditorUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all no-underline whitespace-nowrap"
+                    >
+                      Mở Supabase SQL Editor
+                    </a>
+                  )}
+                </div>
+
+                {dbMigrationSql && (
+                  <pre className="text-[10px] font-mono bg-slate-900 text-slate-100 p-3 rounded-xl overflow-auto max-h-64 leading-relaxed">
+                    {dbMigrationSql}
+                  </pre>
+                )}
+              </div>
+
+              <p className="text-[10.5px] text-slate-500 leading-relaxed bg-white border border-slate-150 rounded-xl p-3">
+                Trong lúc chưa cập nhật, hệ thống vẫn chạy bình thường: phần ghi dữ liệu tự bỏ
+                qua những cột chưa có thay vì báo lỗi. Nhưng các thông tin mới (ngày sinh, nơi
+                sinh, số CCCD, ảnh bằng cấp, hai bản dịch tiếng Anh) sẽ chưa được lưu lên cơ sở
+                dữ liệu. Cập nhật xong, mở lại từng hồ sơ và bấm Lưu là dữ liệu được ghi đầy đủ.
+              </p>
+            </div>
+          )}
+
           {/* ================= SECTION 1: BUSINESS LOGISTICS ================= */}
           {activeSubTab === 'business' && (
             <div className="space-y-6">
@@ -1611,6 +1835,30 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                         className="p-1 cursor-pointer border-none bg-transparent hover:scale-105 transition-transform"
                       >
                         {businessConfig.autoSendZns ? (
+                          <ToggleRight className="w-10 h-7 text-indigo-600" />
+                        ) : (
+                          <ToggleLeft className="w-10 h-7 text-slate-350" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Khóa an toàn cho thư mời đại biểu (mục VIII file đề xuất) */}
+                    <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-150">
+                      <div className="pr-3">
+                        <span className="text-xs font-bold text-slate-850 block">Cho phép gửi thư mời đại biểu</span>
+                        <span className="text-[10px] text-slate-400">
+                          Khi tắt, mọi đường gửi thư mời đều bị khóa, kể cả gửi tay từng người.
+                          Hệ thống <strong>không bao giờ tự gửi</strong> — Ban tổ chức luôn phải tự chọn người nhận.
+                          Chỉ bật sau khi đã chốt nội dung ở mẫu <strong>Thư mời tham dự (Email)</strong> và
+                          xem thử bằng nút <strong>Xem Thư Mời</strong> trong chi tiết đại biểu.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setBusinessConfig({ ...businessConfig, autoSendInvitationLetter: !businessConfig.autoSendInvitationLetter })}
+                        className="p-1 cursor-pointer border-none bg-transparent hover:scale-105 transition-transform shrink-0"
+                      >
+                        {businessConfig.autoSendInvitationLetter ? (
                           <ToggleRight className="w-10 h-7 text-indigo-600" />
                         ) : (
                           <ToggleLeft className="w-10 h-7 text-slate-350" />
@@ -3910,7 +4158,9 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                               { key: 'academicTitle', labelVi: 'Học hàm / Học vị', labelEn: 'Academic Title', placeholderVi: 'Học hàm / Học vị *', placeholderEn: 'Academic Title *' },
                               { key: 'fullName', labelVi: 'Họ và Tên', labelEn: 'Full Name', placeholderVi: 'Họ và Tên (In hoa có dấu) *', placeholderEn: 'Full Name (Capitalized) *' },
                               { key: 'gender', labelVi: 'Giới tính', labelEn: 'Gender', placeholderVi: 'Giới tính *', placeholderEn: 'Gender *' },
-                              { key: 'yearOfBirth', labelVi: 'Năm sinh', labelEn: 'Year of Birth', placeholderVi: 'Năm sinh *', placeholderEn: 'Year of Birth *' },
+                              { key: 'dateOfBirth', labelVi: 'Ngày tháng năm sinh', labelEn: 'Date of Birth', placeholderVi: 'Ngày tháng năm sinh *', placeholderEn: 'Date of Birth *' },
+                              { key: 'placeOfBirth', labelVi: 'Nơi sinh', labelEn: 'Place of Birth', placeholderVi: 'Nơi sinh *', placeholderEn: 'Place of Birth *' },
+                              { key: 'cmeIdentityNo', labelVi: 'Số CCCD để cấp CME', labelEn: 'National ID for CME', placeholderVi: 'Số CCCD / Định danh cá nhân *', placeholderEn: 'National ID Number *' },
                               { key: 'phone', labelVi: 'Số điện thoại di động', labelEn: 'Contact Phone Number', placeholderVi: 'Số điện thoại di động *', placeholderEn: 'Contact Phone Number *' },
                               { key: 'email', labelVi: 'Địa chỉ Email nhận vé & CME', labelEn: 'Email for Ticket & CME', placeholderVi: 'Địa chỉ Email nhận vé & CME *', placeholderEn: 'Email for Ticket & CME *' },
                               { key: 'workplace', labelVi: 'Đơn vị công tác', labelEn: 'Workplace', placeholderVi: 'Đơn vị công tác (Bệnh viện/Khoa Y/Viện thẩm mỹ) *', placeholderEn: 'Workplace (Hospital/Medical School/Clinic) *' },
@@ -3927,6 +4177,10 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
                               { key: 'department', labelVi: 'Khoa / Phòng ban', labelEn: 'Department / Specialty', placeholderVi: 'Khoa / Phòng ban / Bộ môn *', placeholderEn: 'Department / Specialty *' },
                               { key: 'phone', labelVi: 'Số điện thoại', labelEn: 'Phone Number', placeholderVi: 'Số điện thoại *', placeholderEn: 'Phone Number *' },
                               { key: 'email', labelVi: 'Email liên hệ trao đổi học thuật', labelEn: 'Academic Contact Email', placeholderVi: 'Email liên hệ trao đổi học thuật *', placeholderEn: 'Academic Contact Email *' },
+                              { key: 'dateOfBirth', labelVi: 'Ngày tháng năm sinh', labelEn: 'Date of Birth', placeholderVi: 'Ngày tháng năm sinh *', placeholderEn: 'Date of Birth *' },
+                              { key: 'placeOfBirth', labelVi: 'Nơi sinh', labelEn: 'Place of Birth', placeholderVi: 'Nơi sinh *', placeholderEn: 'Place of Birth *' },
+                              { key: 'identityNo', labelVi: 'Số CCCD để cấp CME', labelEn: 'National ID for CME', placeholderVi: 'Số CCCD / Định danh cá nhân *', placeholderEn: 'National ID Number *' },
+                              { key: 'degreeProof', labelVi: 'Hình ảnh bằng cấp', labelEn: 'Degree Certificate Photo', placeholderVi: 'Hình ảnh bằng cấp *', placeholderEn: 'Degree Certificate Photo *' },
                               { key: 'bio', labelVi: 'Tiểu sử khoa học tóm tắt (Bio)', labelEn: 'Short Scientific Bio', placeholderVi: 'Tiểu sử khoa học tóm tắt (Bio) - Khoảng 100 từ', placeholderEn: 'Short Scientific Bio - Around 100 words' },
                               { key: 'presentationTitle', labelVi: 'Tên đề tài báo cáo khoa học', labelEn: 'Presentation Title', placeholderVi: 'Tên đề tài bài báo cáo khoa học *', placeholderEn: 'Presentation Title *' },
                               { key: 'category', labelVi: 'Chuyên đề', labelEn: 'Scientific Topic', placeholderVi: 'Chuyên đề *', placeholderEn: 'Scientific Topic / Track *' },
