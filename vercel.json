@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/zalo?action=cron-refresh",
+      "schedule": "0 */12 * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/manifest.json", "destination": "/api/manifest" },
     { "source": "/sw.js", "destination": "/sw.js" },

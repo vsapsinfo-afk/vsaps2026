@@ -31,8 +31,11 @@ import {
   EventDetailsConfig,
   EmailCampaign,
   CampaignActivity,
+  CustomRegistrationForm,
+  CustomFormSubmission,
 } from './types';
 import { supabase, isSupabaseConfigured, uploadToSupabaseStorage } from './lib/supabase';
+import { DEFAULT_CUSTOM_FORMS } from './lib/defaultForms';
 import {
   mapAttendeeToDb, mapDbToAttendee,
   mapSpeakerToDb, mapDbToSpeaker,
@@ -570,6 +573,8 @@ export class DataStore {
   private static KEY_BOOTH_LAYOUT_MAP = 'vsaps_booth_layout_map';
   private static KEY_CAMPAIGNS = 'vsaps_campaigns';
   private static KEY_CAMPAIGN_ACTIVITIES = 'vsaps_campaign_activities';
+  private static KEY_CUSTOM_FORMS = 'vsaps_custom_forms';
+  private static KEY_CUSTOM_SUBMISSIONS = 'vsaps_custom_form_submissions';
 
   // In-memory cache
   private attendees: Attendee[] = [];
@@ -601,6 +606,8 @@ export class DataStore {
   private booths: string[] = [];
   private boothLayoutMap: string = '/booth_layout_map.png';
   private campaigns: EmailCampaign[] = [];
+  private customForms: CustomRegistrationForm[] = [];
+  private customSubmissions: CustomFormSubmission[] = [];
 
   constructor() {
     this.loadLocalStorage();
@@ -671,6 +678,8 @@ export class DataStore {
     this.booths = this.getLocalStorage(DataStore.KEY_BOOTHS, ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2']);
     this.boothLayoutMap = this.getLocalStorage(DataStore.KEY_BOOTH_LAYOUT_MAP, '/booth_layout_map.png');
     this.campaigns = this.getLocalStorage(DataStore.KEY_CAMPAIGNS, []);
+    this.customForms = this.getLocalStorage(DataStore.KEY_CUSTOM_FORMS, DEFAULT_CUSTOM_FORMS);
+    this.customSubmissions = this.getLocalStorage(DataStore.KEY_CUSTOM_SUBMISSIONS, []);
   }
 
   /**
@@ -859,6 +868,16 @@ export class DataStore {
         if (boothsConfig) {
           this.booths = boothsConfig.value;
           this.saveToLocalStorage(DataStore.KEY_BOOTHS, this.booths);
+        }
+        const formsConfig = configs.find(c => c.key === 'custom_forms');
+        if (formsConfig && Array.isArray(formsConfig.value) && formsConfig.value.length > 0) {
+          this.customForms = formsConfig.value;
+          this.saveToLocalStorage(DataStore.KEY_CUSTOM_FORMS, this.customForms);
+        }
+        const subsConfig = configs.find(c => c.key === 'custom_form_submissions');
+        if (subsConfig && Array.isArray(subsConfig.value)) {
+          this.customSubmissions = subsConfig.value;
+          this.saveToLocalStorage(DataStore.KEY_CUSTOM_SUBMISSIONS, this.customSubmissions);
         }
         const layoutMapConfig = configs.find(c => c.key === 'booth_layout_map_config');
         if (layoutMapConfig) {
@@ -3842,6 +3861,114 @@ export class DataStore {
       supabase.from('virtual_sections').delete().eq('id', id).then(({ error }) => {
         if (error) console.error('Error deleting virtual section from Supabase:', error);
       });
+    }
+  }
+
+  // ==========================================
+  // CUSTOM FORMS & SUBMISSIONS MANAGEMENT
+  // ==========================================
+  getCustomForms(): CustomRegistrationForm[] {
+    return this.customForms;
+  }
+
+  getCustomFormById(id: string): CustomRegistrationForm | undefined {
+    return this.customForms.find(f => f.id === id);
+  }
+
+  getCustomFormBySlug(slug: string): CustomRegistrationForm | undefined {
+    return this.customForms.find(f => f.slug === slug || f.id === slug);
+  }
+
+  async saveCustomForm(form: CustomRegistrationForm): Promise<void> {
+    const idx = this.customForms.findIndex(f => f.id === form.id);
+    if (idx >= 0) {
+      this.customForms[idx] = { ...form, updatedAt: new Date().toISOString() };
+    } else {
+      this.customForms.unshift({ ...form, updatedAt: new Date().toISOString() });
+    }
+    this.saveToLocalStorage(DataStore.KEY_CUSTOM_FORMS, this.customForms);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('system_config').upsert({
+          key: 'custom_forms',
+          value: this.customForms
+        });
+      } catch (e) {
+        console.error('Error syncing custom_forms to Supabase:', e);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'custom_forms' } }));
+  }
+
+  async deleteCustomForm(id: string): Promise<void> {
+    this.customForms = this.customForms.filter(f => f.id !== id);
+    this.saveToLocalStorage(DataStore.KEY_CUSTOM_FORMS, this.customForms);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('system_config').upsert({
+          key: 'custom_forms',
+          value: this.customForms
+        });
+      } catch (e) {
+        console.error('Error syncing custom_forms deletion to Supabase:', e);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'custom_forms' } }));
+  }
+
+  getCustomSubmissions(formId?: string): CustomFormSubmission[] {
+    if (formId) {
+      return this.customSubmissions.filter(s => s.formId === formId);
+    }
+    return this.customSubmissions;
+  }
+
+  async saveCustomSubmission(submission: CustomFormSubmission): Promise<void> {
+    const idx = this.customSubmissions.findIndex(s => s.id === submission.id);
+    if (idx >= 0) {
+      this.customSubmissions[idx] = submission;
+    } else {
+      this.customSubmissions.unshift(submission);
+    }
+    this.saveToLocalStorage(DataStore.KEY_CUSTOM_SUBMISSIONS, this.customSubmissions);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('system_config').upsert({
+          key: 'custom_form_submissions',
+          value: this.customSubmissions
+        });
+      } catch (e) {
+        console.error('Error syncing custom_form_submissions to Supabase:', e);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'custom_form_submissions' } }));
+  }
+
+  async deleteCustomSubmission(id: string): Promise<void> {
+    this.customSubmissions = this.customSubmissions.filter(s => s.id !== id);
+    this.saveToLocalStorage(DataStore.KEY_CUSTOM_SUBMISSIONS, this.customSubmissions);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('system_config').upsert({
+          key: 'custom_form_submissions',
+          value: this.customSubmissions
+        });
+      } catch (e) {
+        console.error('Error syncing custom_form_submissions deletion to Supabase:', e);
+      }
+    }
+    window.dispatchEvent(new CustomEvent('store-updated', { detail: { table: 'custom_form_submissions' } }));
+  }
+
+  async updateCustomSubmissionStatus(id: string, status: 'confirmed' | 'pending' | 'cancelled'): Promise<void> {
+    const sub = this.customSubmissions.find(s => s.id === id);
+    if (sub) {
+      sub.status = status;
+      await this.saveCustomSubmission(sub);
     }
   }
 }

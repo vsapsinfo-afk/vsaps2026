@@ -483,3 +483,88 @@ export interface CampaignActivity {
   status: string;
 }
 
+
+
+// -------------------------------------------------------------
+// MODULE TẠO FORM ĐĂNG KÝ (DYNAMIC REGISTRATION FORM BUILDER)
+// -------------------------------------------------------------
+
+export type FormFieldType = 
+  | 'text' 
+  | 'textarea' 
+  | 'number' 
+  | 'email' 
+  | 'phone' 
+  | 'select' 
+  | 'radio' 
+  | 'checkbox' 
+  | 'date' 
+  | 'file' 
+  | 'section';
+
+export interface FormField {
+  id: string;
+  label: string;
+  key: string;
+  type: FormFieldType;
+  placeholder?: string;
+  required: boolean;
+  options?: string[]; // Cho select, radio, checkbox
+  helpText?: string;
+  width?: 'full' | 'half';
+  defaultValue?: string;
+}
+
+export type FormCategory = 
+  | 'general' 
+  | 'masterclass' 
+  | 'gala' 
+  | 'satellite' 
+  | 'vip' 
+  | 'sponsor' 
+  | 'survey' 
+  | 'custom';
+
+export interface CustomRegistrationForm {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  bannerUrl?: string;
+  logoUrl?: string;
+  category: FormCategory;
+  status: 'active' | 'paused' | 'draft';
+  deadline?: string;
+  maxSubmissions?: number;
+  isFeeRequired?: boolean;
+  feeAmount?: number;
+  feeDescription?: string;
+  bankName?: string;
+  bankAccount?: string;
+  bankAccountName?: string;
+  fields: FormField[];
+  submitButtonText?: string;
+  successMessage?: string;
+  redirectUrl?: string;
+  confirmationEmailEnabled?: boolean;
+  allowCheckRegistration?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomFormSubmission {
+  id: string;
+  formId: string;
+  formTitle: string;
+  submissionCode: string; // VD: VSAPS-REG-XXXX
+  data: Record<string, any>;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  organization?: string;
+  paymentProofUrl?: string;
+  paymentStatus?: 'paid' | 'pending' | 'free';
+  status: 'confirmed' | 'pending' | 'cancelled';
+  submittedAt: string;
+  notes?: string;
+}

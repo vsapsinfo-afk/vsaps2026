@@ -28,6 +28,7 @@ const SponsorManagement = lazy(() => import('./views/SponsorManagement'));
 const NotificationSystem = lazy(() => import('./views/NotificationSystem'));
 const SettingsPanel = lazy(() => import('./views/SettingsPanel'));
 const UserGuide = lazy(() => import('./views/UserGuide'));
+const FormBuilderManagement = lazy(() => import('./views/FormBuilderManagement'));
 
 // Public views
 const PublicEventDetails = lazy(() => import('./views/PublicEventDetails'));
@@ -35,6 +36,7 @@ const PublicDelegateRegister = lazy(() => import('./views/PublicDelegateRegister
 const PublicSpeakerRegister = lazy(() => import('./views/PublicSpeakerRegister'));
 const PublicSponsorRegister = lazy(() => import('./views/PublicSponsorRegister'));
 const PublicCheckRegistration = lazy(() => import('./views/PublicCheckRegistration'));
+const PublicCustomFormRegister = lazy(() => import('./views/PublicCustomFormRegister'));
 
 // Middleware permission mapping for views
 const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
@@ -47,6 +49,7 @@ const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
   sponsors: ['admin', 'btc'],
   notifications: ['admin', 'btc'],
   'bulk-send': ['admin', 'btc'],
+  'form-builder': ['admin', 'btc'],
   settings: ['admin', 'btc'],
   'user-guide': ['admin', 'btc', 'ctv'],
 };
@@ -59,7 +62,7 @@ function AppContent() {
       const viewParam = params.get('view');
       const validViews = [
         'overview', 'attendees', 'speakers', 'schedule', 'tasks', 'finances', 'sponsors', 'notifications', 'bulk-send', 'settings',
-        'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'
+        'form-builder', 'custom-form', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'
       ];
       if (viewParam) {
         const baseView = viewParam.replace(/\/(vn|vi|en)$/i, '');
@@ -257,7 +260,7 @@ function AppContent() {
   };
 
   // Check if current view is public or admin-side
-  const isPublicView = ['event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(currentView);
+  const isPublicView = ['custom-form', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(currentView);
 
   // Middleware effect: watch role and view changes, block and redirect unauthorized access
   useEffect(() => {
@@ -277,7 +280,7 @@ function AppContent() {
   }, [currentView, role, isPublicView]);
 
   const handleNavigate = (view: string) => {
-    const isPublic = ['event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(view);
+    const isPublic = ['custom-form', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(view);
     if (!isPublic) {
       const allowedRoles = VIEW_ROLE_PERMISSIONS[view];
       if (allowedRoles && !allowedRoles.includes(role)) {
@@ -319,6 +322,8 @@ function AppContent() {
         return (
           <SettingsPanel role={role} />
         );
+      case 'form-builder':
+        return <FormBuilderManagement role={role} onNavigate={handleNavigate} />;
       case 'user-guide':
         return <UserGuide />;
 
@@ -333,6 +338,8 @@ function AppContent() {
         return <PublicSponsorRegister onNavigate={handleNavigate} />;
       case 'check-registration':
         return <PublicCheckRegistration onNavigate={handleNavigate} />;
+      case 'custom-form':
+        return <PublicCustomFormRegister onNavigate={handleNavigate} />;
       
       default:
         return <DashboardOverview role={role} />;

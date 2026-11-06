@@ -7,7 +7,7 @@ import React from 'react';
 import { 
   Users, Award, Calendar, CheckSquare, Coins, Megaphone, Settings, 
   BarChart2, Globe, Shield, User, FileText, RefreshCw, LogOut, Send,
-  HelpCircle, Search
+  HelpCircle, Search, Layers
 } from 'lucide-react';
 import { Role } from '../types';
 import { useAuth } from './AuthProvider';
@@ -27,6 +27,7 @@ export default function Sidebar({ currentView, onNavigate, currentRole, isOpen, 
     { id: 'schedule', name: 'Lịch Trình Hội Nghị', icon: Calendar, roles: ['admin', 'btc', 'ctv'] },
     { id: 'speakers', name: 'Báo Cáo Viên', icon: FileText, roles: ['admin', 'btc', 'ctv'] },
     { id: 'attendees', name: 'Đại Biểu', icon: Users, roles: ['admin', 'btc', 'ctv'] },
+    { id: 'form-builder', name: 'Tạo Form Đăng Ký', icon: Layers, roles: ['admin', 'btc'] },
     { id: 'sponsors', name: 'Nhà Tài Trợ', icon: Award, roles: ['admin', 'btc'] },
     { id: 'notifications', name: 'Thông Báo Tự Động', icon: Megaphone, roles: ['admin', 'btc'] },
     { id: 'bulk-send', name: 'Gửi Tin Hàng Loạt', icon: Send, roles: ['admin', 'btc'] },
@@ -43,6 +44,7 @@ export default function Sidebar({ currentView, onNavigate, currentRole, isOpen, 
     { id: 'register-speaker', name: 'Đăng Ký Báo Cáo (Form)', icon: FileText },
     { id: 'register-sponsor', name: 'Đăng Ký Tài Trợ (Form)', icon: Award },
     { id: 'check-registration', name: 'Tra Cứu Vé Điện Tử', icon: Search },
+    { id: 'custom-form', name: 'Form Đăng Ký Tùy Biến', icon: Layers },
   ];
 
   const handleNavClick = (viewId: string) => {
