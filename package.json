@@ -46,5 +46,8 @@
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "^4.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
