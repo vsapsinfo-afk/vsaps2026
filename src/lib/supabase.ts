@@ -14,7 +14,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+const safeUrl = supabaseUrl && supabaseUrl.trim() !== '' ? supabaseUrl : 'https://placeholder-offline.supabase.co';
+const safeKey = supabaseAnonKey && supabaseAnonKey.trim() !== '' ? supabaseAnonKey : 'placeholder-anon-key-offline';
+
+export const supabase: SupabaseClient = createClient(safeUrl, safeKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -31,7 +34,7 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
  * Check if Supabase is properly configured
  */
 export function isSupabaseConfigured(): boolean {
-  return !!(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'YOUR_SUPABASE_PROJECT_URL');
+  return !!(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'YOUR_SUPABASE_PROJECT_URL' && supabaseUrl !== 'https://placeholder-offline.supabase.co');
 }
 
 /**
