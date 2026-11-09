@@ -51,6 +51,17 @@ export const MIGRATION_STEPS: MigrationStep[] = [
     `,
   },
   {
+    id: 'speaker-invitation-file',
+    label: 'Báo cáo viên: thêm tệp thư mời do Ban tổ chức tự thiết kế',
+    sql: `
+      ALTER TABLE public.speakers ADD COLUMN IF NOT EXISTS invitation_file_url  TEXT;
+      ALTER TABLE public.speakers ADD COLUMN IF NOT EXISTS invitation_file_name TEXT;
+
+      COMMENT ON COLUMN public.speakers.invitation_file_url  IS 'Thư mời báo cáo dạng PDF hoặc ảnh, Ban tổ chức tự tải lên';
+      COMMENT ON COLUMN public.speakers.invitation_file_name IS 'Tên tệp thư mời, để hiển thị cho dễ nhận biết';
+    `,
+  },
+  {
     id: 'track-accepting-flag',
     label: 'Chuyên đề: thêm cờ ngừng nhận đăng ký mới',
     sql: `
@@ -152,6 +163,7 @@ export const EXPECTED_COLUMNS: { table: string; column: string; label: string }[
   { table: 'speakers', column: 'degree_proof_url', label: 'Báo cáo viên — Ảnh bằng cấp' },
   { table: 'speakers', column: 'bio_en', label: 'Báo cáo viên — Tiểu sử tiếng Anh' },
   { table: 'speakers', column: 'abstract_en', label: 'Báo cáo viên — Abstract tiếng Anh' },
+  { table: 'speakers', column: 'invitation_file_url', label: 'Báo cáo viên — Tệp thư mời' },
   { table: 'specialty_tracks', column: 'is_accepting_new', label: 'Chuyên đề — Cờ ngừng nhận mới' },
   { table: 'business_config', column: 'auto_send_invitation_letter', label: 'Cấu hình — Tự động gửi thư mời' },
 ];

@@ -274,7 +274,10 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
       code: s.id || '',
       presentation_title: s.presentationTitle || '',
       track: s.presentationTrack || '',
-      organization: s.organization || ''
+      organization: s.organization || '',
+      // Thư mời báo cáo viên là tệp Ban tổ chức tự tải lên, lấy thẳng đường dẫn
+      // từ hồ sơ chứ không phải xin máy chủ sinh như thư mời đại biểu.
+      invitation_url: s.invitationFileUrl || ''
     };
   };
 
@@ -572,26 +575,32 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
           alert('Danh sách người nhận không có mã hồ sơ nên không sinh được đường dẫn thư mời.');
           return;
         }
-        // Mã báo cáo viên luôn bắt đầu bằng SPK-, còn lại là đại biểu. Hai loại
-        // ký mã kiểm tra khác nhau nên phải xin đường dẫn riêng cho từng nhóm.
-        const speakerIds = ids.filter(x => x.toUpperCase().startsWith('SPK-'));
+        // Hai loại thư mời khác hẳn nhau:
+        //   Đại biểu   — trang thiệp hệ thống sinh, phải xin máy chủ ký đường dẫn
+        //   Báo cáo viên — tệp PDF/ảnh Ban tổ chức tự tải lên, đường dẫn có sẵn
+        //     trong hồ sơ nên không cần gọi máy chủ.
         const delegateIds = ids.filter(x => !x.toUpperCase().startsWith('SPK-'));
         try {
-          const [delegateLinks, speakerLinks] = await Promise.all([
-            delegateIds.length > 0 ? store.getInvitationLinks(delegateIds, 'dl') : Promise.resolve({}),
-            speakerIds.length > 0 ? store.getInvitationLinks(speakerIds, 'bcv') : Promise.resolve({}),
-          ]);
-          const links: Record<string, string> = { ...delegateLinks, ...speakerLinks };
+          const links = delegateIds.length > 0
+            ? await store.getInvitationLinks(delegateIds)
+            : {};
           const missing: string[] = [];
           workingList.forEach(d => {
-            const link = links[String(d.code || '').trim()];
+            const code = String(d.code || '').trim();
+            // Báo cáo viên: giữ nguyên đường dẫn tệp đã gắn sẵn khi nạp danh sách
+            if (code.toUpperCase().startsWith('SPK-')) {
+              if (!d.invitation_url) missing.push(d.name || d.email || code);
+              return;
+            }
+            const link = links[code];
             if (link) d.invitation_url = link;
-            else missing.push(d.name || d.email || d.code);
+            else missing.push(d.name || d.email || code);
           });
           if (missing.length > 0) {
             alert(
-              `Không sinh được đường dẫn thư mời cho ${missing.length} người. `
-              + 'Những dòng này thiếu mã hồ sơ, vui lòng nạp lại danh sách từ nguồn Đại biểu hoặc Báo cáo viên.'
+              `Chưa có đường dẫn thư mời cho ${missing.length} người.\n\n`
+              + 'Với báo cáo viên: vào Báo Cáo Viên > Sửa hồ sơ để tải tệp thư mời lên trước.\n'
+              + 'Với đại biểu: dòng thiếu mã hồ sơ, nạp lại danh sách từ nguồn Đại biểu.'
             );
             return;
           }
@@ -4629,7 +4638,7 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
                         { code: 'payment_status', label: 'Trạng thái thanh toán' },
                         { code: 'organization', label: 'Đơn vị công tác' },
                         { code: 'qr_url', label: 'Link ảnh mã QR check-in' },
-                        { code: 'invitation_url', label: 'Link thư mời riêng (đại biểu và báo cáo viên)' }
+                        { code: 'invitation_url', label: 'Link thư mời (đại biểu: trang thiệp; báo cáo viên: tệp đã tải)' }
                       ].map(ph => (
                         <button
                           key={ph.code}

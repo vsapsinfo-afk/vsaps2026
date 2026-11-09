@@ -36,6 +36,14 @@ COMMENT ON COLUMN public.speakers.bio_en           IS 'Tiểu sử khoa học b�
 COMMENT ON COLUMN public.speakers.abstract_en      IS 'Abstract bản tiếng Anh, Ban tổ chức tự dịch';
 
 
+-- Báo cáo viên: thêm tệp thư mời do Ban tổ chức tự thiết kế
+ALTER TABLE public.speakers ADD COLUMN IF NOT EXISTS invitation_file_url  TEXT;
+ALTER TABLE public.speakers ADD COLUMN IF NOT EXISTS invitation_file_name TEXT;
+
+COMMENT ON COLUMN public.speakers.invitation_file_url  IS 'Thư mời báo cáo dạng PDF hoặc ảnh, Ban tổ chức tự tải lên';
+COMMENT ON COLUMN public.speakers.invitation_file_name IS 'Tên tệp thư mời, để hiển thị cho dễ nhận biết';
+
+
 -- Chuyên đề: thêm cờ ngừng nhận đăng ký mới
 ALTER TABLE public.specialty_tracks
   ADD COLUMN IF NOT EXISTS is_accepting_new BOOLEAN NOT NULL DEFAULT TRUE;

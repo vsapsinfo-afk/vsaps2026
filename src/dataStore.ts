@@ -1561,6 +1561,18 @@ export class DataStore {
             }
           }
 
+          // Tệp thư mời do Ban tổ chức tự thiết kế, có thể là PDF hoặc ảnh.
+          if (speaker.invitationFileUrl && speaker.invitationFileUrl.startsWith('data:')) {
+            const mime = speaker.invitationFileUrl.match(/^data:([^;]+);base64,/)?.[1] || '';
+            const ext = mime.includes('pdf') ? 'pdf' : (mime.split('/')[1] || 'png');
+            const path = `invitations/${speaker.id}-${Date.now()}.${ext}`;
+            const publicUrl = await uploadToSupabaseStorage(path, speaker.invitationFileUrl);
+            if (publicUrl) {
+              updatedSpeaker.invitationFileUrl = publicUrl;
+              changed = true;
+            }
+          }
+
           if (speaker.documentUrl && speaker.documentUrl.includes('data:')) {
             const urls = speaker.documentUrl.split('|');
             const uploadedUrls = [];
@@ -1653,6 +1665,18 @@ export class DataStore {
           const publicUrl = await uploadToSupabaseStorage(path, speaker.degreeProofUrl);
           if (publicUrl) {
             updatedSpeaker.degreeProofUrl = publicUrl;
+            changed = true;
+          }
+        }
+
+        // Tệp thư mời do Ban tổ chức tự thiết kế, có thể là PDF hoặc ảnh.
+        if (speaker.invitationFileUrl && speaker.invitationFileUrl.startsWith('data:')) {
+          const mime = speaker.invitationFileUrl.match(/^data:([^;]+);base64,/)?.[1] || '';
+          const ext = mime.includes('pdf') ? 'pdf' : (mime.split('/')[1] || 'png');
+          const path = `invitations/${speaker.id}-${Date.now()}.${ext}`;
+          const publicUrl = await uploadToSupabaseStorage(path, speaker.invitationFileUrl);
+          if (publicUrl) {
+            updatedSpeaker.invitationFileUrl = publicUrl;
             changed = true;
           }
         }
@@ -3617,15 +3641,12 @@ export class DataStore {
    * biểu giả, nên thư không có được lịch trình lẫn ảnh chân dung.
    */
   async sendSpeakerApprovedEmail(speaker: SpeakerRegistration): Promise<SentNotificationLog> {
-    // Đường dẫn thiệp mời riêng của báo cáo viên. Không sinh được thì vẫn gửi
-    // thư, chỉ thiếu nút mở thiệp — không chặn cả việc báo tin đã duyệt bài.
-    let invitationUrl = '';
-    try {
-      const links = await this.getInvitationLinks([speaker.id], 'bcv');
-      invitationUrl = links[speaker.id] || '';
-    } catch (err) {
-      console.error('Không sinh được đường dẫn thiệp mời báo cáo viên:', err);
-    }
+    // Thư mời là tệp PDF hoặc ảnh do Ban tổ chức tự thiết kế rồi tải lên trong
+    // màn hình Báo cáo viên. Chưa tải thì thư vẫn gửi, chỉ không có nút tải thư mời.
+    // Chỉ nhận đường dẫn thật; tệp còn ở dạng base64 nghĩa là chưa đồng bộ xong.
+    const invitationUrl = (speaker.invitationFileUrl || '').startsWith('http')
+      ? speaker.invitationFileUrl as string
+      : '';
 
     const template = this.findEmailTemplate('abstract_approved', [
       // Mã mẫu Ban tổ chức hay dùng cho thư phê duyệt đề tài
@@ -3701,13 +3722,13 @@ export class DataStore {
 
       ${invitationUrl ? `
       <div style="text-align: center; margin: 25px 0; background-color: #eef2fb; border: 1px solid #c3d0ec; padding: 22px; border-radius: 12px;">
-        <p style="font-size: 13px; color: #1d3a75; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase;">Thiệp mời báo cáo của Quý Bác sĩ</p>
+        <p style="font-size: 13px; color: #1d3a75; margin: 0 0 4px 0; font-weight: bold; text-transform: uppercase;">Thư mời báo cáo</p>
         <p style="font-size: 12.5px; color: #2b509e; margin: 0 0 14px 0; line-height: 1.6;">
-          Kèm ảnh chân dung, tên bài báo cáo và lịch trình. Mở ra có thể lưu PDF hoặc chụp màn hình để chia sẻ.
+          Ban Tổ chức kính gửi Quý Bác sĩ thư mời báo cáo. Bấm nút bên dưới để xem và tải về.
         </p>
         <a href="${invitationUrl}" target="_blank"
            style="display: inline-block; background-color: #2b509e; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13.5px; padding: 12px 26px; border-radius: 8px;">
-          Mở thiệp mời
+          Xem thư mời
         </a>
         <p style="font-size: 11px; color: #2b509e; margin: 12px 0 0 0; word-break: break-all;">
           Hoặc sao chép đường dẫn: ${invitationUrl}
@@ -3756,13 +3777,16 @@ export class DataStore {
    * businessConfig.autoSendInvitationLetter.
    */
   /**
-   * Xin máy chủ sinh đường dẫn thư mời cho một hoặc nhiều đại biểu.
+   * Xin máy chủ sinh đường dẫn trang thiệp mời cho một hoặc nhiều ĐẠI BIỂU.
+   *
+   * Báo cáo viên không dùng hàm này: thư mời của họ là tệp PDF hoặc ảnh do Ban
+   * tổ chức tự tải lên, đường dẫn nằm sẵn trong hồ sơ (invitationFileUrl).
    *
    * Đường dẫn kèm mã kiểm tra ký bằng khóa chỉ máy chủ biết, nên trình duyệt
    * không tự dựng được. Nhờ vậy không ai dò ngược ra danh sách đại biểu bằng
    * cách đoán mã tuần tự.
    */
-  async getInvitationLinks(ids: string[], type: 'dl' | 'bcv' = 'dl'): Promise<Record<string, string>> {
+  async getInvitationLinks(ids: string[]): Promise<Record<string, string>> {
     if (!ids || ids.length === 0) return {};
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -3774,7 +3798,7 @@ export class DataStore {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ ids, type }),
+      body: JSON.stringify({ ids }),
     });
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.success) {

@@ -91,6 +91,11 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const degreeProofInputRef = React.useRef<HTMLInputElement>(null);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
+  // Tệp thư mời do Ban tổ chức tự thiết kế, dạng PDF hoặc ảnh
+  const [speakerInvitationFile, setSpeakerInvitationFile] = useState<string | null>(null);
+  const [speakerInvitationName, setSpeakerInvitationName] = useState('');
+  const [isInvitationUploading, setIsInvitationUploading] = useState(false);
+  const invitationInputRef = React.useRef<HTMLInputElement>(null);
   const [speakerDocumentName, setSpeakerDocumentName] = useState('');
   const [speakerStatus, setSpeakerStatus] = useState<'pending' | 'approved' | 'rejected'>('approved');
   const [speakerAvatar, setSpeakerAvatar] = useState<string | null>(null);
@@ -207,21 +212,6 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       setNewTrackName('');
       setNewTrackNameEn('');
       setNewTrackDesc('');
-    }
-  };
-
-  /** Mở thử thiệp mời của một báo cáo viên, để soát trước khi gửi. */
-  const handlePreviewSpeakerInvitation = async (spk: SpeakerRegistration) => {
-    try {
-      const links = await store.getInvitationLinks([spk.id], 'bcv');
-      const url = links[spk.id];
-      if (!url) {
-        alert('Không sinh được đường dẫn thiệp mời cho hồ sơ này.');
-        return;
-      }
-      window.open(url, '_blank');
-    } catch (err: any) {
-      alert(`Không mở được thiệp mời: ${err?.message || err}`);
     }
   };
 
@@ -373,6 +363,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPlaceOfBirth('');
     setSpeakerIdentityNo('');
     setSpeakerDegreeProof(null);
+    setSpeakerInvitationFile(null);
+    setSpeakerInvitationName('');
     setSpeakerDocumentName('');
     setSpeakerDocumentUrl(null);
     setSpeakerStatus('approved');
@@ -401,6 +393,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     setSpeakerPlaceOfBirth(spk.placeOfBirth || '');
     setSpeakerIdentityNo(spk.identityNo || '');
     setSpeakerDegreeProof(spk.degreeProofUrl || null);
+    setSpeakerInvitationFile(spk.invitationFileUrl || null);
+    setSpeakerInvitationName(spk.invitationFileName || '');
     setSpeakerDocumentName(spk.documentName || '');
     setSpeakerDocumentUrl(spk.documentUrl || null);
     setSpeakerStatus(spk.status);
@@ -419,6 +413,41 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       setSpeakerAvatar(reader.result as string);
       setIsAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  /**
+   * Tải tệp thư mời báo cáo. Nhận PDF hoặc ảnh, giới hạn 10MB để không
+   * làm nghẽn bước đồng bộ lên Supabase Storage.
+   */
+  /** Tệp là PDF hay ảnh, để chọn cách hiển thị ô xem trước. */
+  const isPdfFile = (value: string) =>
+    value.startsWith('data:application/pdf') || /\.pdf($|\?)/i.test(value);
+
+  const handleInvitationUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const okType = file.type === 'application/pdf' || file.type.startsWith('image/');
+    if (!okType) {
+      alert('Chỉ nhận tệp PDF hoặc ảnh (JPG, PNG).');
+      if (invitationInputRef.current) invitationInputRef.current.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Tệp quá lớn (tối đa 10MB). Vui lòng nén bớt rồi tải lại.');
+      if (invitationInputRef.current) invitationInputRef.current.value = '';
+      return;
+    }
+
+    setIsInvitationUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSpeakerInvitationFile(reader.result as string);
+      setSpeakerInvitationName(file.name);
+      setIsInvitationUploading(false);
+      if (invitationInputRef.current) invitationInputRef.current.value = '';
     };
     reader.readAsDataURL(file);
   };
@@ -475,6 +504,8 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
       placeOfBirth: speakerPlaceOfBirth.trim() || undefined,
       identityNo: speakerIdentityNo.trim() || undefined,
       degreeProofUrl: speakerDegreeProof || undefined,
+      invitationFileUrl: speakerInvitationFile || undefined,
+      invitationFileName: speakerInvitationName || undefined,
       documentName: speakerDocumentName || undefined,
       documentUrl: speakerDocumentUrl || undefined,
       status: speakerStatus,
@@ -1740,15 +1771,24 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     Đóng
                   </button>
 
-                  {/* Xem thử chính tấm thiệp mà báo cáo viên sẽ nhận */}
-                  <button
-                    type="button"
-                    onClick={() => handlePreviewSpeakerInvitation(selectedSpeaker)}
-                    className="px-4 py-2 text-xs bg-slate-50 hover:bg-slate-700 hover:text-white text-slate-700 border border-slate-200 font-bold rounded-xl whitespace-nowrap transition-colors"
-                    title="Mở thử trang thiệp mời của báo cáo viên này trong tab mới"
-                  >
-                    Xem Thiệp Mời
-                  </button>
+                  {/* Thư mời là tệp do Ban tổ chức tự tải lên trong form sửa hồ sơ */}
+                  {selectedSpeaker.invitationFileUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => window.open(selectedSpeaker.invitationFileUrl, '_blank')}
+                      className="px-4 py-2 text-xs bg-slate-50 hover:bg-slate-700 hover:text-white text-slate-700 border border-slate-200 font-bold rounded-xl whitespace-nowrap transition-colors"
+                      title={selectedSpeaker.invitationFileName || 'Mở tệp thư mời đã tải lên'}
+                    >
+                      Xem Thư Mời
+                    </button>
+                  ) : (
+                    <span
+                      className="px-4 py-2 text-xs bg-amber-50 text-amber-700 border border-amber-200 font-bold rounded-xl whitespace-nowrap"
+                      title="Vào Sửa hồ sơ để tải tệp thư mời lên"
+                    >
+                      Chưa có thư mời
+                    </span>
+                  )}
                   {role !== 'ctv' && (
                     <>
                       {selectedSpeaker.status !== 'rejected' && (
@@ -2667,7 +2707,83 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                   )}
                 </div>
 
-                {/* Ban tieng Anh de in ky yeu, Ban to chuc tu dich */}
+                {/* Thư mời báo cáo: Ban tổ chức tự thiết kế rồi tải tệp lên đây,
+                    hệ thống không tự sinh thiệp nữa. */}
+                <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 space-y-3">
+                  <div>
+                    <span className="text-[9.5px] font-extrabold text-teal-700 uppercase tracking-wider block font-mono">
+                      Thư mời báo cáo
+                    </span>
+                    <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                      Tải lên tệp thư mời đã thiết kế cho riêng báo cáo viên này.
+                      Nhận <strong>PDF hoặc ảnh (JPG, PNG)</strong>, tối đa 10MB.
+                      Thư báo duyệt đề tài sẽ kèm đường dẫn tải tệp này.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="relative shrink-0 w-24 h-20 rounded-xl bg-white border-2 border-dashed border-teal-600/30 flex items-center justify-center overflow-hidden">
+                      {speakerInvitationFile ? (
+                        isPdfFile(speakerInvitationFile) ? (
+                          <span className="text-[10px] font-black text-rose-600">PDF</span>
+                        ) : (
+                          <img src={speakerInvitationFile} className="w-full h-full object-cover" alt="Thư mời" />
+                        )
+                      ) : (
+                        <span className="text-slate-400 text-[9px] font-bold text-center p-1 leading-none select-none">Chưa có tệp</span>
+                      )}
+                      {isInvitationUploading && (
+                        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center text-[9px] text-white font-mono">
+                          Đang tải...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-1 min-w-0">
+                      {speakerInvitationName && (
+                        <p className="text-[10.5px] font-bold text-slate-700 truncate max-w-xs" title={speakerInvitationName}>
+                          {speakerInvitationName}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => invitationInputRef.current?.click()}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold rounded-lg cursor-pointer transition-colors whitespace-nowrap"
+                        >
+                          {speakerInvitationFile ? 'Đổi tệp' : 'Tải thư mời'}
+                        </button>
+                        <input
+                          ref={invitationInputRef}
+                          type="file"
+                          accept="application/pdf,image/png,image/jpeg"
+                          onChange={handleInvitationUpload}
+                          className="hidden"
+                        />
+                        {speakerInvitationFile && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => window.open(speakerInvitationFile, '_blank')}
+                              className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap"
+                            >
+                              Xem tệp
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setSpeakerInvitationFile(null); setSpeakerInvitationName(''); }}
+                              className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 text-[10px] font-bold rounded-lg border-none cursor-pointer whitespace-nowrap"
+                            >
+                              Xóa tệp
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bản tiếng Anh để in kỷ yếu, Ban tổ chức tự dịch */}
                 <div className="bg-indigo-50/40 border border-indigo-150 rounded-2xl p-4 space-y-3">
                   <div>
                     <span className="text-[9.5px] font-extrabold text-indigo-700 uppercase tracking-wider block font-mono">

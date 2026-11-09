@@ -77,6 +77,13 @@ export interface SpeakerRegistration {
   identityNo?: string;
   /** Ảnh bằng cấp / minh chứng học hàm học vị. Bắt buộc để cấp chứng chỉ CME. */
   degreeProofUrl?: string;
+  /**
+   * Thư mời báo cáo do Ban tổ chức tự thiết kế rồi tải lên, dạng PDF hoặc ảnh.
+   * Mỗi báo cáo viên một tệp riêng.
+   */
+  invitationFileUrl?: string;
+  /** Tên tệp thư mời, để hiển thị cho dễ nhận biết. */
+  invitationFileName?: string;
   documentUrl?: string;
   documentName?: string;
   calendarSynced: boolean;
