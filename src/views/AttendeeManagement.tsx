@@ -27,6 +27,7 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'unpaid' | 'pending_verification'>('all');
   const [checkInFilter, setCheckInFilter] = useState<'all' | 'checked' | 'not_checked'>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,7 +36,7 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   // Reset page when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, checkInFilter]);
+  }, [searchQuery, statusFilter, checkInFilter, sortOrder]);
 
   /**
    * Đối chiếu nhật ký gửi thư để phát hiện đại biểu CHƯA nhận được email nào thành công
@@ -1515,7 +1516,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
   };
 
   const getFilteredAttendees = () => {
-    return attendees.filter(a => {
+    const list = attendees.filter(a => {
       const matchQuery = 
         a.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         a.organization.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1532,6 +1533,44 @@ Ban Thư ký Hội nghị VSAPS 2026`
         (checkInFilter === 'not_checked' && !a.isCheckedIn);
 
       return matchQuery && matchStatus && matchCheckIn;
+    });
+
+    const parseTime = (dateStr?: string, idStr?: string): number => {
+      if (dateStr) {
+        const t = Date.parse(dateStr);
+        if (!isNaN(t)) return t;
+        const dmy = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+        if (dmy) {
+          const parsed = Date.parse(`${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`);
+          if (!isNaN(parsed)) return parsed;
+        }
+      }
+      if (idStr) {
+        const numMatch = idStr.match(/\d{10,13}/);
+        if (numMatch) {
+          const n = parseInt(numMatch[0], 10);
+          if (n > 1000000000) return n;
+        }
+      }
+      return 0;
+    };
+
+    return list.sort((a, b) => {
+      if (sortOrder === 'name_asc') {
+        return (a.fullName || '').localeCompare(b.fullName || '', 'vi');
+      }
+      if (sortOrder === 'name_desc') {
+        return (b.fullName || '').localeCompare(a.fullName || '', 'vi');
+      }
+      if (sortOrder === 'oldest') {
+        const tDiff = parseTime(a.registrationDate, a.id) - parseTime(b.registrationDate, b.id);
+        if (tDiff !== 0) return tDiff;
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true });
+      }
+      // 'newest' (Mặc định: mới nhất lên trước)
+      const tDiff = parseTime(b.registrationDate, b.id) - parseTime(a.registrationDate, a.id);
+      if (tDiff !== 0) return tDiff;
+      return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true });
     });
   };
 
@@ -1770,11 +1809,23 @@ Ban Thư ký Hội nghị VSAPS 2026`
           <select
             value={checkInFilter}
             onChange={(e: any) => setCheckInFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-5-0 hover:bg-slate-100/50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none"
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none"
           >
             <option value="all">Tất cả Điểm danh (Check-In)</option>
             <option value="checked">Đã điểm danh</option>
             <option value="not_checked">Chưa điểm danh</option>
+          </select>
+
+          <select
+            value={sortOrder}
+            onChange={(e: any) => setSortOrder(e.target.value)}
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100/50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none cursor-pointer"
+            title="Thứ tự hiển thị danh sách đại biểu"
+          >
+            <option value="newest">🕒 Đăng ký mới nhất</option>
+            <option value="oldest">⏳ Đăng ký cũ nhất</option>
+            <option value="name_asc">🔤 Tên (A - Z)</option>
+            <option value="name_desc">🔤 Tên (Z - A)</option>
           </select>
         </div>
 
@@ -1928,7 +1979,14 @@ Ban Thư ký Hội nghị VSAPS 2026`
                         className="w-4 h-4 text-teal-600 border-slate-300 rounded cursor-pointer"
                       />
                     </td>
-                    <td className="px-6 py-4 font-mono font-bold text-slate-900">{att.id}</td>
+                    <td className="px-6 py-4 font-mono font-bold text-slate-900">
+                      <div>{att.id}</div>
+                      {att.registrationDate && (
+                        <span className="text-[9.5px] font-normal text-slate-450 block font-sans whitespace-nowrap mt-0.5">
+                          📅 {formatDateVi(att.registrationDate) || att.registrationDate}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
@@ -2176,7 +2234,9 @@ Ban Thư ký Hội nghị VSAPS 2026`
                       <span className="font-bold text-slate-950 text-xs">
                         {att.title} {att.fullName}
                       </span>
-                      <span className="text-[9px] text-slate-400 mt-0.5 font-mono">{att.id} | {att.phone}</span>
+                      <span className="text-[9px] text-slate-400 mt-0.5 font-mono">
+                        {att.id} {att.registrationDate ? `• 📅 ${formatDateVi(att.registrationDate) || att.registrationDate}` : ''} | {att.phone}
+                      </span>
                       <span className="text-[9px] text-slate-400 max-w-[150px] truncate">{att.email}</span>
                       {hasMailDeliveryIssue(att.email) && (
                         <button

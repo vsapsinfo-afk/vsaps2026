@@ -76,7 +76,27 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
   const vipPct = totalAttendees > 0 ? Math.round((vipCount / totalAttendees) * 100) : 0;
   const onlinePct = totalAttendees > 0 ? Math.round((onlineCount / totalAttendees) * 100) : 0;
 
-  // Combined and sorted recent registrations
+  const parseTime = (dateStr?: string, idStr?: string): number => {
+    if (dateStr) {
+      const t = Date.parse(dateStr);
+      if (!isNaN(t)) return t;
+      const dmy = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+      if (dmy) {
+        const parsed = Date.parse(`${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`);
+        if (!isNaN(parsed)) return parsed;
+      }
+    }
+    if (idStr) {
+      const numMatch = idStr.match(/\d{10,13}/);
+      if (numMatch) {
+        const n = parseInt(numMatch[0], 10);
+        if (n > 1000000000) return n;
+      }
+    }
+    return 0;
+  };
+
+  // Combined and sorted recent registrations (Đăng ký mới nhất lên đầu tiên)
   const recentRegistrations = [
     ...attendees.map(a => ({
       id: a.id,
@@ -97,9 +117,12 @@ export default function DashboardOverview({ role }: DashboardOverviewProps) {
       badgeClass: s.status === 'approved' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600',
     }))
   ]
-  .filter(r => r.date)
-  .sort((a, b) => b.date.localeCompare(a.date))
-  .slice(0, 5);
+  .sort((a, b) => {
+    const tDiff = parseTime(b.date, b.id) - parseTime(a.date, a.id);
+    if (tDiff !== 0) return tDiff;
+    return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true });
+  })
+  .slice(0, 10);
 
   const sortedNotificationLogs = [...logs]
     .sort((a, b) => (b.sentAt || '').localeCompare(a.sentAt || ''))

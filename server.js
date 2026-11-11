@@ -27,12 +27,8 @@ import crypto from "node:crypto";
 function getServiceRoleKey() {
   return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE || null;
 }
-function signId(id, secret, type = "dl") {
-  const payload = type === "bcv" ? `invitation:speaker:${id}` : `invitation:${id}`;
-  return crypto.createHmac("sha256", secret).update(payload).digest("hex").slice(0, 20);
-}
-function readType(raw) {
-  return String(raw || "").trim().toLowerCase() === "bcv" ? "bcv" : "dl";
+function signId(id, secret) {
+  return crypto.createHmac("sha256", secret).update(`invitation:${id}`).digest("hex").slice(0, 20);
 }
 function safeEqual(a, b) {
   const bufA = Buffer.from(a);
@@ -82,7 +78,6 @@ async function handleRequest(req, res) {
   if (req.method === "POST") {
     const authError = await assertAdmin(req, supabaseUrl5, serviceRoleKey);
     if (authError) return res.status(403).json({ success: false, error: authError });
-    const type2 = readType((req.body || {}).type);
     const ids = (req.body || {}).ids;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, error: "Thi\u1EBFu danh s\xE1ch m\xE3 \u0111\u1EA1i bi\u1EC3u." });
@@ -95,9 +90,7 @@ async function handleRequest(req, res) {
     ids.forEach((raw) => {
       const id2 = String(raw || "").trim();
       if (!id2) return;
-      const token = signId(id2, serviceRoleKey, type2);
-      const suffix = type2 === "bcv" ? "&t=bcv" : "";
-      links[id2] = `${base}/?view=thu-moi&id=${encodeURIComponent(id2)}&k=${token}${suffix}`;
+      links[id2] = `${base}/?view=thu-moi&id=${encodeURIComponent(id2)}&k=${signId(id2, serviceRoleKey)}`;
     });
     return res.json({ success: true, links });
   }
@@ -106,11 +99,10 @@ async function handleRequest(req, res) {
   }
   const id = String(req.query.id || "").trim();
   const key = String(req.query.k || "").trim();
-  const type = readType(req.query.t);
   if (!id || !key) {
     return res.status(400).json({ success: false, error: "\u0110\u01B0\u1EDDng d\u1EABn th\u01B0 m\u1EDDi kh\xF4ng \u0111\u1EA7y \u0111\u1EE7." });
   }
-  if (!safeEqual(key, signId(id, serviceRoleKey, type))) {
+  if (!safeEqual(key, signId(id, serviceRoleKey))) {
     return res.status(404).json({ success: false, error: "\u0110\u01B0\u1EDDng d\u1EABn th\u01B0 m\u1EDDi kh\xF4ng h\u1EE3p l\u1EC7 ho\u1EB7c \u0111\xE3 h\u1EBFt hi\u1EC7u l\u1EF1c." });
   }
   const loadCommon = async () => {
@@ -123,7 +115,6 @@ async function handleRequest(req, res) {
         date: config?.event_date || "11 \u2013 13/12/2026",
         location: config?.event_location || "B\u1EC7nh vi\u1EC7n Qu\xE2n y 175, TP. H\u1ED3 Ch\xED Minh"
       },
-      sessionRows: sessions || [],
       sessions: (sessions || []).map((x) => ({
         id: x.id,
         title: x.title || "",
@@ -136,46 +127,6 @@ async function handleRequest(req, res) {
       }))
     };
   };
-  if (type === "bcv") {
-    const { data: speaker, error: speakerError } = await db.from("speakers").select("id, title, full_name, organization, department, email, avatar_url, nationality, presentation_title, presentation_track, status, scheduled_session_id").eq("id", id).single();
-    if (speakerError || !speaker) {
-      return res.status(404).json({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y h\u1ED3 s\u01A1 b\xE1o c\xE1o vi\xEAn." });
-    }
-    const common2 = await loadCommon();
-    const mine = common2.sessionRows.find((x) => x.id === speaker.scheduled_session_id);
-    let qrCodeValue = "";
-    if (speaker.email) {
-      const { data: matched } = await db.from("attendees").select("qr_code_value").ilike("email", speaker.email.trim()).limit(1);
-      if (matched && matched.length > 0) qrCodeValue = matched[0].qr_code_value || "";
-    }
-    return res.json({
-      success: true,
-      type: "bcv",
-      attendee: {
-        id: speaker.id,
-        title: speaker.title || "",
-        fullName: speaker.full_name || "",
-        organization: speaker.organization || "",
-        department: speaker.department || "",
-        packageName: "",
-        avatarUrl: speaker.avatar_url || "",
-        nationality: speaker.nationality || "vietname",
-        qrCodeValue
-      },
-      presentation: {
-        title: speaker.presentation_title || "",
-        track: speaker.presentation_track || "",
-        approved: speaker.status === "approved",
-        sessionTitle: mine?.title || "",
-        sessionDate: mine?.date || "",
-        startTime: mine?.start_time || "",
-        endTime: mine?.end_time || "",
-        roomName: mine?.room_name || ""
-      },
-      event: common2.event,
-      sessions: common2.sessions
-    });
-  }
   const { data: attendee, error: attendeeError } = await db.from("attendees").select("id, title, full_name, organization, department, package_name, avatar_url, nationality, qr_code_value").eq("id", id).single();
   if (attendeeError || !attendee) {
     return res.status(404).json({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y h\u1ED3 s\u01A1 \u0111\u1EA1i bi\u1EC3u." });
