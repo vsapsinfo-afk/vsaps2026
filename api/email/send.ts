@@ -130,7 +130,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { apiKey, from, to, subject, html, provider } = req.body;
+  const { apiKey: reqApiKey, from: reqFrom, to, subject, html, provider } = req.body || {};
+  const apiKey = reqApiKey || process.env.RESEND_API_KEY;
+  const from = reqFrom || process.env.RESEND_FROM_EMAIL;
 
   if (provider === 'resend' || apiKey) {
     if (!apiKey) {

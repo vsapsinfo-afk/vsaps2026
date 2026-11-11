@@ -869,7 +869,7 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           <p style="font-size: 11px; color: #94a3b8;">Email tự động phục vụ đo lường cổng gửi tin hàng loạt.</p>
         </div>
       `;
-      const response = await fetch('/api/email/send-resend', {
+      const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -880,16 +880,22 @@ export default function SettingsPanel({ role }: SettingsPanelProps) {
           html: testContentHtml
         })
       });
-      const data = await response.json();
-      if (data.success) {
+      let data: any = {};
+      const resText = await response.text();
+      try {
+        data = resText ? JSON.parse(resText) : {};
+      } catch {
+        data = { error: resText || `HTTP ${response.status} ${response.statusText}` };
+      }
+      if (response.ok && data.success) {
         setResendSendingResult({
           success: true,
-          message: `Thư xác thực đã bắn thành công tới ${resendTestEmail}! Kiểm tra cả hòm thư Spam.`
+          message: `Thư xác thực đã gửi thành công tới ${resendTestEmail}! (ID: ${data.id || 'OK'}). Kiểm tra cả hòm thư Spam.`
         });
       } else {
         setResendSendingResult({
           success: false,
-          message: `Lỗi truyền phát Resend: ${data.error || 'Chi tiết gửi lỗi máy chủ.'}`
+          message: `Lỗi truyền phát Resend: ${data.error || data.message || `Mã lỗi HTTP ${response.status}`}`
         });
       }
     } catch (err: any) {

@@ -784,8 +784,14 @@ export default function NotificationSystem({ defaultTab = 'templates', hideTabs 
               });
             }
 
-            const resData = await res.json();
-            if (resData.success) {
+            let resData: any = {};
+            const resText = await res.text();
+            try {
+              resData = resText ? JSON.parse(resText) : {};
+            } catch {
+              resData = { error: resText || `HTTP ${res.status}` };
+            }
+            if (res.ok && resData.success) {
               success = true;
               
               // If it's a campaign, update counters and activities

@@ -1,0 +1,9 @@
+# Configuration for Dokploy / Railway Nixpacks
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node server.js"

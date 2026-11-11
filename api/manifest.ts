@@ -4,8 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch from Supabase
     if (supabaseUrl && supabaseAnonKey) {
       try {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
         const { data, error } = await supabase
           .from('business_config')
           .select('*')
