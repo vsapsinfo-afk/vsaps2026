@@ -183,11 +183,7 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   const [address, setAddress] = useState('');
   // const [nationality, setNationality] = useState<'vietname' | 'foreign'>('vietname');
   const [nationality, setNationality] = useState<'vietname' | 'foreign'>(getInitialLang);
-  const [period, setPeriod] = useState<'pre_10_11' | 'post_10_11'>(() => {
-    const today = new Date();
-    const targetDate = new Date('2026-11-10');
-    return today >= targetDate ? 'post_10_11' : 'pre_10_11';
-  });
+  const [period, setPeriod] = useState<'pre_10_11' | 'post_10_11'>('post_10_11');
   const [addOnSelections, setAddOnSelections] = useState<Record<string, boolean>>({});
   const toggleAddOn = (id: string) => {
     setAddOnSelections(prev => ({
@@ -404,17 +400,17 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
   // Official interactive pricing matrix
   const PRICING = {
     pre_10_11: {
-      'pkg-member': 2500000,
-      'pkg-standard': 3000000,
+      'pkg-member': 3000000,
+      'pkg-standard': 3500000,
       'pkg-student': 1000000,
-      'pkg-foreign': 3750000, // $150
+      'pkg-foreign': 5000000, // $200
       'pkg-free': 0,
       'pkg-bch': 0,
     },
     post_10_11: {
       'pkg-member': 3000000,
       'pkg-standard': 3500000,
-      'pkg-student': 1500000,
+      'pkg-student': 1000000, // Cố định 1.000.000 VNĐ, không phụ thu 500.000 VNĐ
       'pkg-foreign': 5000000, // $200
       'pkg-free': 0,
       'pkg-bch': 0,
@@ -1318,44 +1314,6 @@ export default function PublicDelegateRegister({ onNavigate }: PublicDelegateReg
                       <h3 className="font-extrabold text-sm text-slate-900 uppercase tracking-wider">
                         {L.section('package', 'CHỌN GÓI ĐĂNG KÝ HỘI NGHỊ', 'CONFERENCE REGISTRATION PACKAGE')}
                       </h3>
-                    </div>
-
-                    {/* Time Period picker moved here */}
-                    <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2">
-                      <label className="block text-xs font-bold text-amber-950 uppercase tracking-wider">
-                        {L.f('timelineOption', 'Lựa chọn Thời điểm Đăng ký *', 'Registration Timeline Option *')}
-                      </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setPeriod('pre_10_11')}
-                          className={`p-3 text-xs font-extrabold rounded-xl transition-all border text-left flex justify-between items-center cursor-pointer ${period === 'pre_10_11'
-                            ? 'bg-teal-900 text-amber-400 border-teal-950 shadow-md ring-2 ring-teal-900/10'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-350'
-                            }`}
-                        >
-                          <span>{L.t('Trước Ngày 10/11/2026 (Giá Ưu Đãi)', 'Before Nov 10, 2026 (Early Bird)')}</span>
-                          <span className="font-mono text-[9px] px-2 py-0.5 bg-amber-400/10 text-amber-500 rounded font-normal">
-                            {L.t('Được khuyên dùng', 'Recommended')}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPeriod('post_10_11')}
-                          className={`p-3 text-xs font-extrabold rounded-xl transition-all border text-left flex justify-between items-center cursor-pointer ${period === 'post_10_11'
-                            ? 'bg-teal-900 text-amber-400 border-teal-950 shadow-md ring-2 ring-teal-900/10'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-350'
-                            }`}
-                        >
-                          <span>{L.t('Từ 10/11/2026 trở đi (Giá Cận Sự Kiện)', 'From Nov 10, 2026 (Regular Price)')}</span>
-                          <span className="font-mono text-[9px] px-2 py-0.5 bg-rose-500/15 text-rose-500 rounded font-normal">
-                            {L.t('Cận hội nghị', 'Regular')}
-                          </span>
-                        </button>
-                      </div>
-                      <p className="text-[9.5px] text-slate-500 leading-snug">
-                        {L.t('* Biểu giá chi tiết của gói học tập và dịch vụ phụ trội (như Tour tham quan) tự động quy đổi theo thời điểm quý đại biểu chọn.', '* Detailed pricing for packages and add-ons (e.g., tours) automatically adapts to your selected date.')}
-                      </p>
                     </div>
 
                     <div className={`grid grid-cols-1 gap-5 ${nationality === 'foreign' ? 'md:grid-cols-1 max-w-md mx-auto w-full' : 'md:grid-cols-3'

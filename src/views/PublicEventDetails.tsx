@@ -1211,7 +1211,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                       <tr>
                         <td className="p-3 font-semibold text-slate-900">Học viên chuyên ngành PTTM</td>
                         <td className="p-3 text-teal-700 font-bold font-mono">1,000,000 ₫</td>
-                        <td className="p-3 text-slate-600 font-mono">1,500,000 ₫</td>
+                        <td className="p-3 text-slate-600 font-mono">1,000,000 ₫</td>
                       </tr>
                       <tr className="bg-slate-50/20">
                         <td className="p-3 font-semibold text-slate-900">BS Nước ngoài (Foreign Doctor)</td>
@@ -1262,7 +1262,7 @@ export default function PublicEventDetails({ onNavigate }: PublicEventDetailsPro
                     const PRICING = {
                       'pkg-member': isPost ? 3000000 : 2500000,
                       'pkg-standard': isPost ? 3500000 : 3000000,
-                      'pkg-student': isPost ? 1500000 : 1000000,
+                      'pkg-student': 1000000,
                       'pkg-foreign': isPost ? 5000000 : 3750000,
                     };
                     const fee = PRICING[pkg.id as keyof typeof PRICING] ?? pkg.fee;
