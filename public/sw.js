@@ -5,9 +5,9 @@ importScripts('OneSignalSDK.sw.js');
 // Strategy: Cache First for static assets, Network First for API/Supabase
 // Background Sync for offline check-in queue
 
-const CACHE_NAME = 'vsaps2026-v4';
-const STATIC_CACHE = 'vsaps2026-static-v4';
-const DYNAMIC_CACHE = 'vsaps2026-dynamic-v4';
+const CACHE_NAME = 'vsaps2026-v6';
+const STATIC_CACHE = 'vsaps2026-static-v6';
+const DYNAMIC_CACHE = 'vsaps2026-dynamic-v6';
 
 // App shell resources to pre-cache during install
 const APP_SHELL = [

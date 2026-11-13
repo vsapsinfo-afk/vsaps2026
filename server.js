@@ -1388,15 +1388,30 @@ app.all("/api/onesignal/send-push", adapt(handler10));
 app.all("/api/users/create", adapt(handler11));
 app.all("/api/whatsapp/send", adapt(handler12));
 var distDir = path.resolve(__dirname, "dist");
-app.use(express.static(distDir));
+app.use(express.static(distDir, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".html") || filePath.endsWith("sw.js")) {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+    }
+  }
+}));
+var noCacheOptions = {
+  headers: {
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    "Pragma": "no-cache",
+    "Expires": "0"
+  }
+};
 app.get("/check-registration", (req, res) => {
-  res.sendFile(path.resolve(distDir, "check-registration.html"));
+  res.sendFile(path.resolve(distDir, "check-registration.html"), noCacheOptions);
 });
 app.get("/check-registration.html", (req, res) => {
-  res.sendFile(path.resolve(distDir, "check-registration.html"));
+  res.sendFile(path.resolve(distDir, "check-registration.html"), noCacheOptions);
 });
 app.get("*", (req, res) => {
-  res.sendFile(path.resolve(distDir, "index.html"));
+  res.sendFile(path.resolve(distDir, "index.html"), noCacheOptions);
 });
 var PORT = Number(process.env.PORT) || 3e3;
 app.listen(PORT, "0.0.0.0", () => {
