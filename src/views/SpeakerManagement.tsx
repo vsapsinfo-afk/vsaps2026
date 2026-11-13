@@ -39,6 +39,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
   const [speakers, setSpeakers] = useState<SpeakerRegistration[]>(store.getSpeakers());
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [trackFilter, setTrackFilter] = useState<string>('all');
   const [selectedSpeaker, setSelectedSpeaker] = useState<SpeakerRegistration | null>(null);
   
   // Nhập báo cáo viên từ Excel
@@ -521,6 +522,18 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
     alert(editingSpeaker ? 'Cập nhật thông tin báo cáo viên thành công!' : 'Thêm báo cáo viên mới thành công!');
   };
 
+  // Danh sách các chuyên đề kết hợp từ danh mục chuyên đề hệ thống và các chuyên đề thực tế của báo cáo viên
+  const availableTracks = React.useMemo(() => {
+    const trackSet = new Set<string>();
+    specialtyTracks.forEach(t => {
+      if (t.name?.trim()) trackSet.add(t.name.trim());
+    });
+    speakers.forEach(s => {
+      if (s.presentationTrack?.trim()) trackSet.add(s.presentationTrack.trim());
+    });
+    return Array.from(trackSet).sort((a, b) => a.localeCompare(b, 'vi'));
+  }, [specialtyTracks, speakers]);
+
   const filteredSpeakers = speakers.filter(s => {
     const matchQuery = 
       s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -530,7 +543,12 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
 
     const matchStatus = statusFilter === 'all' || s.status === statusFilter;
 
-    return matchQuery && matchStatus;
+    const matchTrack = trackFilter === 'all' || 
+      (trackFilter === '__none__' 
+        ? !s.presentationTrack?.trim() 
+        : (s.presentationTrack?.trim().toLowerCase() === trackFilter.trim().toLowerCase()));
+
+    return matchQuery && matchStatus && matchTrack;
   });
 
   // Interactive sorting engine
@@ -1010,7 +1028,7 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         
         {/* Search & Class Dropdown left filter panel */}
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full sm:w-72 md:w-80">
+          <div className="relative w-full sm:w-64 md:w-72">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
@@ -1020,6 +1038,29 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
               className="pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-250 focus:border-indigo-500 rounded-xl text-xs font-semibold focus:outline-none placeholder-slate-400 transition-all uppercase w-full shadow-inner"
             />
           </div>
+
+          {/* 🏷️ Dropdown Bộ Lọc Theo Chuyên Đề */}
+          <select
+            value={trackFilter}
+            onChange={(e) => setTrackFilter(e.target.value)}
+            className="px-3.5 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500 cursor-pointer shadow-sm w-full sm:w-auto max-w-full sm:max-w-[240px] truncate"
+            title="Lọc danh sách báo cáo viên theo Chuyên đề"
+          >
+            <option value="all">📚 Tất cả Chuyên đề ({speakers.length})</option>
+            {availableTracks.map(trackName => {
+              const count = speakers.filter(s => s.presentationTrack?.trim().toLowerCase() === trackName.toLowerCase()).length;
+              return (
+                <option key={trackName} value={trackName}>
+                  📌 {trackName} ({count})
+                </option>
+              );
+            })}
+            {speakers.some(s => !s.presentationTrack?.trim()) && (
+              <option value="__none__">
+                ⚠️ Chưa phân chuyên đề ({speakers.filter(s => !s.presentationTrack?.trim()).length})
+              </option>
+            )}
+          </select>
 
           <select
             value={statusFilter}
@@ -1118,6 +1159,71 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
         </div>
 
       </div>
+
+      {/* 🏷️ Active Filter Indicator & Reset Bar */}
+      {(trackFilter !== 'all' || statusFilter !== 'all' || searchQuery.trim()) && (
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs animate-fade-in">
+          <span className="font-extrabold text-slate-500 uppercase text-[10px] tracking-wider">Đang lọc:</span>
+
+          {trackFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold shadow-2xs">
+              <span>Chuyên đề: <strong>{trackFilter === '__none__' ? 'Chưa phân chuyên đề' : trackFilter}</strong></span>
+              <button
+                type="button"
+                onClick={() => setTrackFilter('all')}
+                className="hover:text-rose-600 cursor-pointer p-0.5 rounded text-teal-600 hover:bg-teal-100 transition"
+                title="Bỏ lọc chuyên đề"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          )}
+
+          {statusFilter !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 text-xs font-bold shadow-2xs">
+              <span>Trạng thái: <strong>{statusFilter === 'approved' ? 'Đã duyệt' : statusFilter === 'pending' ? 'Chờ duyệt' : 'Từ chối'}</strong></span>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className="hover:text-rose-600 cursor-pointer p-0.5 rounded text-indigo-600 hover:bg-indigo-100 transition"
+                title="Bỏ lọc trạng thái"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          )}
+
+          {searchQuery.trim() && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-200/70 text-slate-800 border border-slate-300 text-xs font-bold shadow-2xs">
+              <span>Từ khóa: <strong>"{searchQuery}"</strong></span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="hover:text-rose-600 cursor-pointer p-0.5 rounded text-slate-500 hover:bg-slate-300 transition"
+                title="Xóa từ khóa tìm kiếm"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              setTrackFilter('all');
+              setStatusFilter('all');
+              setSearchQuery('');
+            }}
+            className="text-xs text-rose-600 hover:text-rose-700 font-extrabold hover:underline cursor-pointer ml-1"
+          >
+            Đặt lại tất cả
+          </button>
+
+          <span className="text-[11px] font-semibold text-slate-500 ml-auto">
+            (Tìm thấy <strong>{filteredSpeakers.length}</strong> / {speakers.length} báo cáo viên)
+          </span>
+        </div>
+      )}
 
       {/* 📋 VIEW REPORT MODE: DẠNG BẢNG (Tabular Layout) or DẠNG THẺ (Grid Cards) */}
       {viewMode === 'table' ? (
@@ -1242,9 +1348,14 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
 
                           {/* 4. Color-coded Specialty Track */}
                           <td className="p-4 align-top">
-                            <span className={`px-2.5 py-1.5 border rounded-lg text-[9.5px] font-black uppercase tracking-tight block text-center leading-snug shadow-xs ${getTrackColor(spk.presentationTrack)}`}>
+                            <button
+                              type="button"
+                              onClick={() => setTrackFilter(spk.presentationTrack)}
+                              title={`Nhấp để lọc theo chuyên đề: ${spk.presentationTrack}`}
+                              className={`w-full px-2.5 py-1.5 border rounded-lg text-[9.5px] font-black uppercase tracking-tight block text-center leading-snug shadow-xs cursor-pointer hover:ring-2 hover:ring-teal-400 transition-all ${getTrackColor(spk.presentationTrack)}`}
+                            >
                               {spk.presentationTrack}
-                            </span>
+                            </button>
                           </td>
 
                           {/* 5. Publication statuses & Compact Action Controls */}
@@ -1375,7 +1486,9 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                       )}
                       <div className="truncate">
                         <p className="font-bold text-slate-850 truncate">{spk.title} {spk.fullName}</p>
-                        <p className="text-slate-400 text-[9px] truncate">{spk.organization} | {spk.presentationTrack}</p>
+                        <p className="text-slate-400 text-[9px] truncate">
+                          {spk.organization} | <button type="button" onClick={() => setTrackFilter(spk.presentationTrack)} title="Lọc theo chuyên đề" className="text-teal-600 font-bold hover:underline cursor-pointer">{spk.presentationTrack}</button>
+                        </p>
                       </div>
                     </div>
 
@@ -1476,9 +1589,14 @@ export default function SpeakerManagement({ role }: SpeakerManagementProps) {
                     <h4 className="font-bold text-slate-950 text-base leading-snug hover:text-teal-750 transition-all cursor-pointer" onClick={() => setSelectedSpeaker(spk)}>
                       “{spk.presentationTitle}”
                     </h4>
-                    <span className="text-[11px] font-bold text-teal-600 bg-teal-50/50 px-2 py-0.5 rounded inline-block mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setTrackFilter(spk.presentationTrack)}
+                      title={`Nhấp để lọc theo chuyên đề: ${spk.presentationTrack}`}
+                      className="text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2 py-0.5 rounded inline-block mt-2 cursor-pointer transition-all"
+                    >
                       {spk.presentationTrack}
-                    </span>
+                    </button>
                   </div>
 
                   {/* Speaker author info details */}
