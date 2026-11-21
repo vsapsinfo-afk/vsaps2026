@@ -328,17 +328,6 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
   return (
     <div className="min-h-screen bg-slate-100 py-6 sm:py-12 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Back navigation button if available */}
-        {onNavigate && (
-          <button
-            onClick={() => onNavigate('event-details')}
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại Trang Tin Sự Kiện</span>
-          </button>
-        )}
-
         {/* Main Form Card */}
         <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl text-slate-900">
           {/* Header Banner or Gradient */}
