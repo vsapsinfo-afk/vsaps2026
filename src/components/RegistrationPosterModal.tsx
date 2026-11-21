@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   X, Download, Share2, Upload, ZoomIn, ZoomOut, RotateCw, 
-  Move, Check, Copy, Sparkles, RefreshCw, Facebook, Smartphone
+  Move, Check, Copy, Sparkles, RefreshCw, Facebook, Smartphone, ExternalLink
 } from 'lucide-react';
 
 interface RegistrationPosterModalProps {
@@ -357,12 +357,24 @@ export default function RegistrationPosterModal({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/?view=poster${fullName ? `&name=${encodeURIComponent(fullName)}` : ''}${titleRole ? `&role=${encodeURIComponent(titleRole)}` : ''}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition no-underline"
+              title="Mở đường dẫn riêng cho tính năng tạo Poster"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Mở Link Riêng</span>
+            </a>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Body: Controls & Live Preview */}

@@ -1613,13 +1613,26 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
               </div>
             </div>
 
-            <button
-              onClick={() => handleExportSubmissionsExcel(selectedFormForSubmissions)}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 cursor-pointer transition-all shadow-sm shrink-0 border-0"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Xuất File Excel (.xlsx)</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <a
+                href="/?view=poster"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-2 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-sm shrink-0 no-underline"
+                title="Mở đường dẫn riêng cho tính năng tạo Poster"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+                <span>Link Tạo Poster Riêng</span>
+              </a>
+
+              <button
+                onClick={() => handleExportSubmissionsExcel(selectedFormForSubmissions)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 cursor-pointer transition-all shadow-sm shrink-0 border-0"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Xuất File Excel (.xlsx)</span>
+              </button>
+            </div>
           </div>
 
           {/* Submissions Table */}

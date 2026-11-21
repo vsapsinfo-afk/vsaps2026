@@ -38,6 +38,7 @@ const PublicSponsorRegister = lazy(() => import('./views/PublicSponsorRegister')
 const PublicCheckRegistration = lazy(() => import('./views/PublicCheckRegistration'));
 const PublicCustomFormRegister = lazy(() => import('./views/PublicCustomFormRegister'));
 const PublicInvitationCard = lazy(() => import('./views/PublicInvitationCard'));
+const PublicPosterGenerator = lazy(() => import('./views/PublicPosterGenerator'));
 
 // Middleware permission mapping for views
 const VIEW_ROLE_PERMISSIONS: Record<string, Role[]> = {
@@ -59,16 +60,22 @@ function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<string>(() => {
     try {
+      const pathSegment = window.location.pathname.replace(/^\/+/g, '').replace(/\/+$/g, '').toLowerCase();
+      if (['poster', 'tao-poster'].includes(pathSegment)) {
+        return 'poster';
+      }
+
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get('view');
       const validViews = [
         'overview', 'attendees', 'speakers', 'schedule', 'tasks', 'finances', 'sponsors', 'notifications', 'bulk-send', 'settings',
-        'form-builder', 'custom-form', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration', 'thu-moi'
+        'form-builder', 'custom-form', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration', 'thu-moi',
+        'poster', 'tao-poster'
       ];
       if (viewParam) {
         const baseView = viewParam.replace(/\/(vn|vi|en)$/i, '');
         if (validViews.includes(baseView)) {
-          return baseView;
+          return baseView === 'tao-poster' ? 'poster' : baseView;
         }
       }
     } catch (e) {
@@ -261,7 +268,7 @@ function AppContent() {
   };
 
   // Check if current view is public or admin-side
-  const isPublicView = ['custom-form', 'thu-moi', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(currentView);
+  const isPublicView = ['custom-form', 'thu-moi', 'poster', 'tao-poster', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(currentView);
 
   // Middleware effect: watch role and view changes, block and redirect unauthorized access
   useEffect(() => {
@@ -281,7 +288,7 @@ function AppContent() {
   }, [currentView, role, isPublicView]);
 
   const handleNavigate = (view: string) => {
-    const isPublic = ['custom-form', 'thu-moi', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(view);
+    const isPublic = ['custom-form', 'thu-moi', 'poster', 'tao-poster', 'event-details', 'register-delegate', 'register-speaker', 'register-sponsor', 'check-registration'].includes(view);
     if (!isPublic) {
       const allowedRoles = VIEW_ROLE_PERMISSIONS[view];
       if (allowedRoles && !allowedRoles.includes(role)) {
@@ -344,6 +351,10 @@ function AppContent() {
       // Thư mời tham dự của từng đại biểu, mở bằng đường dẫn riêng kèm mã kiểm tra
       case 'thu-moi':
         return <PublicInvitationCard />;
+      // Trang tạo Poster tham dự sự kiện
+      case 'poster':
+      case 'tao-poster':
+        return <PublicPosterGenerator onNavigate={handleNavigate} />;
       
       default:
         return <DashboardOverview role={role} />;
