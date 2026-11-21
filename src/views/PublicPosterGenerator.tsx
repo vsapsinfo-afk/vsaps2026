@@ -100,53 +100,7 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
     }
   };
 
-  // Load template image
-  useEffect(() => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = templateUrl;
-    img.onload = () => {
-      templateImgRef.current = img;
-      renderPoster();
-    };
-    img.onerror = () => {
-      if (templateUrl !== '/poster-template-default.jpg') {
-        const fallback = new Image();
-        fallback.crossOrigin = 'anonymous';
-        fallback.src = '/poster-template-default.jpg';
-        fallback.onload = () => {
-          templateImgRef.current = fallback;
-          renderPoster();
-        };
-      }
-    };
-  }, [templateUrl, renderPoster]);
-
-  // Handle uploaded user image
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const src = event.target?.result as string;
-        setUserImageSrc(src);
-        setZoom(1);
-        setPanX(0);
-        setPanY(0);
-        setRotation(0);
-
-        const uImg = new Image();
-        uImg.onload = () => {
-          userImgRef.current = uImg;
-          renderPoster();
-        };
-        uImg.src = src;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Render poster on canvas
+  // Render poster on canvas (defined before effects to avoid TDZ reference errors)
   const renderPoster = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -254,6 +208,52 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
     ctx.fillText(displayRole, cx * scale, (cy + innerRadius + 62.5) * scale);
 
   }, [fullName, titleRole, zoom, panX, panY, rotation, circleX, circleY, circleRadius, nameColor, roleColor]);
+
+  // Load template image
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = templateUrl;
+    img.onload = () => {
+      templateImgRef.current = img;
+      renderPoster();
+    };
+    img.onerror = () => {
+      if (templateUrl !== '/poster-template-default.jpg') {
+        const fallback = new Image();
+        fallback.crossOrigin = 'anonymous';
+        fallback.src = '/poster-template-default.jpg';
+        fallback.onload = () => {
+          templateImgRef.current = fallback;
+          renderPoster();
+        };
+      }
+    };
+  }, [templateUrl, renderPoster]);
+
+  // Handle uploaded user image
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const src = event.target?.result as string;
+        setUserImageSrc(src);
+        setZoom(1);
+        setPanX(0);
+        setPanY(0);
+        setRotation(0);
+
+        const uImg = new Image();
+        uImg.onload = () => {
+          userImgRef.current = uImg;
+          renderPoster();
+        };
+        uImg.src = src;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Re-render when any dependency changes
   useEffect(() => {

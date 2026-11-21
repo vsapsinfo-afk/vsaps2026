@@ -4501,6 +4501,19 @@ export class DataStore {
   // ==========================================
   // CUSTOM FORMS & SUBMISSIONS MANAGEMENT
   // ==========================================
+  // Strip heavy base64 data URLs before syncing to Supabase (avoids statement timeout / HTTP 500)
+  private sanitizeFormsForSync(): CustomRegistrationForm[] {
+    return this.customForms.map(f => {
+      const copy: any = { ...f };
+      for (const k of Object.keys(copy)) {
+        if (typeof copy[k] === 'string' && copy[k].startsWith('data:') && copy[k].length > 20000) {
+          copy[k] = '';
+        }
+      }
+      return copy as CustomRegistrationForm;
+    });
+  }
+
   getCustomForms(): CustomRegistrationForm[] {
     return this.customForms;
   }
@@ -4526,7 +4539,7 @@ export class DataStore {
       try {
         await supabase.from('system_config').upsert({
           key: 'custom_forms',
-          value: this.customForms
+          value: this.sanitizeFormsForSync()
         });
       } catch (e) {
         console.error('Error syncing custom_forms to Supabase:', e);
@@ -4543,7 +4556,7 @@ export class DataStore {
       try {
         await supabase.from('system_config').upsert({
           key: 'custom_forms',
-          value: this.customForms
+          value: this.sanitizeFormsForSync()
         });
       } catch (e) {
         console.error('Error syncing custom_forms deletion to Supabase:', e);
