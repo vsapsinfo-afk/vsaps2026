@@ -64,6 +64,7 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedResult, setSubmittedResult] = useState<CustomFormSubmission | null>(null);
   const [copiedBank, setCopiedBank] = useState(false);
+  const [copiedAccountName, setCopiedAccountName] = useState(false);
   const [copiedMemo, setCopiedMemo] = useState(false);
   const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
 
@@ -437,14 +438,6 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
 
           {/* Description & Metadata bar */}
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Title header when banner image is present */}
-            {form.bannerUrl && (
-              <div className="border-b border-slate-100 pb-5">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 leading-snug tracking-tight">
-                  {form.title}
-                </h1>
-              </div>
-            )}
 
             {form.description && (
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -720,6 +713,26 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                               className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono cursor-pointer border border-slate-700 transition-colors"
                             >
                               {copiedBank ? 'Đã chép!' : 'Chép STK'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="text-slate-400 text-[11px] block">Chủ tài khoản:</span>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="font-extrabold text-white text-xs uppercase tracking-wide">
+                              {form.bankAccountName || 'BAN TO CHUC HOI NGHI VSAPS'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(form.bankAccountName || 'BAN TO CHUC HOI NGHI VSAPS');
+                                setCopiedAccountName(true);
+                                setTimeout(() => setCopiedAccountName(false), 2000);
+                              }}
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono cursor-pointer border border-slate-700 transition-colors"
+                            >
+                              {copiedAccountName ? 'Đã chép!' : 'Chép'}
                             </button>
                           </div>
                         </div>
