@@ -343,7 +343,7 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
         <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl text-slate-900">
           {/* Header Banner or Gradient */}
           {form.bannerUrl ? (
-            <div className="w-full bg-slate-900/5 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+            <div className="w-full bg-white overflow-hidden border-b border-slate-100 flex items-center justify-center">
               <img 
                 src={form.bannerUrl} 
                 alt={form.title} 
@@ -363,10 +363,7 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
           <div className="p-6 sm:p-8 space-y-6">
             {/* Title header when banner image is present */}
             {form.bannerUrl && (
-              <div className="space-y-2 border-b border-slate-100 pb-5">
-                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-pink-50 text-pink-600 text-[11px] font-black uppercase tracking-wider border border-pink-200">
-                  <span>HỘI NGHỊ VSAPS 2026</span>
-                </div>
+              <div className="border-b border-slate-100 pb-5">
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 leading-snug tracking-tight">
                   {form.title}
                 </h1>

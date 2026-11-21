@@ -1451,7 +1451,7 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                 >
                   {/* Mock Form Header */}
                   {editingForm.bannerUrl ? (
-                    <div className="w-full bg-slate-900/5 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                    <div className="w-full bg-white overflow-hidden border-b border-slate-100 flex items-center justify-center">
                       <img 
                         src={editingForm.bannerUrl} 
                         alt="Banner" 
@@ -1470,11 +1470,8 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                   <div className="p-5 sm:p-7 space-y-5">
                     {/* Title header when banner image is present */}
                     {editingForm.bannerUrl && (
-                      <div className="space-y-1.5 border-b border-slate-100 pb-4">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-pink-50 text-pink-600 border border-pink-200">
-                          VSAPS 2026
-                        </span>
-                        <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug mt-1">
+                      <div className="border-b border-slate-100 pb-4">
+                        <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug">
                           {editingForm.title}
                         </h2>
                       </div>
