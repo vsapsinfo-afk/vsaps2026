@@ -20,6 +20,7 @@ import {
 } from '../types';
 import { FORM_PRESETS, FormTemplatePreset } from '../lib/defaultForms';
 import { uploadToSupabaseStorage, isSupabaseConfigured } from '../lib/supabase';
+import RegistrationPosterModal from '../components/RegistrationPosterModal';
 
 // Helper: compress image client-side before upload / storage
 const compressImage = (file: File, maxWidth = 1920, quality = 0.88): Promise<string> => {
@@ -85,6 +86,7 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
   const [selectedFormForSubmissions, setSelectedFormForSubmissions] = useState<string>('all');
   const [submissionSearchTerm, setSubmissionSearchTerm] = useState('');
   const [selectedSubmissionDetail, setSelectedSubmissionDetail] = useState<CustomFormSubmission | null>(null);
+  const [posterSubmission, setPosterSubmission] = useState<CustomFormSubmission | null>(null);
 
   // Toast feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -1701,13 +1703,23 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                             </select>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => setSelectedSubmissionDetail(sub)}
-                              className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Chi Tiết</span>
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setPosterSubmission(sub)}
+                                className="px-2.5 py-1.5 rounded-lg bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Tạo Poster cho đại biểu này"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-pink-600" />
+                                <span>Poster</span>
+                              </button>
+                              <button
+                                onClick={() => setSelectedSubmissionDetail(sub)}
+                                className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs inline-flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Chi Tiết</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2000,12 +2012,22 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                 <FileText className="w-4 h-4 text-pink-400" />
                 <span>Chi Tiết Đơn Đăng Ký: {selectedSubmissionDetail.submissionCode}</span>
               </h4>
-              <button
-                onClick={() => setSelectedSubmissionDetail(null)}
-                className="text-slate-400 hover:text-white font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPosterSubmission(selectedSubmissionDetail)}
+                  className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Tạo Poster</span>
+                </button>
+                <button
+                  onClick={() => setSelectedSubmissionDetail(null)}
+                  className="text-slate-400 hover:text-white font-bold cursor-pointer text-sm p-1"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             <div className="p-6 overflow-y-auto space-y-4 text-xs font-sans">
@@ -2086,6 +2108,16 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
             </div>
           </div>
         </div>
+      )}
+
+      {/* Registration Poster Modal */}
+      {posterSubmission && (
+        <RegistrationPosterModal
+          isOpen={!!posterSubmission}
+          onClose={() => setPosterSubmission(null)}
+          initialName={posterSubmission.fullName || ''}
+          formTitle={posterSubmission.formTitle}
+        />
       )}
     </div>
   );

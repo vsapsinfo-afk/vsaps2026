@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { store } from '../dataStore';
 import { CustomRegistrationForm, CustomFormSubmission, FormField } from '../types';
+import RegistrationPosterModal from '../components/RegistrationPosterModal';
 
 interface BankAppItem {
   id: string;
@@ -64,6 +65,7 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
   const [submittedResult, setSubmittedResult] = useState<CustomFormSubmission | null>(null);
   const [copiedBank, setCopiedBank] = useState(false);
   const [copiedMemo, setCopiedMemo] = useState(false);
+  const [isPosterModalOpen, setIsPosterModalOpen] = useState(false);
 
   // Determine which form to load from query param or props
   useEffect(() => {
@@ -303,6 +305,30 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
               </p>
             </div>
 
+            {/* POSTER CREATION CARD */}
+            <div className="bg-gradient-to-r from-pink-600 via-rose-600 to-indigo-700 p-5 rounded-3xl text-white shadow-xl space-y-3 relative overflow-hidden">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
+                  <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-pink-200 tracking-wider block">Tính năng đặc biệt</span>
+                  <h3 className="text-base font-black tracking-tight text-white">TẠO POSTER THAM DỰ SỰ KIỆN</h3>
+                  <p className="text-[11px] text-pink-100 leading-snug">
+                    Tải ảnh chân dung vào ô tròn, điền chức vụ để tạo Poster cá nhân hóa & chia sẻ Facebook, Zalo!
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPosterModalOpen(true)}
+                className="w-full py-3 bg-white hover:bg-pink-50 text-pink-600 hover:text-pink-700 font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
+              >
+                <Sparkles className="w-4 h-4 text-pink-500" />
+                <span>🖼️ Tạo Poster & Chia Sẻ Ngay</span>
+              </button>
+            </div>
+
             {/* Submitted Summary */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 text-xs">
               <div className="flex justify-between border-b border-slate-100 pb-2">
@@ -357,6 +383,14 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
               )}
             </div>
           </div>
+
+          {/* Poster Generator Modal */}
+          <RegistrationPosterModal
+            isOpen={isPosterModalOpen}
+            onClose={() => setIsPosterModalOpen(false)}
+            initialName={submittedResult.fullName || ''}
+            formTitle={submittedResult.formTitle || form.title}
+          />
         </div>
       </div>
     );
