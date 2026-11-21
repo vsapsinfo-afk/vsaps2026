@@ -567,6 +567,13 @@ export interface CustomRegistrationForm {
   description?: string;
   bannerUrl?: string;
   logoUrl?: string;
+  posterEnabled?: boolean;
+  posterTemplateUrl?: string;
+  posterCircleX?: number;
+  posterCircleY?: number;
+  posterCircleRadius?: number;
+  posterNameColor?: string;
+  posterRoleColor?: string;
   category: FormCategory;
   status: 'active' | 'paused' | 'draft';
   deadline?: string;

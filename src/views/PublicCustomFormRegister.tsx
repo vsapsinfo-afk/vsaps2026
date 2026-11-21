@@ -307,28 +307,30 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
             </div>
 
             {/* POSTER CREATION CARD */}
-            <div className="bg-gradient-to-r from-pink-600 via-rose-600 to-indigo-700 p-5 rounded-3xl text-white shadow-xl space-y-3 relative overflow-hidden">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
-                  <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
+            {form.posterEnabled !== false && (
+              <div className="bg-gradient-to-r from-pink-600 via-rose-600 to-indigo-700 p-5 rounded-3xl text-white shadow-xl space-y-3 relative overflow-hidden">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/30 shadow-inner">
+                    <Sparkles className="w-6 h-6 text-yellow-300 animate-pulse" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-pink-200 tracking-wider block">Tính năng đặc biệt</span>
+                    <h3 className="text-base font-black tracking-tight text-white">TẠO POSTER THAM DỰ SỰ KIỆN</h3>
+                    <p className="text-[11px] text-pink-100 leading-snug">
+                      Tải ảnh chân dung vào ô tròn, điền chức vụ để tạo Poster cá nhân hóa & chia sẻ Facebook, Zalo!
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase text-pink-200 tracking-wider block">Tính năng đặc biệt</span>
-                  <h3 className="text-base font-black tracking-tight text-white">TẠO POSTER THAM DỰ SỰ KIỆN</h3>
-                  <p className="text-[11px] text-pink-100 leading-snug">
-                    Tải ảnh chân dung vào ô tròn, điền chức vụ để tạo Poster cá nhân hóa & chia sẻ Facebook, Zalo!
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPosterModalOpen(true)}
+                  className="w-full py-3 bg-white hover:bg-pink-50 text-pink-600 hover:text-pink-700 font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
+                >
+                  <Sparkles className="w-4 h-4 text-pink-500" />
+                  <span>🖼️ Tạo Poster & Chia Sẻ Ngay</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsPosterModalOpen(true)}
-                className="w-full py-3 bg-white hover:bg-pink-50 text-pink-600 hover:text-pink-700 font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
-              >
-                <Sparkles className="w-4 h-4 text-pink-500" />
-                <span>🖼️ Tạo Poster & Chia Sẻ Ngay</span>
-              </button>
-            </div>
+            )}
 
             {/* Submitted Summary */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-2 text-xs">
@@ -386,12 +388,22 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
           </div>
 
           {/* Poster Generator Modal */}
-          <RegistrationPosterModal
-            isOpen={isPosterModalOpen}
-            onClose={() => setIsPosterModalOpen(false)}
-            initialName={submittedResult.fullName || ''}
-            formTitle={submittedResult.formTitle || form.title}
-          />
+          {form.posterEnabled !== false && (
+            <RegistrationPosterModal
+              isOpen={isPosterModalOpen}
+              onClose={() => setIsPosterModalOpen(false)}
+              initialName={submittedResult.fullName || ''}
+              formTitle={submittedResult.formTitle || form.title}
+              templateUrl={form.posterTemplateUrl || '/poster-template-default.jpg'}
+              circleX={form.posterCircleX}
+              circleY={form.posterCircleY}
+              circleRadius={form.posterCircleRadius}
+              nameColor={form.posterNameColor}
+              roleColor={form.posterRoleColor}
+              formId={form.id}
+              formSlug={form.slug}
+            />
+          )}
         </div>
       </div>
     );

@@ -8,8 +8,10 @@ import {
   Download, Share2, Upload, ZoomIn, ZoomOut, RotateCw, 
   Move, Check, Copy, Sparkles, RefreshCw, Facebook, Smartphone,
   ArrowLeft, ArrowUp, ArrowDown, ExternalLink, CheckCircle2, ShieldCheck,
-  Image as ImageIcon, Link as LinkIcon
+  Image as ImageIcon, Link as LinkIcon, Layers
 } from 'lucide-react';
+import { store } from '../dataStore';
+import { CustomRegistrationForm } from '../types';
 
 interface PublicPosterGeneratorProps {
   onNavigate?: (view: string) => void;
@@ -29,6 +31,11 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
   const queryParams = new URLSearchParams(window.location.search);
   const initialName = queryParams.get('name') || queryParams.get('fullName') || '';
   const initialRole = queryParams.get('role') || queryParams.get('title') || 'Đại biểu tham dự';
+  const initialFormId = queryParams.get('formId') || queryParams.get('id') || '';
+  const initialFormSlug = queryParams.get('form') || queryParams.get('slug') || '';
+
+  const [forms, setForms] = useState<CustomRegistrationForm[]>([]);
+  const [selectedFormId, setSelectedFormId] = useState<string>('');
 
   const [fullName, setFullName] = useState(initialName);
   const [titleRole, setTitleRole] = useState(initialRole);
@@ -52,7 +59,46 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
   const userImgRef = useRef<HTMLImageElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const templateUrl = '/poster-template-default.jpg';
+  // Load forms on mount and select matching form
+  useEffect(() => {
+    const allForms = store.getCustomForms();
+    setForms(allForms);
+
+    if (initialFormId) {
+      const found = allForms.find(f => f.id === initialFormId);
+      if (found) setSelectedFormId(found.id);
+    } else if (initialFormSlug) {
+      const found = allForms.find(f => f.slug === initialFormSlug || f.id === initialFormSlug);
+      if (found) setSelectedFormId(found.id);
+    }
+  }, [initialFormId, initialFormSlug]);
+
+  const activeForm = forms.find(f => f.id === selectedFormId);
+  const templateUrl = activeForm?.posterTemplateUrl || '/poster-template-default.jpg';
+  const circleX = activeForm?.posterCircleX ?? 745;
+  const circleY = activeForm?.posterCircleY ?? 235.5;
+  const circleRadius = activeForm?.posterCircleRadius ?? 96;
+  const nameColor = activeForm?.posterNameColor ?? '#b22f65';
+  const roleColor = activeForm?.posterRoleColor ?? '#3e5891';
+
+  const handleFormChange = (formId: string) => {
+    setSelectedFormId(formId);
+    try {
+      const url = new URL(window.location.href);
+      if (formId) {
+        url.searchParams.set('formId', formId);
+        url.searchParams.delete('form');
+        url.searchParams.delete('slug');
+      } else {
+        url.searchParams.delete('formId');
+        url.searchParams.delete('form');
+        url.searchParams.delete('slug');
+      }
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {
+      // ignore in environments without history api
+    }
+  };
 
   // Load template image
   useEffect(() => {
@@ -63,7 +109,18 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
       templateImgRef.current = img;
       renderPoster();
     };
-  }, [templateUrl]);
+    img.onerror = () => {
+      if (templateUrl !== '/poster-template-default.jpg') {
+        const fallback = new Image();
+        fallback.crossOrigin = 'anonymous';
+        fallback.src = '/poster-template-default.jpg';
+        fallback.onload = () => {
+          templateImgRef.current = fallback;
+          renderPoster();
+        };
+      }
+    };
+  }, [templateUrl, renderPoster]);
 
   // Handle uploaded user image
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,9 +169,9 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
     }
 
     // Circle parameters on 1024x682 coordinate system
-    const cx = 745;
-    const cy = 235.5;
-    const innerRadius = 96;
+    const cx = circleX;
+    const cy = circleY;
+    const innerRadius = circleRadius;
 
     // 2. Draw user photo inside the circle with clipping
     ctx.save();
@@ -173,7 +230,7 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
     const displayName = (fullName || 'HỌ VÀ TÊN ĐẠI BIỂU').trim().toUpperCase();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#b22f65'; // Crimson rose match from sample
+    ctx.fillStyle = nameColor;
 
     // Dynamic font size scaling so long names don't overflow
     let nameFontSize = 24 * scale;
@@ -183,20 +240,20 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
       nameFontSize -= 1 * scale;
       ctx.font = `900 ${nameFontSize}px "Inter", "Montserrat", "Segoe UI", sans-serif`;
     }
-    ctx.fillText(displayName, cx * scale, 368 * scale);
+    ctx.fillText(displayName, cx * scale, (cy + innerRadius + 36.5) * scale);
 
     // 4. Render Role / Title ("CHỨC VỤ")
     const displayRole = (titleRole || 'ĐẠI BIỂU THAM DỰ').trim().toUpperCase();
-    ctx.fillStyle = '#3e5891'; // Slate navy blue match from sample
+    ctx.fillStyle = roleColor;
     let roleFontSize = 14 * scale;
     ctx.font = `bold ${roleFontSize}px "Inter", "Montserrat", "Segoe UI", sans-serif`;
     while (ctx.measureText(displayRole).width > maxTextWidth && roleFontSize > 11 * scale) {
       roleFontSize -= 0.5 * scale;
       ctx.font = `bold ${roleFontSize}px "Inter", "Montserrat", "Segoe UI", sans-serif`;
     }
-    ctx.fillText(displayRole, cx * scale, 394 * scale);
+    ctx.fillText(displayRole, cx * scale, (cy + innerRadius + 62.5) * scale);
 
-  }, [fullName, titleRole, zoom, panX, panY, rotation]);
+  }, [fullName, titleRole, zoom, panX, panY, rotation, circleX, circleY, circleRadius, nameColor, roleColor]);
 
   // Re-render when any dependency changes
   useEffect(() => {
@@ -264,11 +321,19 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
     }
   };
 
+  const getShareUrl = () => {
+    const params = new URLSearchParams();
+    params.set('view', 'poster');
+    if (selectedFormId) params.set('formId', selectedFormId);
+    return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+  };
+
   // 3. Copy Link to this Poster Generator
   const handleCopyPageLink = () => {
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams();
     params.set('view', 'poster');
+    if (selectedFormId) params.set('formId', selectedFormId);
     if (fullName) params.set('name', fullName);
     if (titleRole) params.set('role', titleRole);
     const shareUrl = `${baseUrl}?${params.toString()}`;
@@ -281,8 +346,9 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
 
   // 4. Share to Zalo
   const handleShareZalo = () => {
-    const shareUrl = window.location.origin + window.location.pathname + '?view=poster';
-    const zaloUrl = `https://zalo.me/share?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Tôi tham dự Hội nghị Khoa học Thường niên VSAPS 2026 - ${fullName}`)}`;
+    const shareUrl = getShareUrl();
+    const eventName = activeForm?.title || 'Hội nghị Khoa học Thường niên VSAPS 2026';
+    const zaloUrl = `https://zalo.me/share?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Tôi tham dự ${eventName} - ${fullName}`)}`;
     window.open(zaloUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
     showToast('💡 Đang mở Zalo. Đừng quên lưu ảnh poster hoặc sao chép ảnh để đính kèm vào bài viết nhé!');
   };
@@ -300,8 +366,8 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
           const file = new File([blob], `Poster_VSAPS_2026_${fullName || 'DaiBieu'}.png`, { type: 'image/png' });
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: 'Poster Tham Dự Hội Nghị VSAPS 2026',
-              text: `Tôi tham dự Hội nghị Khoa học Thường niên VSAPS lần thứ 10 (2026) - ${fullName}!`,
+              title: `Poster Tham Dự - ${activeForm?.title || 'VSAPS 2026'}`,
+              text: `Tôi tham dự ${activeForm?.title || 'Hội nghị Khoa học Thường niên VSAPS lần thứ 10 (2026)'} - ${fullName}!`,
               files: [file]
             });
             return;
@@ -318,7 +384,7 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
   };
 
   const fallbackFacebookShare = () => {
-    const shareUrl = window.location.origin + window.location.pathname + '?view=poster';
+    const shareUrl = getShareUrl();
     const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
     window.open(fbUrl, '_blank', 'noopener,noreferrer,width=650,height=600');
     showToast('💡 Đang mở Facebook. Hãy lưu ảnh Poster về máy để đăng kèm bài viết nhé!');
@@ -382,6 +448,61 @@ export default function PublicPosterGenerator({ onNavigate }: PublicPosterGenera
           {/* Controls Column (Left) */}
           <div className="lg:col-span-5 space-y-4">
             
+            {/* 0. Form & Template Selector Card */}
+            {forms.length > 0 && (
+              <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-black flex items-center justify-center">
+                      <Layers className="w-3.5 h-3.5" />
+                    </span>
+                    <h2 className="font-extrabold text-xs uppercase tracking-wider text-slate-800">Khung Mẫu Poster</h2>
+                  </div>
+                  {activeForm?.posterTemplateUrl ? (
+                    <span className="px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 text-[10px] font-black uppercase tracking-wider">
+                      ★ Khung Mẫu Riêng
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                      Khung Mặc Định
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-600 block">
+                    Chọn Biểu Mẫu / Chuyên Đề:
+                  </label>
+                  <select
+                    value={selectedFormId}
+                    onChange={(e) => handleFormChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer transition"
+                  >
+                    <option value="">Khung mẫu chung (Hội Nghị Khoa Học VSAPS 2026)</option>
+                    {forms.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.title} {f.posterTemplateUrl ? '★ [Khung Riêng]' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {activeForm && (
+                  <div className="p-2.5 bg-indigo-50/70 rounded-xl border border-indigo-100/80 text-[11px] flex items-center justify-between text-indigo-900">
+                    <span className="truncate mr-2">Form: <strong>{activeForm.title}</strong></span>
+                    <a
+                      href={`/?view=custom-form&id=${activeForm.slug || activeForm.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-indigo-600 hover:text-indigo-800 font-extrabold shrink-0 inline-flex items-center gap-1 hover:underline"
+                    >
+                      Mở Form Đăng Ký <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 1. Name & Role Input Card */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">

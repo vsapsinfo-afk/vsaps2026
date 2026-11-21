@@ -11,6 +11,13 @@ interface RegistrationPosterModalProps {
   initialRole?: string;
   formTitle?: string;
   templateUrl?: string;
+  circleX?: number;
+  circleY?: number;
+  circleRadius?: number;
+  nameColor?: string;
+  roleColor?: string;
+  formId?: string;
+  formSlug?: string;
 }
 
 const POPULAR_ROLES = [
@@ -27,7 +34,14 @@ export default function RegistrationPosterModal({
   initialName = '',
   initialRole = 'Đại biểu tham dự',
   formTitle = 'HỘI NGHỊ VSAPS 2026',
-  templateUrl = '/poster-template-default.jpg'
+  templateUrl = '/poster-template-default.jpg',
+  circleX = 745,
+  circleY = 235.5,
+  circleRadius = 96,
+  nameColor = '#b22f65',
+  roleColor = '#3e5891',
+  formId,
+  formSlug
 }: RegistrationPosterModalProps) {
   const [fullName, setFullName] = useState(initialName || '');
   const [titleRole, setTitleRole] = useState(initialRole || 'Đại biểu tham dự');
@@ -68,7 +82,18 @@ export default function RegistrationPosterModal({
       templateImgRef.current = img;
       renderPoster();
     };
-  }, [templateUrl]);
+    img.onerror = () => {
+      if (templateUrl !== '/poster-template-default.jpg') {
+        const fallback = new Image();
+        fallback.crossOrigin = 'anonymous';
+        fallback.src = '/poster-template-default.jpg';
+        fallback.onload = () => {
+          templateImgRef.current = fallback;
+          renderPoster();
+        };
+      }
+    };
+  }, [templateUrl, renderPoster]);
 
   // Handle uploaded user image
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -117,9 +142,9 @@ export default function RegistrationPosterModal({
     }
 
     // Circle parameters on 1024x682 coordinate system
-    const cx = 745;
-    const cy = 235.5;
-    const innerRadius = 96;
+    const cx = circleX ?? 745;
+    const cy = circleY ?? 235.5;
+    const innerRadius = circleRadius ?? 96;
 
     // 2. Draw user photo inside the circle with clipping
     ctx.save();
@@ -178,7 +203,7 @@ export default function RegistrationPosterModal({
     const displayName = (fullName || 'HỌ VÀ TÊN ĐẠI BIỂU').trim().toUpperCase();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = '#b22f65'; // Exact crimson rose match from sample
+    ctx.fillStyle = nameColor || '#b22f65'; // Crimson rose or custom
 
     // Dynamic font size scaling so long names don't overflow
     let nameFontSize = 24 * scale;
@@ -188,20 +213,20 @@ export default function RegistrationPosterModal({
       nameFontSize -= 1 * scale;
       ctx.font = `900 ${nameFontSize}px "Inter", "Montserrat", "Segoe UI", sans-serif`;
     }
-    ctx.fillText(displayName, cx * scale, 368 * scale);
+    ctx.fillText(displayName, cx * scale, (cy + innerRadius + 36.5) * scale);
 
     // 4. Render Role / Title ("CHỨC VỤ")
     const displayRole = (titleRole || 'ĐẠI BIỂU THAM DỰ').trim().toUpperCase();
-    ctx.fillStyle = '#3e5891'; // Exact slate navy blue match from sample
+    ctx.fillStyle = roleColor || '#3e5891'; // Slate navy blue or custom
     let roleFontSize = 14 * scale;
     ctx.font = `bold ${roleFontSize}px "Inter", "Montserrat", "Segoe UI", sans-serif`;
     while (ctx.measureText(displayRole).width > maxTextWidth && roleFontSize > 11 * scale) {
       roleFontSize -= 0.5 * scale;
       ctx.font = `bold ${roleFontSize}px "Inter", "Montserrat", "Segoe UI", sans-serif`;
     }
-    ctx.fillText(displayRole, cx * scale, 394 * scale);
+    ctx.fillText(displayRole, cx * scale, (cy + innerRadius + 62.5) * scale);
 
-  }, [fullName, titleRole, zoom, panX, panY, rotation]);
+  }, [fullName, titleRole, zoom, panX, panY, rotation, circleX, circleY, circleRadius, nameColor, roleColor]);
 
   // Re-render when any dependency changes
   useEffect(() => {
@@ -359,7 +384,7 @@ export default function RegistrationPosterModal({
           </div>
           <div className="flex items-center gap-2">
             <a
-              href={`/?view=poster${fullName ? `&name=${encodeURIComponent(fullName)}` : ''}${titleRole ? `&role=${encodeURIComponent(titleRole)}` : ''}`}
+              href={`/?view=poster${formId ? `&formId=${encodeURIComponent(formId)}` : (formSlug ? `&form=${encodeURIComponent(formSlug)}` : '')}${fullName ? `&name=${encodeURIComponent(fullName)}` : ''}${titleRole ? `&role=${encodeURIComponent(titleRole)}` : ''}`}
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition no-underline"

@@ -140,6 +140,51 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
     }
   };
 
+  // Poster template upload states & handler
+  const [isUploadingPosterTemplate, setIsUploadingPosterTemplate] = useState(false);
+  const [isDraggingPosterTemplate, setIsDraggingPosterTemplate] = useState(false);
+  const [showAdvancedPosterSettings, setShowAdvancedPosterSettings] = useState(false);
+  const posterTemplateFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handlePosterTemplateFile = async (file: File) => {
+    if (!file || !editingForm) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn tệp hình ảnh hợp lệ (PNG, JPG, WEBP)!');
+      return;
+    }
+
+    setIsUploadingPosterTemplate(true);
+    try {
+      // 1. Compress image to max 2048px width for crisp poster output
+      const compressedBase64 = await compressImage(file, 2048, 0.9);
+      let finalUrl = compressedBase64;
+
+      // 2. Upload to Supabase Storage if configured
+      if (isSupabaseConfigured()) {
+        const fileExt = file.name.split('.').pop() || 'jpg';
+        const cleanSlug = editingForm.slug ? editingForm.slug.replace(/[^a-zA-Z0-9_-]/g, '') : 'form';
+        const path = `custom_forms/poster-template-${cleanSlug}-${Date.now()}.${fileExt}`;
+        
+        const publicUrl = await uploadToSupabaseStorage(path, compressedBase64);
+        if (publicUrl) {
+          finalUrl = publicUrl;
+        }
+      }
+
+      // 3. Update form posterTemplateUrl
+      setEditingForm(prev => prev ? { ...prev, posterTemplateUrl: finalUrl } : null);
+      showToast('Đã tải lên và cập nhật khung mẫu Poster thành công!');
+    } catch (err) {
+      console.error('Error uploading poster template:', err);
+      alert('Có lỗi xảy ra khi xử lý khung mẫu Poster. Vui lòng thử lại!');
+    } finally {
+      setIsUploadingPosterTemplate(false);
+      if (posterTemplateFileInputRef.current) {
+        posterTemplateFileInputRef.current.value = '';
+      }
+    }
+  };
+
   // Load forms and submissions
   const reloadData = () => {
     setForms([...store.getCustomForms()]);
@@ -707,6 +752,12 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                               <span>Hạn: {new Date(form.deadline).toLocaleDateString('vi-VN')}</span>
                             </div>
                           )}
+                          {form.posterTemplateUrl && (
+                            <div className="col-span-2 flex items-center gap-1.5 text-pink-700 bg-pink-50 px-2 py-0.5 rounded-md border border-pink-100 text-[10.5px]">
+                              <Sparkles className="w-3 h-3 text-pink-600 shrink-0" />
+                              <span className="font-extrabold">Đã cài Khung Mẫu Poster riêng</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -733,6 +784,16 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
+
+                        <a
+                          href={`/?view=poster&formId=${form.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Mở tính năng tạo Poster cho form này"
+                          className="p-1.5 rounded-lg text-slate-600 hover:text-pink-600 hover:bg-white transition-all cursor-pointer border border-transparent hover:border-slate-200"
+                        >
+                          <Sparkles className="w-4 h-4 text-pink-600" />
+                        </a>
 
                         <button
                           onClick={() => {
@@ -1356,6 +1417,344 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                 )}
               </div>
 
+              {/* Attendee Poster Template Configuration Section */}
+              <div className="pt-6 border-t border-slate-100 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-900 uppercase">
+                        Cấu Hình Khung Mẫu Poster Tham Dự (Check-in & Chia Sẻ)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Cho phép đại biểu tạo Poster mang tên mình với khung mẫu riêng của biểu mẫu này.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editingForm.posterEnabled !== false}
+                      onChange={(e) => setEditingForm({ ...editingForm, posterEnabled: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                  </label>
+                </div>
+
+                {editingForm.posterEnabled !== false && (
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4 animate-fade-in">
+                    {/* Hidden file input for poster template */}
+                    <input
+                      type="file"
+                      ref={posterTemplateFileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handlePosterTemplateFile(file);
+                      }}
+                      accept="image/*"
+                      className="hidden"
+                    />
+
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <ImageIcon className="w-4 h-4 text-pink-600" />
+                        Ảnh Khung Mẫu Poster (Khung Chữ Nhật Tỉ Lệ 3:2 • 1024x682px hoặc 2048x1364px)
+                      </label>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Tự động nén chất lượng cao & lưu Supabase Storage
+                      </span>
+                    </div>
+
+                    {editingForm.posterTemplateUrl ? (
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 shadow-sm">
+                        <div className="relative bg-slate-950 flex items-center justify-center overflow-hidden p-2">
+                          <img
+                            src={editingForm.posterTemplateUrl}
+                            alt="Khung Mẫu Poster Riêng"
+                            className="w-full max-h-72 object-contain mx-auto block rounded-xl"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/poster-template-default.jpg';
+                            }}
+                          />
+                        </div>
+                        <div className="bg-slate-900 border-t border-slate-800 p-3 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="px-2.5 py-1 rounded-lg bg-pink-600 text-white text-[11px] font-black flex items-center gap-1 shadow-sm shrink-0 uppercase tracking-wide">
+                              <Sparkles className="w-3.5 h-3.5" /> Khung mẫu riêng của form
+                            </span>
+                            <span className="text-slate-300 text-[11px] truncate max-w-[200px] sm:max-w-xs font-mono">
+                              {editingForm.posterTemplateUrl.startsWith('data:') ? 'Ảnh tải lên từ máy (Base64)' : editingForm.posterTemplateUrl}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => posterTemplateFileInputRef.current?.click()}
+                              disabled={isUploadingPosterTemplate}
+                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                            >
+                              {isUploadingPosterTemplate ? <Loader2 className="w-3.5 h-3.5 animate-spin text-pink-600" /> : <Upload className="w-3.5 h-3.5 text-pink-600" />}
+                              Thay Khung Mẫu Khác
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingForm({ ...editingForm, posterTemplateUrl: '' })}
+                              disabled={isUploadingPosterTemplate}
+                              className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Gỡ khung riêng (Về mặc định)
+                            </button>
+                            <a
+                              href={`/?view=poster&formId=${editingForm.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm no-underline"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              Xem Thử Poster
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setIsDraggingPosterTemplate(true);
+                          }}
+                          onDragLeave={() => setIsDraggingPosterTemplate(false)}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setIsDraggingPosterTemplate(false);
+                            const file = e.dataTransfer.files?.[0];
+                            if (file) handlePosterTemplateFile(file);
+                          }}
+                          onClick={() => !isUploadingPosterTemplate && posterTemplateFileInputRef.current?.click()}
+                          className={`relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-2xl cursor-pointer transition ${
+                            isDraggingPosterTemplate 
+                              ? 'border-pink-500 bg-pink-50/60' 
+                              : 'border-slate-300 hover:border-pink-400 hover:bg-white bg-white/70'
+                          }`}
+                        >
+                          {isUploadingPosterTemplate ? (
+                            <div className="flex flex-col items-center py-2">
+                              <Loader2 className="w-8 h-8 text-pink-600 animate-spin mb-2" />
+                              <span className="text-xs font-bold text-slate-700">Đang tối ưu & tải khung mẫu poster lên hệ thống...</span>
+                              <span className="text-[11px] text-slate-400 mt-0.5">Vui lòng chờ trong giây lát</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center py-1 text-center">
+                              <div className="w-12 h-12 rounded-2xl bg-pink-50 text-pink-600 flex items-center justify-center mb-2.5">
+                                <Upload className="w-6 h-6" />
+                              </div>
+                              <span className="text-xs font-bold text-slate-800 mb-0.5">
+                                Nhấn để tải Khung mẫu Poster riêng cho Form này (hoặc kéo thả vào đây)
+                              </span>
+                              <span className="text-[11px] text-slate-400">
+                                Nếu không tải lên, hệ thống sẽ tự động dùng Khung mẫu chuẩn của Hội nghị VSAPS 2026
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Preview default template */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src="/poster-template-default.jpg"
+                              alt="Khung mẫu mặc định"
+                              className="w-14 h-9 object-cover rounded-md border border-slate-200"
+                            />
+                            <div>
+                              <span className="text-xs font-bold text-slate-800 block">Đang dùng: Khung mẫu chuẩn Hội nghị VSAPS 2026</span>
+                              <span className="text-[11px] text-slate-400">Tỉ lệ 3:2 (1024 x 682 px)</span>
+                            </div>
+                          </div>
+                          <a
+                            href={`/?view=poster&formId=${editingForm.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1 transition"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Xem Thử
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Manual URL input fallback */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <span className="text-[11px] text-slate-500 shrink-0 font-medium">Hoặc link URL ảnh khung mẫu:</span>
+                      <input
+                        type="text"
+                        value={editingForm.posterTemplateUrl || ''}
+                        onChange={(e) => setEditingForm({ ...editingForm, posterTemplateUrl: e.target.value })}
+                        placeholder="https://domain.com/poster-template.jpg"
+                        className="flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:border-pink-500 bg-white"
+                      />
+                      {editingForm.posterTemplateUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingForm({ ...editingForm, posterTemplateUrl: '' })}
+                          className="px-2 py-1.5 text-xs text-slate-400 hover:text-rose-500 transition rounded-lg hover:bg-rose-50 cursor-pointer"
+                          title="Xóa link ảnh"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Direct Poster Generator Link for this form */}
+                    <div className="pt-3 border-t border-slate-200/80">
+                      <span className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Đường dẫn tạo Poster riêng cho Form này:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={`${window.location.origin}${window.location.pathname}?view=poster&formId=${editingForm.id}`}
+                          className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-indigo-700 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = `${window.location.origin}${window.location.pathname}?view=poster&formId=${editingForm.id}`;
+                            navigator.clipboard.writeText(url);
+                            showToast('Đã sao chép link tạo Poster riêng của biểu mẫu này!');
+                          }}
+                          className="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold cursor-pointer transition shadow-sm border-0 flex items-center gap-1.5 shrink-0"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Sao chép Link
+                        </button>
+                        <a
+                          href={`/?view=poster&formId=${editingForm.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition flex items-center gap-1 shrink-0 no-underline"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Mở Trang
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Advanced Collapsible Settings: Circle Position & Colors */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvancedPosterSettings(!showAdvancedPosterSettings)}
+                        className="text-[11.5px] font-bold text-slate-600 hover:text-pink-600 flex items-center gap-1.5 cursor-pointer py-1"
+                      >
+                        <Settings className="w-3.5 h-3.5" />
+                        <span>Tùy chỉnh nâng cao: Vị trí ô tròn & Màu chữ</span>
+                        <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showAdvancedPosterSettings ? 'rotate-90' : ''}`} />
+                      </button>
+
+                      {showAdvancedPosterSettings && (
+                        <div className="mt-3 p-4 bg-white rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-fade-in text-xs">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              Tọa độ tâm X (Mặc định: 745)
+                            </label>
+                            <input
+                              type="number"
+                              value={editingForm.posterCircleX ?? 745}
+                              onChange={(e) => setEditingForm({ ...editingForm, posterCircleX: parseFloat(e.target.value) || 745 })}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              Tọa độ tâm Y (Mặc định: 235.5)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={editingForm.posterCircleY ?? 235.5}
+                              onChange={(e) => setEditingForm({ ...editingForm, posterCircleY: parseFloat(e.target.value) || 235.5 })}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              Bán kính ô tròn (Mặc định: 96)
+                            </label>
+                            <input
+                              type="number"
+                              value={editingForm.posterCircleRadius ?? 96}
+                              onChange={(e) => setEditingForm({ ...editingForm, posterCircleRadius: parseFloat(e.target.value) || 96 })}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              Màu chữ Họ và Tên
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={editingForm.posterNameColor || '#b22f65'}
+                                onChange={(e) => setEditingForm({ ...editingForm, posterNameColor: e.target.value })}
+                                className="w-8 h-8 rounded border border-slate-300 p-0.5 cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={editingForm.posterNameColor || '#b22f65'}
+                                onChange={(e) => setEditingForm({ ...editingForm, posterNameColor: e.target.value })}
+                                className="w-24 px-2 py-1 font-mono uppercase text-xs border border-slate-200 rounded-lg"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              Màu chữ Chức vụ
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={editingForm.posterRoleColor || '#3e5891'}
+                                onChange={(e) => setEditingForm({ ...editingForm, posterRoleColor: e.target.value })}
+                                className="w-8 h-8 rounded border border-slate-300 p-0.5 cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={editingForm.posterRoleColor || '#3e5891'}
+                                onChange={(e) => setEditingForm({ ...editingForm, posterRoleColor: e.target.value })}
+                                className="w-24 px-2 py-1 font-mono uppercase text-xs border border-slate-200 rounded-lg"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => setEditingForm({
+                                ...editingForm,
+                                posterCircleX: 745,
+                                posterCircleY: 235.5,
+                                posterCircleRadius: 96,
+                                posterNameColor: '#b22f65',
+                                posterRoleColor: '#3e5891'
+                              })}
+                              className="px-3 py-1.5 rounded-lg border border-slate-200 text-[11px] text-slate-600 hover:bg-slate-50 cursor-pointer font-medium"
+                            >
+                              Đặt lại tọa độ mặc định
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Post-submit Message */}
               <div className="pt-6 border-t border-slate-100 space-y-4">
                 <h4 className="text-xs font-extrabold text-slate-900 uppercase">Thông Báo Sau Khi Gửi Đơn Thành Công</h4>
@@ -1470,15 +1869,6 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                   )}
 
                   <div className="p-5 sm:p-7 space-y-5">
-                    {/* Title header when banner image is present */}
-                    {editingForm.bannerUrl && (
-                      <div className="border-b border-slate-100 pb-4">
-                        <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug">
-                          {editingForm.title}
-                        </h2>
-                      </div>
-                    )}
-
                     {editingForm.description && (
                       <p className="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed">
                         {editingForm.description}
@@ -1977,7 +2367,7 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
 
               {/* Public URL Box */}
               <div className="text-left space-y-1">
-                <span className="text-[10.5px] font-bold text-slate-500 block uppercase">Đường dẫn truy cập công khai:</span>
+                <span className="text-[10.5px] font-bold text-slate-500 block uppercase">Đường dẫn đăng ký công khai:</span>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="text"
@@ -1998,15 +2388,53 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                 </div>
               </div>
 
+              {/* Poster Link for this Form */}
+              <div className="text-left space-y-1 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] font-bold text-slate-500 block uppercase">Link Tạo Poster Tham Dự:</span>
+                  {shareForm.posterTemplateUrl ? (
+                    <span className="text-[10px] text-pink-600 font-black">★ Khung Mẫu Riêng</span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-medium">Khung Chuẩn Mặc Định</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}${window.location.pathname}?view=poster&formId=${shareForm.id}`}
+                    className="flex-1 px-3 py-2 bg-pink-50/60 border border-pink-200 rounded-xl text-xs font-mono text-pink-900 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?view=poster&formId=${shareForm.id}`);
+                      showToast('Đã sao chép link tạo Poster của biểu mẫu này!');
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 text-white text-xs font-bold cursor-pointer transition-all shrink-0 border-0"
+                  >
+                    Sao chép
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-center gap-3 pt-2">
                 <a
                   href={getPublicFormUrl(shareForm)}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 no-underline"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Mở Form Thực Tế</span>
+                  <span>Mở Form Đăng Ký</span>
+                </a>
+                <a
+                  href={`/?view=poster&formId=${shareForm.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-pink-50 hover:bg-pink-100 text-pink-700 text-xs font-bold inline-flex items-center gap-1.5 border border-pink-200 no-underline"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Mở Trang Poster</span>
                 </a>
               </div>
             </div>
@@ -2124,14 +2552,25 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
       )}
 
       {/* Registration Poster Modal */}
-      {posterSubmission && (
-        <RegistrationPosterModal
-          isOpen={!!posterSubmission}
-          onClose={() => setPosterSubmission(null)}
-          initialName={posterSubmission.fullName || ''}
-          formTitle={posterSubmission.formTitle}
-        />
-      )}
+      {posterSubmission && (() => {
+        const matchedForm = forms.find(f => f.id === posterSubmission.formId);
+        return (
+          <RegistrationPosterModal
+            isOpen={!!posterSubmission}
+            onClose={() => setPosterSubmission(null)}
+            initialName={posterSubmission.fullName || ''}
+            formTitle={posterSubmission.formTitle}
+            templateUrl={matchedForm?.posterTemplateUrl || '/poster-template-default.jpg'}
+            circleX={matchedForm?.posterCircleX}
+            circleY={matchedForm?.posterCircleY}
+            circleRadius={matchedForm?.posterCircleRadius}
+            nameColor={matchedForm?.posterNameColor}
+            roleColor={matchedForm?.posterRoleColor}
+            formId={matchedForm?.id}
+            formSlug={matchedForm?.slug}
+          />
+        );
+      })()}
     </div>
   );
 }
