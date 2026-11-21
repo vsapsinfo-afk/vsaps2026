@@ -452,9 +452,14 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
           <div className="p-6 sm:p-8 space-y-6">
 
             {form.description && (
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                {form.description}
-              </p>
+              <div 
+                className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100 prose prose-sm max-w-none prose-slate [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-indigo-600 [&_a]:underline"
+                dangerouslySetInnerHTML={{ 
+                  __html: form.description.includes('<') 
+                    ? form.description 
+                    : form.description.replace(/\n/g, '<br/>') 
+                }}
+              />
             )}
 
             {/* Event Details Grid */}

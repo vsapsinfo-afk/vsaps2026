@@ -21,6 +21,7 @@ import {
 import { FORM_PRESETS, FormTemplatePreset } from '../lib/defaultForms';
 import { uploadToSupabaseStorage, isSupabaseConfigured } from '../lib/supabase';
 import RegistrationPosterModal from '../components/RegistrationPosterModal';
+import RichTextEditor from '../components/RichTextEditor';
 
 // Helper: compress image client-side before upload / storage
 const compressImage = (file: File, maxWidth = 1920, quality = 0.88): Promise<string> => {
@@ -726,7 +727,7 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                             {form.title}
                           </h3>
                           <p className="text-[11px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
-                            {form.description || 'Chưa có mô tả cho biểu mẫu này.'}
+                            {form.description ? form.description.replace(/<[^>]*>/g, '') : 'Chưa có mô tả cho biểu mẫu này.'}
                           </p>
                         </div>
 
@@ -1162,12 +1163,12 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">Mô Tả / Hướng Dẫn Biểu Mẫu</label>
-                  <textarea
-                    rows={3}
+                  <RichTextEditor
                     value={editingForm.description || ''}
-                    onChange={(e) => setEditingForm({ ...editingForm, description: e.target.value })}
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-indigo-500"
+                    onChange={(val) => setEditingForm({ ...editingForm, description: val })}
                     placeholder="Nhập thông tin giới thiệu, địa điểm, thời gian, lưu ý cho người đăng ký..."
+                    id="form-description-editor"
+                    minHeight={160}
                   />
                 </div>
 
@@ -1870,9 +1871,14 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
 
                   <div className="p-5 sm:p-7 space-y-5">
                     {editingForm.description && (
-                      <p className="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed">
-                        {editingForm.description}
-                      </p>
+                      <div 
+                        className="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed prose prose-sm max-w-none prose-slate [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-indigo-600 [&_a]:underline"
+                        dangerouslySetInnerHTML={{ 
+                          __html: editingForm.description.includes('<') 
+                            ? editingForm.description 
+                            : editingForm.description.replace(/\n/g, '<br/>') 
+                        }}
+                      />
                     )}
 
                     {/* Render Fields Preview */}
