@@ -3,10 +3,52 @@ import {
   CheckCircle2, AlertTriangle, Calendar, Clock, DollarSign, 
   Upload, QrCode, ArrowLeft, Send, Check, Copy, Download, 
   Printer, Sparkles, Building, Phone, Mail, User, Layers,
-  ShieldCheck, FileText, X
+  ShieldCheck, FileText, X, Smartphone, ExternalLink, Zap
 } from 'lucide-react';
 import { store } from '../dataStore';
 import { CustomRegistrationForm, CustomFormSubmission, FormField } from '../types';
+
+interface BankAppItem {
+  id: string;
+  name: string;
+  shortName: string;
+  logo: string;
+  popular?: boolean;
+}
+
+const POPULAR_BANK_APPS: BankAppItem[] = [
+  { id: 'mb', name: 'MB Bank', shortName: 'MB', logo: 'https://cdn.vietqr.io/bank-app-icon/mb-android.webp', popular: true },
+  { id: 'vcb', name: 'Vietcombank', shortName: 'VCB', logo: 'https://cdn.vietqr.io/bank-app-icon/vcb-android.webp', popular: true },
+  { id: 'tcb', name: 'Techcombank', shortName: 'TCB', logo: 'https://cdn.vietqr.io/bank-app-icon/tcb-android.webp', popular: true },
+  { id: 'icb', name: 'VietinBank', shortName: 'Vietin', logo: 'https://cdn.vietqr.io/bank-app-icon/icb-android.webp', popular: true },
+  { id: 'bidv', name: 'BIDV', shortName: 'BIDV', logo: 'https://cdn.vietqr.io/bank-app-icon/bidv-android.webp', popular: true },
+  { id: 'acb', name: 'ACB ONE', shortName: 'ACB', logo: 'https://cdn.vietqr.io/bank-app-icon/acb-android.webp', popular: true },
+  { id: 'vpb', name: 'VPBank NEO', shortName: 'VPBank', logo: 'https://cdn.vietqr.io/bank-app-icon/vpb-android.webp', popular: true },
+  { id: 'tpb', name: 'TPBank', shortName: 'TPBank', logo: 'https://cdn.vietqr.io/bank-app-icon/tpb-android.webp', popular: true },
+  { id: 'vba', name: 'Agribank Plus', shortName: 'Agribank', logo: 'https://cdn.vietqr.io/bank-app-icon/vba-android.webp' },
+  { id: 'ocb', name: 'OCB OMNI', shortName: 'OCB', logo: 'https://cdn.vietqr.io/bank-app-icon/ocb-android.webp' },
+  { id: 'shb', name: 'SHB SAHA', shortName: 'SHB', logo: 'https://cdn.vietqr.io/bank-app-icon/shb-android.webp' },
+  { id: 'lpb', name: 'LPBank', shortName: 'LPBank', logo: 'https://cdn.vietqr.io/bank-app-icon/lpb-android.webp' },
+  { id: 'msb', name: 'MSB mBank', shortName: 'MSB', logo: 'https://cdn.vietqr.io/bank-app-icon/msb-android.webp' },
+  { id: 'cake', name: 'CAKE by VPBank', shortName: 'Cake', logo: 'https://cdn.vietqr.io/bank-app-icon/cake-android.webp' },
+  { id: 'hdb', name: 'HDBank', shortName: 'HDBank', logo: 'https://cdn.vietqr.io/bank-app-icon/hdb-android.webp' },
+  { id: 'seab', name: 'SeAMobile', shortName: 'SeABank', logo: 'https://cdn.vietqr.io/bank-app-icon/seab-android.webp' },
+];
+
+const getReceiverBankCode = (bankName?: string) => {
+  if (!bankName) return 'mb';
+  const upper = bankName.toUpperCase();
+  if (upper.includes('MB')) return 'mb';
+  if (upper.includes('VIETCOM') || upper.includes('VCB')) return 'vcb';
+  if (upper.includes('TECHCOM') || upper.includes('TCB')) return 'tcb';
+  if (upper.includes('VIETIN') || upper.includes('ICB') || upper.includes('CTG')) return 'icb';
+  if (upper.includes('BIDV')) return 'bidv';
+  if (upper.includes('ACB')) return 'acb';
+  if (upper.includes('VPBANK') || upper.includes('VPB')) return 'vpb';
+  if (upper.includes('TPBANK') || upper.includes('TPB')) return 'tpb';
+  if (upper.includes('AGRIBANK') || upper.includes('VBA')) return 'vba';
+  return bankName.split(' ')[0].toLowerCase();
+};
 
 interface PublicCustomFormRegisterProps {
   onNavigate?: (view: string) => void;
@@ -325,6 +367,17 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
     `https://api.vietqr.io/image/${form.bankName?.split(' ')[0] || 'MB'}-${form.bankAccount || '10112026'}-compact.jpg?amount=${form.feeAmount}&addInfo=${encodeURIComponent(tempSubmissionCode)}&accountName=${encodeURIComponent(form.bankAccountName || 'BAN TO CHUC VSAPS')}`
   ) : null;
 
+  // Deep Link helper for opening banking apps on mobile
+  const getBankDeeplinkUrl = (appId: string) => {
+    const receiverCode = getReceiverBankCode(form?.bankName);
+    const accountNo = form?.bankAccount || '10112026';
+    const ba = `${accountNo}@${receiverCode}`;
+    const am = form?.feeAmount || 0;
+    const tn = encodeURIComponent(tempSubmissionCode);
+    const bn = encodeURIComponent(form?.bankAccountName || 'BAN TO CHUC VSAPS');
+    return `https://dl.vietqr.io/pay?app=${appId}&ba=${encodeURIComponent(ba)}&am=${am}&tn=${tn}&bn=${bn}`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 py-6 sm:py-12 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -577,34 +630,44 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
 
                 {/* VietQR Bank Transfer Box if fee required */}
                 {form.isFeeRequired && form.feeAmount && (
-                  <div className="p-5 sm:p-6 bg-slate-900 text-white rounded-3xl space-y-4 shadow-lg">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-amber-400" />
-                      <h3 className="text-sm font-black uppercase tracking-wider">Thông Tin Chuyển Khoản Lệ Phí (VietQR)</h3>
+                  <div className="p-5 sm:p-6 bg-slate-900 text-white rounded-3xl space-y-4 shadow-lg border border-slate-800">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-amber-400" />
+                        <h3 className="text-sm font-black uppercase tracking-wider">Thông Tin Chuyển Khoản Lệ Phí (VietQR)</h3>
+                      </div>
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" /> Quét mã hoặc bấm Mở App trên điện thoại
+                      </span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-5">
-                      {vietQrUrl && (
-                        <div className="p-2 bg-white rounded-2xl shrink-0 shadow-md">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+                      {/* Cột 1: QR Code */}
+                      <div className="md:col-span-3 flex flex-col items-center justify-center p-3 bg-white rounded-2xl shadow-md">
+                        {vietQrUrl && (
                           <img
                             src={vietQrUrl}
                             alt="VietQR Code"
-                            className="w-40 h-40 object-contain rounded-xl"
+                            className="w-36 h-36 sm:w-40 sm:h-40 object-contain rounded-xl"
                           />
-                        </div>
-                      )}
+                        )}
+                        <span className="text-[10px] font-extrabold text-slate-500 mt-1 uppercase tracking-wider">
+                          Quét VietQR 24/7
+                        </span>
+                      </div>
 
-                      <div className="space-y-2 text-xs flex-1">
+                      {/* Cột 2: Thông tin chuyển khoản */}
+                      <div className="md:col-span-4 space-y-2.5 text-xs flex flex-col justify-center border-y md:border-y-0 md:border-r border-slate-800/80 py-3 md:py-0 md:pr-4">
                         <div>
                           <span className="text-slate-400 text-[11px] block">Số tiền thanh toán:</span>
-                          <span className="text-lg font-black text-amber-400">
+                          <span className="text-xl font-black text-amber-400">
                             {form.feeAmount.toLocaleString('vi-VN')} đ
                           </span>
                         </div>
 
                         <div>
                           <span className="text-slate-400 text-[11px] block">Ngân hàng thụ hưởng:</span>
-                          <span className="font-bold text-white">{form.bankName || 'MB Bank (Ngân hàng Quân Đội)'}</span>
+                          <span className="font-bold text-white text-sm">{form.bankName || 'MB Bank (Ngân hàng Quân Đội)'}</span>
                         </div>
 
                         <div>
@@ -620,7 +683,7 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                                 setCopiedBank(true);
                                 setTimeout(() => setCopiedBank(false), 2000);
                               }}
-                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono cursor-pointer"
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono cursor-pointer border border-slate-700 transition-colors"
                             >
                               {copiedBank ? 'Đã chép!' : 'Chép STK'}
                             </button>
@@ -630,7 +693,7 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                         <div>
                           <span className="text-slate-400 text-[11px] block">Nội dung chuyển khoản (Memo):</span>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="font-mono font-bold text-pink-400 bg-slate-800 px-2 py-0.5 rounded">
+                            <span className="font-mono font-bold text-pink-400 bg-slate-800 px-2 py-0.5 rounded border border-pink-500/30">
                               {tempSubmissionCode}
                             </span>
                             <button
@@ -640,11 +703,75 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                                 setCopiedMemo(true);
                                 setTimeout(() => setCopiedMemo(false), 2000);
                               }}
-                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono cursor-pointer"
+                              className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 font-mono cursor-pointer border border-slate-700 transition-colors"
                             >
                               {copiedMemo ? 'Đã chép!' : 'Chép nội dung'}
                             </button>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* Cột 3: Vùng khoanh đỏ - Deep Link mở ứng dụng ngân hàng trên điện thoại */}
+                      <div className="md:col-span-5 bg-slate-950/70 p-3.5 sm:p-4 rounded-2xl border border-indigo-500/30 flex flex-col justify-between space-y-2.5">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-emerald-400 uppercase tracking-wide">
+                              <Smartphone className="w-4 h-4 text-emerald-400 shrink-0" />
+                              <span>Mở App Ngân Hàng</span>
+                            </div>
+                            <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-extrabold border border-emerald-500/30">
+                              Deep Link tự điền
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-300 leading-snug">
+                            Chạm vào logo app ngân hàng để <strong>tự động mở ứng dụng</strong> và <strong>điền sẵn STK, số tiền & nội dung</strong>:
+                          </p>
+                        </div>
+
+                        {/* Danh sách 8 app phổ biến */}
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {POPULAR_BANK_APPS.filter(b => b.popular).map((app) => (
+                            <a
+                              key={app.id}
+                              href={getBankDeeplinkUrl(app.id)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 p-1.5 px-2 bg-slate-900/90 hover:bg-indigo-600/90 hover:border-indigo-400 border border-slate-800 rounded-xl transition-all group cursor-pointer shadow-xs"
+                              title={`Mở ứng dụng ${app.name} để thanh toán`}
+                            >
+                              <img 
+                                src={app.logo} 
+                                alt={app.name} 
+                                className="w-5 h-5 rounded-md object-contain bg-white p-0.5 shrink-0" 
+                                loading="lazy"
+                              />
+                              <span className="text-[11px] font-bold text-slate-200 group-hover:text-white truncate">
+                                {app.name}
+                              </span>
+                              <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-white ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </a>
+                          ))}
+                        </div>
+
+                        {/* Chọn ngân hàng khác */}
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
+                          <span className="text-[10.5px] text-slate-400 shrink-0 font-medium">Ngân hàng khác:</span>
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                window.open(getBankDeeplinkUrl(e.target.value), '_blank');
+                                e.target.value = '';
+                              }
+                            }}
+                            className="w-full text-[11px] bg-slate-900 text-slate-300 border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                          >
+                            <option value="">-- Chọn ngân hàng để mở app --</option>
+                            {POPULAR_BANK_APPS.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>
