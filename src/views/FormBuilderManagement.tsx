@@ -1133,45 +1133,45 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                   />
 
                   {editingForm.bannerUrl ? (
-                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 group shadow-sm">
-                      <img
-                        src={editingForm.bannerUrl}
-                        alt="Header Banner Preview"
-                        className="w-full h-44 sm:h-52 object-cover object-center opacity-95 transition group-hover:opacity-100"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80';
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent flex flex-col justify-end p-3.5 sm:p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm shrink-0">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Ảnh bìa đang áp dụng
-                            </span>
-                            <span className="text-white/80 text-[11px] truncate max-w-[200px] sm:max-w-xs font-mono">
-                              {editingForm.bannerUrl.startsWith('data:') ? 'Ảnh tải lên từ máy (Base64)' : editingForm.bannerUrl}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => bannerFileInputRef.current?.click()}
-                              disabled={isUploadingBanner}
-                              className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
-                            >
-                              {isUploadingBanner ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" /> : <Upload className="w-3.5 h-3.5 text-indigo-600" />}
-                              Thay ảnh khác
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingForm({ ...editingForm, bannerUrl: '' })}
-                              disabled={isUploadingBanner}
-                              className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              Gỡ ảnh
-                            </button>
-                          </div>
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-900 shadow-sm">
+                      <div className="relative bg-slate-950 flex items-center justify-center overflow-hidden p-1.5">
+                        <img
+                          src={editingForm.bannerUrl}
+                          alt="Header Banner Preview"
+                          className="w-full max-h-64 object-contain mx-auto block rounded-xl"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1200&q=80';
+                          }}
+                        />
+                      </div>
+                      <div className="bg-slate-900 border-t border-slate-800 p-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-sm shrink-0">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Đã áp dụng ảnh bìa
+                          </span>
+                          <span className="text-slate-300 text-[11px] truncate max-w-[200px] sm:max-w-xs font-mono">
+                            {editingForm.bannerUrl.startsWith('data:') ? 'Ảnh tải lên từ máy (Base64)' : editingForm.bannerUrl}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => bannerFileInputRef.current?.click()}
+                            disabled={isUploadingBanner}
+                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                          >
+                            {isUploadingBanner ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" /> : <Upload className="w-3.5 h-3.5 text-indigo-600" />}
+                            Thay ảnh khác
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingForm({ ...editingForm, bannerUrl: '' })}
+                            disabled={isUploadingBanner}
+                            className="px-3 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Gỡ ảnh
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1451,15 +1451,12 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                 >
                   {/* Mock Form Header */}
                   {editingForm.bannerUrl ? (
-                    <div className="h-40 w-full overflow-hidden relative bg-slate-100">
-                      <img src={editingForm.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
-                      <div className="absolute bottom-4 left-5 right-5 text-white">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-pink-500/80 text-white">
-                          VSAPS 2026
-                        </span>
-                        <h2 className="text-base sm:text-lg font-black mt-1 leading-snug">{editingForm.title}</h2>
-                      </div>
+                    <div className="w-full bg-slate-900/5 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+                      <img 
+                        src={editingForm.bannerUrl} 
+                        alt="Banner" 
+                        className="w-full h-auto max-h-[420px] object-contain block mx-auto" 
+                      />
                     </div>
                   ) : (
                     <div className="p-6 bg-gradient-to-r from-indigo-900 to-slate-900 text-white">
@@ -1471,6 +1468,18 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                   )}
 
                   <div className="p-5 sm:p-7 space-y-5">
+                    {/* Title header when banner image is present */}
+                    {editingForm.bannerUrl && (
+                      <div className="space-y-1.5 border-b border-slate-100 pb-4">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-pink-50 text-pink-600 border border-pink-200">
+                          VSAPS 2026
+                        </span>
+                        <h2 className="text-base sm:text-xl font-black text-slate-900 leading-snug mt-1">
+                          {editingForm.title}
+                        </h2>
+                      </div>
+                    )}
+
                     {editingForm.description && (
                       <p className="text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed">
                         {editingForm.description}

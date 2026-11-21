@@ -341,17 +341,14 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
 
         {/* Main Form Card */}
         <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xl text-slate-900">
-          {/* Banner */}
+          {/* Header Banner or Gradient */}
           {form.bannerUrl ? (
-            <div className="h-48 sm:h-64 w-full relative overflow-hidden bg-slate-900">
-              <img src={form.bannerUrl} alt={form.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-              <div className="absolute bottom-5 left-6 right-6 text-white space-y-1.5">
-                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-pink-500/80 text-white text-[10.5px] font-black uppercase tracking-wider backdrop-blur-xs">
-                  <span>HỘI NGHỊ VSAPS 2026</span>
-                </div>
-                <h1 className="text-xl sm:text-2xl font-black leading-snug tracking-tight">{form.title}</h1>
-              </div>
+            <div className="w-full bg-slate-900/5 overflow-hidden border-b border-slate-100 flex items-center justify-center">
+              <img 
+                src={form.bannerUrl} 
+                alt={form.title} 
+                className="w-full h-auto max-h-[500px] object-contain block mx-auto" 
+              />
             </div>
           ) : (
             <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 p-6 sm:p-8 text-white space-y-2">
@@ -364,6 +361,18 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
 
           {/* Description & Metadata bar */}
           <div className="p-6 sm:p-8 space-y-6">
+            {/* Title header when banner image is present */}
+            {form.bannerUrl && (
+              <div className="space-y-2 border-b border-slate-100 pb-5">
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-pink-50 text-pink-600 text-[11px] font-black uppercase tracking-wider border border-pink-200">
+                  <span>HỘI NGHỊ VSAPS 2026</span>
+                </div>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 leading-snug tracking-tight">
+                  {form.title}
+                </h1>
+              </div>
+            )}
+
             {form.description && (
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 {form.description}
