@@ -3701,7 +3701,7 @@ Ban Thư ký Hội nghị VSAPS 2026`
                           type="text"
                           value={accountNo}
                           onChange={(e) => setAccountNo(e.target.value)}
-                          placeholder="ví dụ: 10112026..."
+                          placeholder="ví dụ: 0331000516283..."
                           className="w-full text-xs font-semibold font-mono p-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-indigo-500"
                         />
                       </div>

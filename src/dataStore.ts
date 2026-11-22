@@ -685,7 +685,15 @@ export class DataStore {
     this.booths = this.getLocalStorage(DataStore.KEY_BOOTHS, ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2']);
     this.boothLayoutMap = this.getLocalStorage(DataStore.KEY_BOOTH_LAYOUT_MAP, '/booth_layout_map.png');
     this.campaigns = this.getLocalStorage(DataStore.KEY_CAMPAIGNS, []);
-    this.customForms = this.getLocalStorage(DataStore.KEY_CUSTOM_FORMS, DEFAULT_CUSTOM_FORMS);
+    this.customForms = this.getLocalStorage(DataStore.KEY_CUSTOM_FORMS, DEFAULT_CUSTOM_FORMS).map(f => {
+      let copy = { ...f };
+      if (!copy.bankAccount || copy.bankAccount === '10112026' || copy.bankAccount.includes('101120260331000516283')) {
+        copy.bankAccount = '0331000516283';
+        if (!copy.bankName || copy.bankName.includes('MB')) copy.bankName = 'VIETCOMBANK (VCB)';
+        if (!copy.bankAccountName || copy.bankAccountName.includes('BAN TO CHUC')) copy.bankAccountName = 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM';
+      }
+      return copy;
+    });
     this.customSubmissions = this.getLocalStorage(DataStore.KEY_CUSTOM_SUBMISSIONS, []);
   }
 
@@ -878,7 +886,15 @@ export class DataStore {
         }
         const formsConfig = configs.find(c => c.key === 'custom_forms');
         if (formsConfig && Array.isArray(formsConfig.value) && formsConfig.value.length > 0) {
-          this.customForms = formsConfig.value;
+          this.customForms = formsConfig.value.map(f => {
+            let copy = { ...f };
+            if (!copy.bankAccount || copy.bankAccount === '10112026' || copy.bankAccount.includes('101120260331000516283')) {
+              copy.bankAccount = '0331000516283';
+              if (!copy.bankName || copy.bankName.includes('MB')) copy.bankName = 'VIETCOMBANK (VCB)';
+              if (!copy.bankAccountName || copy.bankAccountName.includes('BAN TO CHUC')) copy.bankAccountName = 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM';
+            }
+            return copy;
+          });
           this.saveToLocalStorage(DataStore.KEY_CUSTOM_FORMS, this.customForms);
         }
         const subsConfig = configs.find(c => c.key === 'custom_form_submissions');

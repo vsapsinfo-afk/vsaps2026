@@ -768,7 +768,13 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => {
-                            setEditingForm(JSON.parse(JSON.stringify(form)));
+                            const cleanForm = JSON.parse(JSON.stringify(form));
+                            if (cleanForm.bankAccount && (cleanForm.bankAccount === '10112026' || cleanForm.bankAccount.includes('101120260331000516283'))) {
+                              cleanForm.bankAccount = '0331000516283';
+                              if (!cleanForm.bankName || cleanForm.bankName.includes('MB')) cleanForm.bankName = 'VIETCOMBANK (VCB)';
+                              if (!cleanForm.bankAccountName || cleanForm.bankAccountName.includes('BAN TO CHUC')) cleanForm.bankAccountName = 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM';
+                            }
+                            setEditingForm(cleanForm);
                             setActiveTab('builder');
                             setBuilderSubTab('fields');
                           }}

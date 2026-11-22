@@ -411,8 +411,12 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
 
   // VietQR URL for payment box
   const bankCode = getReceiverBankCode(form.bankName).toUpperCase();
-  const accountNo = form.bankAccount || '0331000516283';
-  const accountHolder = form.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM';
+  const accountNo = (form.bankAccount && form.bankAccount !== '10112026' && !form.bankAccount.includes('101120260331000516283'))
+    ? form.bankAccount
+    : '0331000516283';
+  const accountHolder = (form.bankAccountName && !form.bankAccountName.includes('BAN TO CHUC HOI NGHI'))
+    ? form.bankAccountName
+    : 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM';
   const vietQrUrl = form.isFeeRequired && form.feeAmount ? (
     `https://img.vietqr.io/image/${bankCode}-${accountNo}-compact.png?amount=${form.feeAmount}&addInfo=${encodeURIComponent(tempSubmissionCode)}&accountName=${encodeURIComponent(accountHolder)}`
   ) : null;
@@ -720,12 +724,12 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                           <span className="text-slate-400 text-[11px] block">Số tài khoản:</span>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="font-mono text-base font-extrabold text-white tracking-wider">
-                              {form.bankAccount || '0331000516283'}
+                              {accountNo}
                             </span>
                             <button
                               type="button"
                               onClick={() => {
-                                navigator.clipboard.writeText(form.bankAccount || '0331000516283');
+                                navigator.clipboard.writeText(accountNo);
                                 setCopiedBank(true);
                                 setTimeout(() => setCopiedBank(false), 2000);
                               }}
@@ -740,12 +744,12 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                           <span className="text-slate-400 text-[11px] block">Chủ tài khoản:</span>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="font-extrabold text-white text-xs uppercase tracking-wide">
-                              {form.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM'}
+                              {accountHolder}
                             </span>
                             <button
                               type="button"
                               onClick={() => {
-                                navigator.clipboard.writeText(form.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM');
+                                navigator.clipboard.writeText(accountHolder);
                                 setCopiedAccountName(true);
                                 setTimeout(() => setCopiedAccountName(false), 2000);
                               }}
