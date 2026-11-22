@@ -132,9 +132,9 @@ export default function AttendeeManagement({ role }: AttendeeManagementProps) {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // States for destination bank configurations
-  const [bankId, setBankId] = useState<string>('MB');
-  const [accountNo, setAccountNo] = useState<string>('10112026');
-  const [accountHolder, setAccountHolder] = useState<string>('BAN TO CHUC VSAPS 2026');
+  const [bankId, setBankId] = useState<string>('VCB');
+  const [accountNo, setAccountNo] = useState<string>('0331000516283');
+  const [accountHolder, setAccountHolder] = useState<string>('HOI PHAU THUAT TAO HINH THAM MY VIET NAM');
   const [customFeeSurcharge, setCustomFeeSurcharge] = useState<number>(0);
   const [customMemoAdd, setCustomMemoAdd] = useState<string>('');
 
@@ -280,9 +280,9 @@ Ban Tổ chức Hội nghị Khoa học Thẩm mỹ Quốc tế VSAPS 2026 xin t
 Hiện tại, hệ thống ghi nhận trạng thái phí tham dự của Quý đại biểu là: ${payStatusText} (${pkg}).
 
 Để đảm bảo quyền lợi tham dự và nhận tài liệu chính thức, Quý đại biểu vui lòng hoàn tất đóng phí bằng hình thức chuyển khoản:
-- Ngân hàng: Quân Đội (MB)
-- Số tài khoản: 10112026
-- Tên tài khoản: BAN TO CHUC VSAPS 2026
+- Ngân hàng: VIETCOMBANK (VCB)
+- Số tài khoản: 0331000516283
+- Tên tài khoản: HOI PHAU THUAT TAO HINH THAM MY VIET NAM
 - Nội dung chuyển khoản: ${code} ${fullname}
 
 Sau khi nhận được chuyển khoản, Ban Thư ký sẽ tiến hành đối soát nhanh và gửi email xác nhận cùng Mã QR Check-in chính thức.

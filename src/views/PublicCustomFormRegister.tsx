@@ -410,18 +410,20 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
   }
 
   // VietQR URL for payment box
+  const bankCode = getReceiverBankCode(form.bankName).toUpperCase();
+  const accountNo = form.bankAccount || '0331000516283';
+  const accountHolder = form.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM';
   const vietQrUrl = form.isFeeRequired && form.feeAmount ? (
-    `https://api.vietqr.io/image/${form.bankName?.split(' ')[0] || 'MB'}-${form.bankAccount || '10112026'}-compact.jpg?amount=${form.feeAmount}&addInfo=${encodeURIComponent(tempSubmissionCode)}&accountName=${encodeURIComponent(form.bankAccountName || 'BAN TO CHUC VSAPS')}`
+    `https://img.vietqr.io/image/${bankCode}-${accountNo}-compact.png?amount=${form.feeAmount}&addInfo=${encodeURIComponent(tempSubmissionCode)}&accountName=${encodeURIComponent(accountHolder)}`
   ) : null;
 
   // Deep Link helper for opening banking apps on mobile
   const getBankDeeplinkUrl = (appId: string) => {
     const receiverCode = getReceiverBankCode(form?.bankName);
-    const accountNo = form?.bankAccount || '10112026';
     const ba = `${accountNo}@${receiverCode}`;
     const am = form?.feeAmount || 0;
     const tn = encodeURIComponent(tempSubmissionCode);
-    const bn = encodeURIComponent(form?.bankAccountName || 'BAN TO CHUC VSAPS');
+    const bn = encodeURIComponent(accountHolder);
     return `https://dl.vietqr.io/pay?app=${appId}&ba=${encodeURIComponent(ba)}&am=${am}&tn=${tn}&bn=${bn}`;
   };
 
@@ -711,19 +713,19 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
 
                         <div>
                           <span className="text-slate-400 text-[11px] block">Ngân hàng thụ hưởng:</span>
-                          <span className="font-bold text-white text-sm">{form.bankName || 'MB Bank (Ngân hàng Quân Đội)'}</span>
+                          <span className="font-bold text-white text-sm">{form.bankName || 'VIETCOMBANK (VCB)'}</span>
                         </div>
 
                         <div>
                           <span className="text-slate-400 text-[11px] block">Số tài khoản:</span>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="font-mono text-base font-extrabold text-white tracking-wider">
-                              {form.bankAccount || '10112026'}
+                              {form.bankAccount || '0331000516283'}
                             </span>
                             <button
                               type="button"
                               onClick={() => {
-                                navigator.clipboard.writeText(form.bankAccount || '10112026');
+                                navigator.clipboard.writeText(form.bankAccount || '0331000516283');
                                 setCopiedBank(true);
                                 setTimeout(() => setCopiedBank(false), 2000);
                               }}
@@ -738,12 +740,12 @@ export default function PublicCustomFormRegister({ onNavigate, formId: propFormI
                           <span className="text-slate-400 text-[11px] block">Chủ tài khoản:</span>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="font-extrabold text-white text-xs uppercase tracking-wide">
-                              {form.bankAccountName || 'BAN TO CHUC HOI NGHI VSAPS'}
+                              {form.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM'}
                             </span>
                             <button
                               type="button"
                               onClick={() => {
-                                navigator.clipboard.writeText(form.bankAccountName || 'BAN TO CHUC HOI NGHI VSAPS');
+                                navigator.clipboard.writeText(form.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM');
                                 setCopiedAccountName(true);
                                 setTimeout(() => setCopiedAccountName(false), 2000);
                               }}

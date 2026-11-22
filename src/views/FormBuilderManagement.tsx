@@ -244,9 +244,9 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
       isFeeRequired: preset.isFeeDefault,
       feeAmount: preset.defaultFee,
       feeDescription: preset.isFeeDefault ? 'Phí tham dự chính thức' : undefined,
-      bankName: 'MB Bank (Ngân hàng Quân Đội)',
-      bankAccount: '10112026',
-      bankAccountName: 'BAN TO CHUC HOI NGHI VSAPS',
+      bankName: preset.bankName || 'VIETCOMBANK (VCB)',
+      bankAccount: preset.bankAccount || '0331000516283',
+      bankAccountName: preset.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM',
       submitButtonText: 'Xác Nhận Đăng Ký',
       successMessage: 'Chúc mừng Quý vị đã đăng ký thành công! Ban Tổ Chức sẽ liên hệ và gửi thông tin qua Email/Zalo.',
       confirmationEmailEnabled: true,
@@ -263,9 +263,9 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
       status: 'draft',
       isFeeRequired: false,
       feeAmount: 0,
-      bankName: 'MB Bank (Ngân hàng Quân Đội)',
-      bankAccount: '10112026',
-      bankAccountName: 'BAN TO CHUC HOI NGHI VSAPS',
+      bankName: preset.bankName || 'VIETCOMBANK (VCB)',
+      bankAccount: preset.bankAccount || '0331000516283',
+      bankAccountName: preset.bankAccountName || 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM',
       submitButtonText: 'Gửi Đăng Ký',
       successMessage: 'Cảm ơn Quý vị đã gửi thông tin đăng ký thành công!',
       confirmationEmailEnabled: true,
@@ -1382,14 +1382,33 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                       />
                     </div>
 
+                    {/* Fast Bank Account Preset Button */}
+                    <div className="md:col-span-2 flex flex-wrap items-center gap-2 pt-1 pb-1">
+                      <span className="text-[11px] font-bold text-slate-500">Mẫu tài khoản chuyển khoản:</span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingForm({
+                          ...editingForm,
+                          bankName: 'VIETCOMBANK (VCB)',
+                          bankAccount: '0331000516283',
+                          bankAccountName: 'HOI PHAU THUAT TAO HINH THAM MY VIET NAM'
+                        })}
+                        className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Tài khoản chính thức của Hội (Vietcombank)"
+                      >
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        VIETCOMBANK - Hội Phẫu Thuật Tạo Hình Thẩm Mỹ VN (Mặc định)
+                      </button>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">Ngân Hàng Thụ Hưởng</label>
                       <input
                         type="text"
-                        value={editingForm.bankName || 'MB Bank'}
+                        value={editingForm.bankName ?? ''}
                         onChange={(e) => setEditingForm({ ...editingForm, bankName: e.target.value })}
-                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs focus:outline-none bg-white"
-                        placeholder="MB Bank (Ngân hàng Quân Đội)"
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none bg-white focus:border-indigo-500"
+                        placeholder="VIETCOMBANK (VCB)"
                       />
                     </div>
 
@@ -1397,10 +1416,10 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                       <label className="block text-xs font-bold text-slate-700 mb-1">Số Tài Khoản Nhận</label>
                       <input
                         type="text"
-                        value={editingForm.bankAccount || '10112026'}
+                        value={editingForm.bankAccount ?? ''}
                         onChange={(e) => setEditingForm({ ...editingForm, bankAccount: e.target.value })}
-                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono font-bold focus:outline-none bg-white"
-                        placeholder="10112026"
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-mono font-black tracking-wide focus:outline-none bg-white text-indigo-700 focus:border-indigo-500"
+                        placeholder="0331000516283"
                       />
                     </div>
 
@@ -1408,10 +1427,10 @@ export default function FormBuilderManagement({ role = 'admin', onNavigate }: Fo
                       <label className="block text-xs font-bold text-slate-700 mb-1">Tên Chủ Tài Khoản</label>
                       <input
                         type="text"
-                        value={editingForm.bankAccountName || 'BAN TO CHUC VSAPS'}
+                        value={editingForm.bankAccountName ?? ''}
                         onChange={(e) => setEditingForm({ ...editingForm, bankAccountName: e.target.value })}
-                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:outline-none bg-white"
-                        placeholder="BAN TO CHUC HOI NGHI VSAPS"
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-black uppercase focus:outline-none bg-white text-slate-900 focus:border-indigo-500"
+                        placeholder="HOI PHAU THUAT TAO HINH THAM MY VIET NAM"
                       />
                     </div>
                   </div>
